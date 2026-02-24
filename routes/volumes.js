@@ -1,0 +1,197 @@
+// routes/volumes.js
+const { Router } = require('express');
+const { runQuery, getAll, getOne, rawRun, saveDatabase } = require('../db');
+
+const COLLECTION_THEME_ID = 44;
+
+const router = Router();
+
+router.get('/', (req, res) => {
+  const { search, exact, limit = 50, offset = 0 } = req.query;
+  const isExact = exact === 'true';
+  let conditions = [], searchParams = [], params = [];
+
+  if (search) {
+    conditions.push(isExact ? 'LOWER(v.name) = LOWER(?)' : '(v.name LIKE ? OR v.cv_slug LIKE ?)');
+    searchParams = isExact ? [search] : [`%${search}%`, `%${search}%`];
+  }
+
+  const whereClause = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
+  params = [...searchParams, parseInt(limit), parseInt(offset)];
+
+  const volumes = getAll(`
+    SELECT v.*,
+           p.name as publisher_name,
+           (SELECT COUNT(*) FROM issues i WHERE i.cv_vol_id = v.cv_id) as issue_count
+    FROM volumes v
+    LEFT JOIN publishers p ON v.publisher = p.id
+    ${whereClause}
+    ORDER BY v.created_at DESC
+    LIMIT ? OFFSET ?
+  `, params);
+
+  let countQuery = `SELECT COUNT(*) as count FROM volumes v${whereClause}`;
+  const total = getOne(countQuery, searchParams);
+  res.json({ data: volumes, total: total?.count || 0 });
+});
+
+router.get('/by-cv-id/:cv_id', (req, res) => {
+  const volume = getOne('SELECT * FROM volumes WHERE cv_id = ?', [parseInt(req.params.cv_id)]);
+  if (!volume) return res.status(404).json({ error: 'Том не знайдено' });
+  res.json(volume);
+});
+
+router.get('/:id/themes', (req, res) => {
+  const vol = getOne('SELECT cv_id FROM volumes WHERE id = ?', [req.params.id]);
+  if (!vol) return res.json({ data: [] });
+  const data = getAll(
+    `SELECT t.* FROM themes t JOIN volume_themes vt ON t.id = vt.theme_id WHERE vt.cv_vol_id = ?`,
+    [vol.cv_id]
+  );
+  res.json({ data });
+});
+
+router.get('/:id/series', (req, res) => {
+  const data = getAll(
+    `SELECT s.* FROM series s JOIN series_volumes sv ON s.id = sv.series_id WHERE sv.volume_id = ?`,
+    [req.params.id]
+  );
+  res.json({ data });
+});
+
+router.get('/:id', (req, res) => {
+  const volume = getOne(`
+    SELECT v.*,
+           p.name as publisher_name,
+           (SELECT COUNT(*) FROM issues i WHERE i.cv_vol_id = v.cv_id) as issue_count
+    FROM volumes v
+    LEFT JOIN publishers p ON v.publisher = p.id
+    WHERE v.id = ?
+  `, [req.params.id]);
+  if (!volume) return res.status(404).json({ error: 'Том не знайдено' });
+  res.json(volume);
+});
+
+router.post('/', (req, res) => {
+  const { cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year } = req.body;
+  try {
+    runQuery(
+      'INSERT INTO volumes (cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null]
+    );
+    res.json({ message: 'Том створено' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+router.put('/:id', (req, res) => {
+  const { cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year, theme_ids } = req.body;
+  try {
+    runQuery(
+      'UPDATE volumes SET cv_id = ?, cv_slug = ?, name = ?, cv_img = ?, lang = ?, locg_id = ?, locg_slug = ?, publisher = ?, start_year = ? WHERE id = ?',
+      [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null, req.params.id]
+    );
+    if (Array.isArray(theme_ids)) {
+      // cv_id може оновитись, тому беремо нове значення
+      const newCvId = cv_id;
+      rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ?', [newCvId]);
+      theme_ids.forEach(themeId =>
+        rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [newCvId, themeId])
+      );
+      saveDatabase();
+    }
+    res.json({ message: 'Том оновлено' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+// Конвертація всіх випусків тома у збірники + додає тему Collection
+router.post('/:id/convert-all-to-collections', (req, res) => {
+  try {
+    const volumeId = parseInt(req.params.id);
+    const volume = getOne('SELECT * FROM volumes WHERE id = ?', [volumeId]);
+    if (!volume) return res.status(404).json({ error: 'Том не знайдено' });
+
+    const issues = getAll('SELECT * FROM issues WHERE cv_vol_id = ?', [volume.cv_id]);
+    if (!issues.length) return res.status(400).json({ error: 'У цього тома немає випусків' });
+
+    let converted = 0, skipped = 0;
+    issues.forEach(issue => {
+      const existing = getOne('SELECT id FROM collections WHERE cv_id = ?', [issue.cv_id]);
+      if (existing) { skipped++; return; }
+      rawRun(
+        'INSERT INTO collections (cv_vol_id, name, cv_img, cv_id, cv_slug, issue_number, cover_date, release_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [issue.cv_vol_id || null, issue.name || 'Без назви', issue.cv_img || null, issue.cv_id, issue.cv_slug,
+         issue.issue_number || null, issue.cover_date || null, issue.release_date || null]
+      );
+      rawRun('DELETE FROM issues WHERE id = ?', [issue.id]);
+      converted++;
+    });
+
+    // Додаємо тему Collection до тому якщо ще немає
+    const themeExists = getOne('SELECT id FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?', [volume.cv_id, COLLECTION_THEME_ID]);
+    if (!themeExists) {
+      rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [volume.cv_id, COLLECTION_THEME_ID]);
+    }
+
+    saveDatabase();
+    res.json({ message: `Конвертовано: ${converted}, пропущено (вже існують): ${skipped}`, converted, skipped });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+// Зворотня конвертація: всі збірники тома → випуски + видаляє тему Collection
+router.post('/:id/convert-all-collections-to-issues', (req, res) => {
+  try {
+    const volumeId = parseInt(req.params.id);
+    const volume = getOne('SELECT * FROM volumes WHERE id = ?', [volumeId]);
+    if (!volume) return res.status(404).json({ error: 'Том не знайдено' });
+
+    const collections = getAll('SELECT * FROM collections WHERE cv_vol_id = ?', [volume.cv_id]);
+    if (!collections.length) return res.status(400).json({ error: 'У цього тома немає збірників' });
+
+    let converted = 0, skipped = 0;
+    collections.forEach(col => {
+      if (!col.cv_id || !col.cv_slug) { skipped++; return; }
+      const existingIssue = getOne('SELECT id FROM issues WHERE cv_id = ?', [col.cv_id]);
+      if (existingIssue) { skipped++; return; }
+      rawRun(
+        'INSERT INTO issues (cv_id, cv_slug, name, cv_img, cv_vol_id, issue_number, cover_date, release_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        [col.cv_id, col.cv_slug, col.name || 'Без назви', col.cv_img || null,
+         col.cv_vol_id || null, col.issue_number || null, col.cover_date || null, col.release_date || null]
+      );
+      rawRun('DELETE FROM collection_issues WHERE collection_id = ?', [col.id]);
+      rawRun('DELETE FROM collection_themes WHERE collection_id = ?', [col.id]);
+      rawRun('DELETE FROM series_collections WHERE collection_id = ?', [col.id]);
+      rawRun('DELETE FROM collections WHERE id = ?', [col.id]);
+      converted++;
+    });
+
+    // Видаляємо тему Collection з тому
+    rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?', [volume.cv_id, COLLECTION_THEME_ID]);
+
+    saveDatabase();
+    res.json({ message: `Конвертовано: ${converted}, пропущено: ${skipped}`, converted, skipped });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+router.put('/:id/themes', (req, res) => {
+  const { theme_ids } = req.body;
+  if (!Array.isArray(theme_ids)) return res.status(400).json({ error: 'theme_ids має бути масивом' });
+  try {
+    const vol = getOne('SELECT cv_id FROM volumes WHERE id = ?', [req.params.id]);
+    if (!vol) return res.status(404).json({ error: 'Том не знайдено' });
+    rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ?', [vol.cv_id]);
+    theme_ids.forEach(themeId =>
+      rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [vol.cv_id, themeId])
+    );
+    saveDatabase();
+    res.json({ message: 'Теми оновлено' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+router.delete('/:id', (req, res) => {
+  try {
+    runQuery('DELETE FROM volumes WHERE id = ?', [req.params.id]);
+    res.json({ message: 'Том видалено' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+module.exports = router;

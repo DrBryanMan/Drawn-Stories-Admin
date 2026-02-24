@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comics Admin</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <nav class="sidebar">
+            <div class="sidebar-logo">
+                <h1>📚 Comics</h1>
+                <a href="/wanted">Wanted -></a>
+            </div>
+            
+            <div class="stats" id="stats">
+                <div class="stat-item">
+                    <span class="stat-label">Серії</span>
+                    <span class="stat-value" id="stat-series">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Томи</span>
+                    <span class="stat-value" id="stat-volumes">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Випуски</span>
+                    <span class="stat-value" id="stat-issues">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Збірники</span>
+                    <span class="stat-value" id="stat-collections">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Манґа</span>
+                    <span class="stat-value" id="stat-manga">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Персонажі</span>
+                    <span class="stat-value" id="stat-characters">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Персонал</span>
+                    <span class="stat-value" id="stat-personnel">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Хронології</span>
+                    <span class="stat-value" id="stat-reading-orders">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Події</span>
+                    <span class="stat-value" id="stat-events">0</span>
+                </div>
+            </div>
+            
+            <ul class="nav-menu">
+                <li><a href="#" data-page="series" class="nav-link">Серії</a></li>
+                <li><a href="#" data-page="volumes" class="nav-link active">Томи</a></li>
+                <li><a href="#" data-page="issues" class="nav-link">Випуски</a></li>
+                <li><a href="#" data-page="collections" class="nav-link">Збірники</a></li>
+                <li><a href="#" data-page="manga" class="nav-link">Манґа</a></li>
+                <li><a href="#" data-page="characters" class="nav-link">Персонажі</a></li>
+                <li><a href="#" data-page="personnel" class="nav-link">Персонал</a></li>
+                <li><a href="#" data-page="reading-orders" class="nav-link">Хронології</a></li>
+                <li><a href="#" data-page="events" class="nav-link">Події</a></li>
+            </ul>
+        </nav>
+        
+        <main class="main-content">
+            <div class="page-header">
+                <h2 id="page-title">Томи</h2>
+                <div class="header-actions">
+                    <input type="text" id="search-input" placeholder="Пошук..." class="search-input">
+                    <button id="add-btn" class="btn btn-primary">+ Додати</button>
+                </div>
+            </div>
+            
+            <div id="content" class="content">
+                <!-- Динамічний контент -->
+            </div>
+            
+            <div class="pagination" id="pagination">
+                <button id="prev-btn" class="btn btn-secondary">← Назад</button>
+                <span id="page-info">Сторінка 1</span>
+                <button id="next-btn" class="btn btn-secondary">Далі →</button>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Модальне вікно -->
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Редагування</h3>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- Форма буде тут -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="modal-cancel">Скасувати</button>
+                <button class="btn btn-primary" id="modal-save">Зберегти</button>
+            </div>
+        </div>
+    </div>
+    
+    <script type="module" src="/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wanted — Comics Admin</title>
+<style>
+  :root {
+    --bg-primary:   #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-hover:     #f1f3f5;
+    --border:       #e9ecef;
+    --text:         #212529;
+    --text-muted:   #6c757d;
+    --accent:       #2563eb;
+    --accent-hover: #1d4ed8;
+    --danger:       #dc2626;
+    --success:      #16a34a;
+    --warning:      #d97706;
+    --red-light:    #fee2e2;
+    --shadow:       0 1px 3px rgba(0,0,0,.1);
+    --shadow-lg:    0 4px 6px rgba(0,0,0,.1);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+    background: var(--bg-secondary);
+    color: var(--text);
+    line-height: 1.6;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── Sidebar ─────────────────────────────────────────── */
+  .sidebar {
+    width: 220px;
+    background: var(--bg-primary);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+  .sidebar-logo {
+    padding: 1.25rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+  }
+  .sidebar-logo h1 { font-size: 1.2rem; font-weight: 700; }
+  .sidebar-logo a {
+    font-size: .78rem;
+    color: var(--text-muted);
+    text-decoration: none;
+  }
+  .sidebar-logo a:hover { color: var(--accent); }
+
+  .sidebar-section {
+    padding: .75rem 1.25rem .4rem;
+    font-size: .7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-muted);
+  }
+  .nav-list { list-style: none; }
+  .nav-item a {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .55rem 1.25rem;
+    color: var(--text-muted);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: .9rem;
+    transition: all .15s;
+    cursor: pointer;
+    border-left: 3px solid transparent;
+  }
+  .nav-item a:hover { background: var(--bg-hover); color: var(--text); }
+  .nav-item a.active {
+    background: var(--bg-hover);
+    color: var(--accent);
+    border-left-color: var(--accent);
+  }
+  .nav-item a .count {
+    margin-left: auto;
+    font-size: .72rem;
+    background: var(--border);
+    color: var(--text-muted);
+    border-radius: 10px;
+    padding: .05rem .5rem;
+    min-width: 1.6rem;
+    text-align: center;
+    font-weight: 600;
+  }
+  .nav-item a.active .count { background: #dbeafe; color: var(--accent); }
+
+  /* ── Main ────────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── Header ──────────────────────────────────────────── */
+  .header {
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-shrink: 0;
+  }
+  .header h2 { font-size: 1.4rem; font-weight: 700; flex: 1; }
+  .header-meta { font-size: .85rem; color: var(--text-muted); }
+
+  /* ── Filter panel ────────────────────────────────────── */
+  .filters-panel {
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border);
+    padding: .85rem 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+  }
+  .filters-label {
+    font-size: .8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .filters-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+  }
+  .filter-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .75rem;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--bg-secondary);
+    font-size: .8rem;
+    cursor: pointer;
+    user-select: none;
+    transition: all .15s;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .filter-chip:hover { border-color: var(--accent); color: var(--text); }
+  .filter-chip.checked {
+    border-color: var(--accent);
+    background: #eff6ff;
+    color: var(--accent);
+  }
+  .filter-chip .chip-count {
+    background: #dbeafe;
+    color: var(--accent);
+    border-radius: 10px;
+    padding: 0 .4rem;
+    font-size: .7rem;
+    font-weight: 700;
+  }
+  .filter-chip:not(.checked) .chip-count {
+    background: var(--border);
+    color: var(--text-muted);
+  }
+  /* no checkbox input used */
+
+  .filters-actions {
+    display: flex;
+    gap: .5rem;
+    margin-left: auto;
+    align-items: center;
+  }
+  .btn {
+    padding: .35rem .9rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: .8rem;
+    font-weight: 500;
+    cursor: pointer;
+    background: var(--bg-secondary);
+    color: var(--text);
+    transition: all .15s;
+  }
+  .btn:hover { background: var(--bg-hover); }
+  .btn-accent {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .btn-accent:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+  /* Search */
+  .search-wrap {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  .search-input {
+    padding: .35rem .8rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: .85rem;
+    width: 220px;
+    background: var(--bg-secondary);
+    color: var(--text);
+    transition: border-color .15s;
+  }
+  .search-input:focus { outline: none; border-color: var(--accent); background: #fff; }
+
+  /* ── Content ─────────────────────────────────────────── */
+  .content-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.25rem 1.75rem;
+  }
+
+  /* ── Table ───────────────────────────────────────────── */
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    font-size: .875rem;
+  }
+  .results-table th {
+    background: var(--bg-secondary);
+    padding: .65rem 1rem;
+    text-align: left;
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .results-table td {
+    padding: .6rem 1rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+  .results-table tr:last-child td { border-bottom: none; }
+  .results-table tr:hover td { background: var(--bg-hover); }
+
+  .thumb {
+    width: 38px;
+    height: 50px;
+    object-fit: cover;
+    border-radius: 3px;
+    background: var(--bg-secondary);
+    display: block;
+  }
+  .thumb-placeholder {
+    width: 38px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-secondary);
+    border-radius: 3px;
+    font-size: 1.25rem;
+    color: var(--text-muted);
+  }
+
+  /* Missing field badges */
+  .miss-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem;
+  }
+  .miss-badge {
+    display: inline-block;
+    padding: .15rem .5rem;
+    border-radius: 4px;
+    font-size: .7rem;
+    font-weight: 600;
+    background: var(--red-light);
+    color: var(--danger);
+    border: 1px solid #fecaca;
+    white-space: nowrap;
+  }
+
+  .vol-link {
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .vol-link:hover { color: var(--accent); text-decoration: underline; }
+
+  .sub-name { font-size: .8rem; color: var(--text-muted); margin-top: .1rem; }
+
+  /* ── States ──────────────────────────────────────────── */
+  .state-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 2rem;
+    color: var(--text-muted);
+    text-align: center;
+    gap: .75rem;
+  }
+  .state-box .icon { font-size: 3rem; opacity: .5; }
+  .state-box p { font-size: .95rem; }
+
+  /* ── Pagination ──────────────────────────────────────── */
+  .pagination-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .75rem;
+    padding: .85rem 1.75rem;
+    border-top: 1px solid var(--border);
+    background: rgba(255,255,255,.85);
+    backdrop-filter: blur(4px);
+    flex-shrink: 0;
+    font-size: .85rem;
+    color: var(--text-muted);
+  }
+  .page-btn {
+    padding: .3rem .75rem;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--bg-primary);
+    cursor: pointer;
+    font-size: .8rem;
+    transition: all .15s;
+  }
+  .page-btn:hover:not(:disabled) { background: var(--bg-hover); }
+  .page-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── Responsive ──────────────────────────────────────── */
+  @media (max-width: 768px) {
+    body { flex-direction: column; }
+    .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+    .nav-list { display: flex; overflow-x: auto; gap: .25rem; padding: 0 .5rem .5rem; }
+    .nav-item a { white-space: nowrap; border-left: none; border-bottom: 2px solid transparent; padding: .4rem .75rem; }
+    .nav-item a.active { border-bottom-color: var(--accent); }
+    .filters-panel { flex-direction: column; align-items: flex-start; }
+    .filters-actions { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>🎯 Wanted</h1>
+    <a href="/">← Головна</a>
+  </div>
+  <div class="sidebar-section">Контент</div>
+  <ul class="nav-list">
+    <li class="nav-item">
+      <a data-section="volumes" onclick="switchSection('volumes')">
+        📚 Томи <span class="count" id="nav-count-volumes">—</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a data-section="issues" onclick="switchSection('issues')">
+        📖 Випуски <span class="count" id="nav-count-issues">—</span>
+      </a>
+    </li>
+    <li class="nav-item">
+      <a data-section="collections" onclick="switchSection('collections')">
+        🗂 Збірники <span class="count" id="nav-count-collections">—</span>
+      </a>
+    </li>
+  </ul>
+</aside>
+
+<!-- ── Main ───────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- Header -->
+  <div class="header">
+    <h2 id="section-title">Томи — відсутні дані</h2>
+    <span class="header-meta" id="result-count"></span>
+    <div class="search-wrap">
+      <input type="text" class="search-input" id="search-input" placeholder="Пошук...">
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-panel" id="filters-panel">
+    <span class="filters-label">Фільтри:</span>
+    <div class="filters-checkboxes" id="filters-checkboxes"></div>
+    <div class="filters-actions">
+      <button class="btn" onclick="toggleAll(true)">Всі</button>
+      <button class="btn" onclick="toggleAll(false)">Жодного</button>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div class="content-area" id="content-area">
+    <div class="state-box"><div class="icon">⏳</div><p>Завантаження...</p></div>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination-bar" id="pagination-bar" style="display:none">
+    <button class="page-btn" id="prev-btn" onclick="changePage(-1)">← Назад</button>
+    <span id="page-info">Сторінка 1</span>
+    <button class="page-btn" id="next-btn" onclick="changePage(1)">Далі →</button>
+  </div>
+</div>
+
+<script>
+const API = 'http://localhost:7000/api';
+const CV_IMG_SMALL = 'https://comicvine.gamespot.com/a/uploads/scale_small';
+const LIMIT = 100;
+
+// ── Конфігурація секцій ────────────────────────────────────────────────────
+
+const SECTIONS = {
+  volumes: {
+    title: 'Томи — відсутні дані',
+    icon: '📚',
+    filters: [
+      { id: 'no_name_uk',    label: 'Без укр. назви' },
+      { id: 'no_lang',       label: 'Без мови'       },
+      { id: 'no_start_year', label: 'Без року'       },
+      { id: 'no_publisher',  label: 'Без видавництва'},
+      { id: 'no_theme',      label: 'Без теми'       },
+    ],
+    renderRow: renderVolumeRow,
+    columns: ['', 'Назва / Укр. назва', 'Мова', 'Рік', 'Видавець', 'Теми', 'Відсутнє'],
+  },
+  issues: {
+    title: 'Випуски — відсутні дані',
+    icon: '📖',
+    filters: [
+      { id: 'no_cover_date',   label: 'Без дати обкладинки' },
+      { id: 'no_release_date', label: 'Без дати релізу'     },
+    ],
+    renderRow: renderIssueRow,
+    columns: ['', 'Назва', 'Серія', '№', 'Дата обкл.', 'Дата релізу', 'Відсутнє'],
+  },
+  collections: {
+    title: 'Збірники — відсутні дані',
+    icon: '🗂',
+    filters: [
+      { id: 'no_isbn',         label: 'Без ISBN'     },
+      { id: 'no_release_date', label: 'Без релізу'   },
+      { id: 'no_theme',        label: 'Без теми'     },
+      { id: 'no_description',  label: 'Без опису'    },
+      { id: 'no_issues',       label: 'Без випусків' },
+    ],
+    renderRow: renderCollectionRow,
+    columns: ['', 'Назва', 'Серія', '№', 'ISBN', 'Реліз', 'Вип.', 'Відсутнє'],
+  },
+};
+
+// ── Стан ──────────────────────────────────────────────────────────────────
+
+let currentSection = 'volumes';
+let activeFilters = {};   // { volumes: Set, issues: Set, collections: Set }
+let globalCounts  = {};   // { volumes: { no_name_uk: N, ... }, ... }
+let currentOffset = 0;
+let currentTotal  = 0;
+let searchDebounce;
+
+// Ініціалізуємо activeFilters — всі увімкнено
+Object.keys(SECTIONS).forEach(sec => {
+  activeFilters[sec] = new Set(SECTIONS[sec].filters.map(f => f.id));
+});
+
+// ── Ініціалізація ──────────────────────────────────────────────────────────
+
+async function init() {
+  // Підрахунки для кожної секції для навігації
+  await Promise.all(Object.keys(SECTIONS).map(sec => fetchSectionCount(sec)));
+
+  setupSearch();
+  switchSection('volumes');
+}
+
+async function fetchSectionCount(sec) {
+  try {
+    const filters = Array.from(activeFilters[sec]).join(',');
+    if (!filters) { globalCounts[sec] = {}; updateNavCount(sec); return; }
+    const r = await fetch(`${API}/wanted/${sec}?filters=${filters}&limit=1&offset=0`);
+    const data = await r.json();
+    globalCounts[sec] = data.counts || {};
+    updateNavCount(sec);
+  } catch(e) { console.error(e); }
+}
+
+function updateNavCount(sec) {
+  const el = document.getElementById(`nav-count-${sec}`);
+  if (!el) return;
+  const counts = globalCounts[sec] || {};
+  const filters = activeFilters[sec];
+  const total = Object.entries(counts)
+    .filter(([k]) => filters.has(k))
+    .reduce((s, [,v]) => s + v, 0);
+  el.textContent = total || '—';
+}
+
+// ── Секції ────────────────────────────────────────────────────────────────
+
+function switchSection(sec) {
+  currentSection = sec;
+  currentOffset = 0;
+
+  // Активний пункт меню
+  document.querySelectorAll('.nav-item a').forEach(a => {
+    a.classList.toggle('active', a.dataset.section === sec);
+  });
+
+  // Заголовок
+  document.getElementById('section-title').textContent = SECTIONS[sec].title;
+
+  renderFilters(sec);
+  load();
+}
+
+// ── Фільтри ────────────────────────────────────────────────────────────────
+
+function renderFilters(sec) {
+  const container = document.getElementById('filters-checkboxes');
+  const cfg = SECTIONS[sec];
+  const counts = globalCounts[sec] || {};
+
+  container.innerHTML = cfg.filters.map(f => {
+    const checked = activeFilters[sec].has(f.id);
+    const cnt = counts[f.id] ?? '?';
+    return `<div class="filter-chip ${checked ? 'checked' : ''}" data-filter="${f.id}">${f.label}<span class="chip-count">${cnt}</span></div>`;
+  }).join('');
+
+  // Обробник на контейнер (event delegation)
+  container.onclick = (e) => {
+    const chip = e.target.closest('.filter-chip');
+    if (!chip) return;
+    toggleFilter(chip.dataset.filter, chip);
+  };
+}
+
+function toggleFilter(filterId, chipEl) {
+  const set = activeFilters[currentSection];
+  if (set.has(filterId)) { set.delete(filterId); chipEl.classList.remove('checked'); }
+  else                   { set.add(filterId);    chipEl.classList.add('checked');   }
+  currentOffset = 0;
+  load();
+}
+
+function toggleAll(state) {
+  const set = activeFilters[currentSection];
+  const cfg = SECTIONS[currentSection];
+  if (state) cfg.filters.forEach(f => set.add(f.id));
+  else       set.clear();
+  renderFilters(currentSection);  // перемальовуємо чіпи з новим станом
+  currentOffset = 0;
+  load();
+}
+
+// ── Пошук ─────────────────────────────────────────────────────────────────
+
+function setupSearch() {
+  document.getElementById('search-input').oninput = (e) => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => { currentOffset = 0; load(); }, 300);
+  };
+}
+
+// ── Завантаження ──────────────────────────────────────────────────────────
+
+async function load() {
+  const sec = currentSection;
+  const filters = Array.from(activeFilters[sec]).join(',');
+  const search  = document.getElementById('search-input').value.trim();
+
+  const area = document.getElementById('content-area');
+
+  if (!filters) {
+    area.innerHTML = `<div class="state-box"><div class="icon">☑️</div><p>Оберіть хоча б один фільтр</p></div>`;
+    document.getElementById('pagination-bar').style.display = 'none';
+    document.getElementById('result-count').textContent = '';
+    return;
+  }
+
+  area.innerHTML = `<div class="state-box"><div class="icon">⏳</div><p>Завантаження...</p></div>`;
+
+  const params = new URLSearchParams({
+    filters,
+    limit: LIMIT,
+    offset: currentOffset,
+  });
+  if (search) params.set('search', search);
+
+  try {
+    const r = await fetch(`${API}/wanted/${sec}?${params}`);
+    const result = await r.json();
+
+    if (result.error) throw new Error(result.error);
+
+    currentTotal = result.total;
+    globalCounts[sec] = result.counts || globalCounts[sec] || {};
+
+    // Оновити лічильники на чіпах
+    renderFilters(sec);
+    updateNavCount(sec);
+
+    document.getElementById('result-count').textContent =
+      result.total ? `Знайдено: ${result.total}` : '';
+
+    if (!result.data || result.data.length === 0) {
+      area.innerHTML = `<div class="state-box"><div class="icon">✅</div><p>Усі дані в порядку!</p></div>`;
+      document.getElementById('pagination-bar').style.display = 'none';
+      return;
+    }
+
+    renderTable(result.data);
+    renderPagination();
+  } catch(err) {
+    area.innerHTML = `<div class="state-box"><div class="icon">❌</div><p>${err.message}</p></div>`;
+    console.error(err);
+  }
+}
+
+// ── Таблиця ───────────────────────────────────────────────────────────────
+
+function renderTable(items) {
+  const cfg = SECTIONS[currentSection];
+  const area = document.getElementById('content-area');
+
+  const thead = cfg.columns.map(c => `<th>${c}</th>`).join('');
+  const tbody = items.map(item => cfg.renderRow(item)).join('');
+
+  area.innerHTML = `
+    <table class="results-table">
+      <thead><tr>${thead}</tr></thead>
+      <tbody>${tbody}</tbody>
+    </table>
+  `;
+}
+
+// ── Row renderers ─────────────────────────────────────────────────────────
+
+function thumb(item) {
+  const src = item.cv_img ? CV_IMG_SMALL + item.cv_img : null;
+  return src
+    ? `<img class="thumb" src="${src}" alt="" loading="lazy">`
+    : `<div class="thumb-placeholder">${SECTIONS[currentSection].icon}</div>`;
+}
+
+function missBadges(item, map) {
+  const badges = Object.entries(map)
+    .filter(([key]) => item[key] == 1)
+    .map(([, label]) => `<span class="miss-badge">${label}</span>`)
+    .join('');
+  return `<div class="miss-list">${badges || '—'}</div>`;
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Volumes
+function renderVolumeRow(v) {
+  const nameUk = v.name_uk ? `<div class="sub-name">${esc(v.name_uk)}</div>` : `<div class="sub-name" style="color:#dc2626;font-style:italic">немає укр.</div>`;
+  const miss = missBadges(v, {
+    miss_name_uk:   'укр. назва',
+    miss_lang:      'мова',
+    miss_start_year:'рік',
+    miss_publisher: 'видавець',
+    miss_theme:     'тема',
+  });
+  return `<tr>
+    <td>${thumb(v)}</td>
+    <td>
+      <a class="vol-link" href="/?page=volume-detail&id=${v.id}" target="_blank">${esc(v.name)}</a>
+      ${nameUk}
+    </td>
+    <td>${v.lang || '<span style="color:var(--danger)">—</span>'}</td>
+    <td>${v.start_year || '<span style="color:var(--danger)">—</span>'}</td>
+    <td>${esc(v.publisher_name || '') || '<span style="color:var(--danger)">—</span>'}</td>
+    <td style="font-size:.8rem;color:var(--text-muted)">${esc(v.theme_names || '') || '<span style="color:var(--danger)">—</span>'}</td>
+    <td>${miss}</td>
+  </tr>`;
+}
+
+// Issues
+function renderIssueRow(i) {
+  const miss = missBadges(i, {
+    miss_cover_date:   'обкл. дата',
+    miss_release_date: 'реліз',
+  });
+  return `<tr>
+    <td>${thumb(i)}</td>
+    <td>
+      <a class="vol-link" href="/?page=issue-detail&id=${i.id}" target="_blank">${esc(i.name || '#' + (i.issue_number || '?'))}</a>
+    </td>
+    <td style="font-size:.82rem;color:var(--text-muted)">${esc(i.volume_name || '—')}</td>
+    <td>${esc(i.issue_number || '—')}</td>
+    <td>${i.cover_date   || '<span style="color:var(--danger)">—</span>'}</td>
+    <td>${i.release_date || '<span style="color:var(--danger)">—</span>'}</td>
+    <td>${miss}</td>
+  </tr>`;
+}
+
+// Collections
+function renderCollectionRow(c) {
+  const miss = missBadges(c, {
+    miss_isbn:         'ISBN',
+    miss_release_date: 'реліз',
+    miss_theme:        'тема',
+    miss_description:  'опис',
+    miss_issues:       'випуски',
+  });
+  return `<tr>
+    <td>${thumb(c)}</td>
+    <td>
+      <a class="vol-link" href="/?page=collection-detail&id=${c.id}" target="_blank">${esc(c.name || '—')}</a>
+    </td>
+    <td style="font-size:.82rem;color:var(--text-muted)">${esc(c.volume_name || '—')}</td>
+    <td>${esc(c.issue_number || '—')}</td>
+    <td>${c.isbn         || '<span style="color:var(--danger)">—</span>'}</td>
+    <td>${c.release_date || '<span style="color:var(--danger)">—</span>'}</td>
+    <td>${c.issue_count != null ? c.issue_count : '—'}</td>
+    <td>${miss}</td>
+  </tr>`;
+}
+
+// ── Пагінація ─────────────────────────────────────────────────────────────
+
+function renderPagination() {
+  const bar = document.getElementById('pagination-bar');
+  const pages = Math.ceil(currentTotal / LIMIT) || 1;
+  const page  = Math.floor(currentOffset / LIMIT) + 1;
+
+  if (currentTotal <= LIMIT) { bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+
+  document.getElementById('page-info').textContent = `Ст. ${page} з ${pages}`;
+  document.getElementById('prev-btn').disabled = currentOffset === 0;
+  document.getElementById('next-btn').disabled = currentOffset + LIMIT >= currentTotal;
+}
+
+function changePage(dir) {
+  const newOffset = currentOffset + dir * LIMIT;
+  if (newOffset < 0 || newOffset >= currentTotal) return;
+  currentOffset = newOffset;
+  load();
+  document.querySelector('.content-area').scrollTop = 0;
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
