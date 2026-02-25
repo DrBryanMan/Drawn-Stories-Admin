@@ -31,7 +31,7 @@ router.get('/:id/issues', (req, res) => {
   const items = getAll(`
     SELECT ei.id as link_id, ei.order_num, ei.importance,
            i.id, i.cv_id, i.cv_slug, i.name, i.cv_img, i.issue_number, i.cover_date, i.release_date,
-           v.name as volume_name
+           v.name as volume_name, v.cv_id as volume_cv_id, v.cv_slug as volume_cv_slug
     FROM event_items ei
     JOIN issues i ON ei.item_id = i.id
     LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id
@@ -94,7 +94,7 @@ router.delete('/:id', (req, res) => {
 // Додати випуск до події
 router.post('/:id/issues', (req, res) => {
   const { issue_id, importance = 'main' } = req.body;
-  if (!issue_id) return res.status(400).json({ error: 'issue_id обов\'язковий' });
+  if (!issue_id) return res.status(400).json({ error: "issue_id обов'язковий" });
   try {
     const maxOrder = getOne(
       "SELECT COALESCE(MAX(order_num), 0) as m FROM event_items WHERE event_id = ? AND item_type = 'issue'",
@@ -111,7 +111,7 @@ router.post('/:id/issues', (req, res) => {
 // Додати збірник до події
 router.post('/:id/collections', (req, res) => {
   const { collection_id, importance = 'main' } = req.body;
-  if (!collection_id) return res.status(400).json({ error: 'collection_id обов\'язковий' });
+  if (!collection_id) return res.status(400).json({ error: "collection_id обов'язковий" });
   try {
     const maxOrder = getOne(
       "SELECT COALESCE(MAX(order_num), 0) as m FROM event_items WHERE event_id = ? AND item_type = 'collection'",
@@ -125,14 +125,22 @@ router.post('/:id/collections', (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// Оновити importance елемента
+// Оновити importance (і опційно order_num) елемента
 router.patch('/:eventId/items/:linkId', (req, res) => {
-  const { importance } = req.body;
+  const { importance, order_num } = req.body;
   try {
-    runQuery(
-      'UPDATE event_items SET importance = ? WHERE id = ? AND event_id = ?',
-      [importance, req.params.linkId, req.params.eventId]
-    );
+    if (importance !== undefined) {
+      runQuery(
+        'UPDATE event_items SET importance = ? WHERE id = ? AND event_id = ?',
+        [importance, req.params.linkId, req.params.eventId]
+      );
+    }
+    if (order_num !== undefined) {
+      runQuery(
+        'UPDATE event_items SET order_num = ? WHERE id = ? AND event_id = ?',
+        [parseInt(order_num), req.params.linkId, req.params.eventId]
+      );
+    }
     res.json({ message: 'Оновлено' });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
@@ -148,7 +156,7 @@ router.delete('/:eventId/items/:linkId', (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// Перемістити елемент (up/down)
+// Перемістити елемент (up/down) — залишаємо для сумісності
 router.put('/:eventId/items/:linkId/move', (req, res) => {
   const { direction } = req.body;
   try {
@@ -166,6 +174,36 @@ router.put('/:eventId/items/:linkId/move', (req, res) => {
 
     rawRun('UPDATE event_items SET order_num = ? WHERE id = ?', [neighbor.order_num, item.id]);
     rawRun('UPDATE event_items SET order_num = ? WHERE id = ?', [item.order_num, neighbor.id]);
+    saveDatabase();
+    res.json({ message: 'Порядок оновлено' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// Перемістити елемент на конкретну позицію (1-based)
+router.put('/:eventId/items/:linkId/reorder', (req, res) => {
+  const { position } = req.body; // 1-based
+  if (!position || isNaN(parseInt(position))) return res.status(400).json({ error: 'position обов\'язковий' });
+  try {
+    const item = getOne('SELECT * FROM event_items WHERE id = ? AND event_id = ?',
+      [req.params.linkId, req.params.eventId]);
+    if (!item) return res.status(404).json({ error: 'Не знайдено' });
+
+    // Отримуємо всі елементи того ж типу, впорядковані
+    const allItems = getAll(
+      'SELECT id FROM event_items WHERE event_id = ? AND item_type = ? ORDER BY order_num ASC, id ASC',
+      [req.params.eventId, item.item_type]
+    );
+
+    // Видаляємо поточний елемент з масиву
+    const filtered = allItems.filter(i => i.id !== item.id);
+    // Вставляємо на потрібну позицію (0-based)
+    const targetIdx = Math.max(0, Math.min(parseInt(position) - 1, filtered.length));
+    filtered.splice(targetIdx, 0, { id: item.id });
+
+    // Оновлюємо order_num для всіх
+    filtered.forEach((i, idx) => {
+      rawRun('UPDATE event_items SET order_num = ? WHERE id = ?', [idx + 1, i.id]);
+    });
     saveDatabase();
     res.json({ message: 'Порядок оновлено' });
   } catch (e) { res.status(400).json({ error: e.message }); }

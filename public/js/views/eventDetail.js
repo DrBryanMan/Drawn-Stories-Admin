@@ -31,6 +31,9 @@ const IMPORTANCE_TEXT_COLORS = {
 let currentEventId = null;
 let currentTab = 'issues'; // 'issues' | 'collections'
 
+// Set вже доданих issue id для фільтрації в пошуку
+let currentEventIssueIds = new Set();
+
 export async function renderEventDetail(params) {
   const id = params.id;
   if (!id) { navigate('events'); return; }
@@ -56,6 +59,9 @@ async function renderPage(event) {
 
   const issues = issuesRes.data || [];
   const collections = collectionsRes.data || [];
+
+  // Оновлюємо Set вже доданих випусків
+  currentEventIssueIds = new Set(issues.map(i => i.id));
 
   document.getElementById('page-title').innerHTML = `
     <a href="#" onclick="event.preventDefault(); navigateBack()" style="color:var(--text-secondary); text-decoration:none;">
@@ -92,6 +98,9 @@ async function renderPage(event) {
           </div>
         </div>
       </div>
+
+      <!-- Інфо про серії/томи у події -->
+      ${renderVolumesInfo(issues)}
 
       <!-- Таби -->
       <div style="background:var(--bg-primary); border-radius:8px; border:1px solid var(--border-color);">
@@ -131,9 +140,11 @@ async function renderPage(event) {
 
     <!-- Модалка: Додати випуск -->
     <div id="add-issue-event-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-      <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:580px; max-width:90vw;">
+      <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:960px; max-width:95vw; max-height:90vh; overflow-y:auto;">
         <h3 style="margin-bottom:1rem;">Додати випуск до події</h3>
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.75rem; margin-bottom:0.75rem;">
+
+        <!-- Рядок фільтрів -->
+        <div style="display:grid; grid-template-columns:1fr 1fr 8% 18% auto; gap:0.75rem; margin-bottom:0.5rem; align-items:flex-end;">
           <div class="form-group" style="margin:0;">
             <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">Назва випуску</label>
             <input type="text" id="ev-search-name" placeholder="Назва..." style="width:100%;">
@@ -146,10 +157,33 @@ async function renderPage(event) {
             <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">Номер</label>
             <input type="text" id="ev-search-number" placeholder="#..." style="width:100%;">
           </div>
+          <div class="form-group" style="margin:0;">
+            <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">CV ID серії (тому)</label>
+            <input type="number" id="ev-search-cv-vol-id" placeholder="CV ID..." style="width:100%;">
+          </div>
+          <div style="display:flex; flex-direction:column; gap:0.25rem;">
+            <label style="font-size:0.8rem; color:var(--text-secondary);">Точна назва</label>
+            <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; height:36px;">
+              <input type="checkbox" id="ev-exact-match" style="width:auto; margin:0;">
+              <span style="font-size:0.85rem;">Точно</span>
+            </label>
+          </div>
         </div>
-        <div id="ev-issue-results" style="max-height:300px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; margin-bottom:1rem; min-height:48px;"></div>
 
-        <!-- Importance (показується після вибору випуску) -->
+        <!-- Фільтр вже доданих -->
+        <div style="margin-bottom:0.75rem;">
+          <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer; font-size:0.85rem; color:var(--text-secondary);">
+            <input type="checkbox" id="ev-hide-added" style="width:auto; margin:0;" checked>
+            Приховувати вже додані випуски
+          </label>
+        </div>
+
+        <!-- Результати (grid як в ReadingOrderDetail) -->
+        <div id="ev-issue-results" style="display:grid; grid-template-columns:repeat(6, 1fr); gap:0.5rem;
+             max-height:340px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px;
+             margin-bottom:1rem; min-height:60px; padding:0.5rem;"></div>
+
+        <!-- Після вибору: важливість + підтвердження -->
         <div id="ev-importance-row" style="display:none; margin-bottom:1rem;">
           <label style="display:block; margin-bottom:0.5rem; font-weight:600;">Важливість</label>
           <select id="ev-importance-select" style="width:100%; padding:0.5rem; border:1px solid var(--border-color); border-radius:6px;">
@@ -206,33 +240,54 @@ async function renderPage(event) {
         </div>
       </div>
     </div>
-
-    <style>
-      .event-tab.active {
-        border-bottom-color: var(--primary-color) !important;
-        color: var(--primary-color) !important;
-      }
-      .event-tab:hover { color: var(--primary-color) !important; }
-      .importance-badge {
-        display: inline-block;
-        padding: 0.2rem 0.5rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        white-space: nowrap;
-      }
-    </style>
   `;
 
-  // Підсвітка активного таба
   updateTabStyles();
+}
+
+// ===== ІНФО ПРО СЕРІЇ/ТОМИ =====
+
+function renderVolumesInfo(issues) {
+  if (!issues.length) return '';
+
+  const volumesMap = new Map();
+  issues.forEach(i => {
+    if (i.volume_cv_id || i.volume_name) {
+      const key = i.volume_cv_id || i.volume_name;
+      if (!volumesMap.has(key)) {
+        volumesMap.set(key, { name: i.volume_name || 'Без назви', cv_id: i.volume_cv_id, count: 0 });
+      }
+      volumesMap.get(key).count++;
+    }
+  });
+
+  if (!volumesMap.size) return '';
+
+  const entries = Array.from(volumesMap.values()).sort((a, b) => b.count - a.count);
+
+  return `
+    <div style="background:var(--bg-secondary); border-radius:8px; padding:1rem; margin-bottom:1.5rem;">
+      <div style="font-size:0.8rem; font-weight:600; color:var(--text-secondary); margin-bottom:0.5rem; text-transform:uppercase; letter-spacing:0.05em;">
+        Томи у події (${volumesMap.size})
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+        ${entries.map(v => `
+          <span style="display:inline-flex; align-items:center; gap:0.3rem; padding:0.2rem 0.6rem; border-radius:12px;
+                       background:var(--bg-primary); border:1px solid var(--border-color); font-size:0.8rem;">
+            📚 ${v.name}
+            <span style="background:var(--accent); color:#fff; border-radius:8px; padding:0 0.35rem; font-size:0.7rem;">${v.count}</span>
+          </span>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
 
 // ===== ТАБИ =====
 
 window.switchTab = (tab) => {
   currentTab = tab;
-  document.getElementById('tab-content-issues').style.display      = tab === 'issues'      ? 'block' : 'none';
+  document.getElementById('tab-content-issues').style.display = tab === 'issues' ? 'block' : 'none';
   document.getElementById('tab-content-collections').style.display = tab === 'collections' ? 'block' : 'none';
   updateTabStyles();
 };
@@ -260,6 +315,9 @@ function importanceBadge(importance) {
   return `<span class="importance-badge" style="background:${bg}; color:${color};">${label}</span>`;
 }
 
+// Дебаунсований зберігач позиції
+let orderSaveTimeout = null;
+
 function renderIssuesTable(issues, eventId) {
   if (!issues.length) {
     return '<p style="text-align:center; color:var(--text-secondary); padding:2rem;">Немає випусків. Додайте перший.</p>';
@@ -269,7 +327,7 @@ function renderIssuesTable(issues, eventId) {
       <table>
         <thead>
           <tr>
-            <th></th>
+            <th style="width:60px;">#</th>
             <th>Обкладинка</th>
             <th>Важливість</th>
             <th>#</th>
@@ -282,11 +340,11 @@ function renderIssuesTable(issues, eventId) {
         <tbody>
           ${issues.map((issue, idx) => `
             <tr onclick="navigate('issue-detail', {id:${issue.id}})" style="cursor:pointer;">
-              <td onclick="event.stopPropagation()" style="white-space:nowrap;">
-                <button class="btn btn-secondary btn-small" onclick="moveEventItem(${eventId}, ${issue.link_id}, 'up')"
-                  ${idx === 0 ? 'disabled' : ''} title="Вгору">↑</button>
-                <button class="btn btn-secondary btn-small" onclick="moveEventItem(${eventId}, ${issue.link_id}, 'down')"
-                  ${idx === issues.length - 1 ? 'disabled' : ''} title="Вниз">↓</button>
+              <td onclick="event.stopPropagation()" style="text-align:center;">
+                <input type="number" min="1" max="${issues.length}" value="${idx + 1}"
+                  style="width:48px; padding:0.2rem 0.3rem; border:1px solid var(--border-color); border-radius:4px; text-align:center; font-size:0.85rem;"
+                  onchange="reorderEventItem(${eventId}, ${issue.link_id}, this.value, ${issues.length}, this)"
+                  onclick="event.stopPropagation()">
               </td>
               <td>
                 ${issue.cv_img
@@ -325,7 +383,7 @@ function renderCollectionsTable(collections, eventId) {
       <table>
         <thead>
           <tr>
-            <th></th>
+            <th style="width:60px;">#</th>
             <th>Обкладинка</th>
             <th>Важливість</th>
             <th>Назва</th>
@@ -335,11 +393,11 @@ function renderCollectionsTable(collections, eventId) {
         <tbody>
           ${collections.map((col, idx) => `
             <tr onclick="navigate('collection-detail', {id:${col.id}})" style="cursor:pointer;">
-              <td onclick="event.stopPropagation()" style="white-space:nowrap;">
-                <button class="btn btn-secondary btn-small" onclick="moveEventItem(${eventId}, ${col.link_id}, 'up')"
-                  ${idx === 0 ? 'disabled' : ''} title="Вгору">↑</button>
-                <button class="btn btn-secondary btn-small" onclick="moveEventItem(${eventId}, ${col.link_id}, 'down')"
-                  ${idx === collections.length - 1 ? 'disabled' : ''} title="Вниз">↓</button>
+              <td onclick="event.stopPropagation()" style="text-align:center;">
+                <input type="number" min="1" max="${collections.length}" value="${idx + 1}"
+                  style="width:48px; padding:0.2rem 0.3rem; border:1px solid var(--border-color); border-radius:4px; text-align:center; font-size:0.85rem;"
+                  onchange="reorderEventItem(${eventId}, ${col.link_id}, this.value, ${collections.length}, this)"
+                  onclick="event.stopPropagation()">
               </td>
               <td>
                 ${col.cv_img
@@ -396,7 +454,6 @@ window.editEvent = async (id) => {
       </div>
     </form>
   `;
-  const { openModal } = await import('../components/modal.js');
   openModal('Редагувати подію', formHTML, async (data) => {
     await fetch(`${API_BASE}/events/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -408,15 +465,25 @@ window.editEvent = async (id) => {
   });
 };
 
-// ===== ПЕРЕМІЩЕННЯ ТА IMPORTANCE =====
+// ===== ПОРЯДОК (ПОЗИЦІЯ) =====
 
-window.moveEventItem = async (eventId, linkId, direction) => {
-  await fetch(`${API_BASE}/events/${eventId}/items/${linkId}/move`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ direction })
-  });
-  const event = await fetchItem('events', eventId);
-  await renderPage(event);
+window.reorderEventItem = async (eventId, linkId, newValue, total, inputEl) => {
+  const pos = parseInt(newValue);
+  if (isNaN(pos) || pos < 1 || pos > total) {
+    // Відновлюємо попереднє значення
+    inputEl.value = inputEl.defaultValue;
+    return;
+  }
+  try {
+    await fetch(`${API_BASE}/events/${eventId}/items/${linkId}/reorder`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ position: pos })
+    });
+    const ev = await fetchItem('events', eventId);
+    await renderPage(ev);
+  } catch (e) {
+    console.error(e);
+  }
 };
 
 window.updateEventItemImportance = async (eventId, linkId, importance) => {
@@ -447,7 +514,7 @@ window.openAddIssueToEventModal = (eventId) => {
   document.getElementById('ev-confirm-row').style.display = 'none';
   document.getElementById('ev-issue-results').innerHTML = '';
 
-  ['ev-search-name', 'ev-search-volume', 'ev-search-number'].forEach(id => {
+  ['ev-search-name', 'ev-search-volume', 'ev-search-number', 'ev-search-cv-vol-id'].forEach(id => {
     const el = document.getElementById(id);
     el.value = '';
     el.oninput = () => {
@@ -455,6 +522,22 @@ window.openAddIssueToEventModal = (eventId) => {
       evIssueSearchTimeout = setTimeout(searchIssuesForEvent, 300);
     };
   });
+
+  document.getElementById('ev-exact-match').checked = false;
+  document.getElementById('ev-exact-match').onchange = () => {
+    clearTimeout(evIssueSearchTimeout);
+    evIssueSearchTimeout = setTimeout(searchIssuesForEvent, 100);
+  };
+
+  document.getElementById('ev-hide-added').onchange = () => {
+    clearTimeout(evIssueSearchTimeout);
+    evIssueSearchTimeout = setTimeout(searchIssuesForEvent, 100);
+  };
+
+  // Закриття на фон
+  const overlay = document.getElementById('add-issue-event-modal');
+  overlay.onclick = (e) => { if (e.target === overlay) closeAddIssueEventModal(); };
+
   document.getElementById('ev-search-name').focus();
 };
 
@@ -468,43 +551,60 @@ async function searchIssuesForEvent() {
   const name        = document.getElementById('ev-search-name').value.trim();
   const volumeName  = document.getElementById('ev-search-volume').value.trim();
   const issueNumber = document.getElementById('ev-search-number').value.trim();
-  if (!name && !volumeName && !issueNumber) { document.getElementById('ev-issue-results').innerHTML = ''; return; }
+  const cvVolId     = document.getElementById('ev-search-cv-vol-id').value.trim();
+  const exact       = document.getElementById('ev-exact-match').checked;
+  const hideAdded   = document.getElementById('ev-hide-added').checked;
 
-  const params = new URLSearchParams({ limit: 20 });
+  if (!name && !volumeName && !issueNumber && !cvVolId) {
+    document.getElementById('ev-issue-results').innerHTML = '';
+    return;
+  }
+
+  const params = new URLSearchParams({ limit: 60 });
   if (name)        params.set('name', name);
   if (volumeName)  params.set('volume_name', volumeName);
   if (issueNumber) params.set('issue_number', issueNumber);
+  if (cvVolId)     params.set('volume_id', cvVolId);
+  if (exact)       params.set('exact', 'true');
 
   const res = await fetch(`${API_BASE}/issues?${params}`);
   const result = await res.json();
   const el = document.getElementById('ev-issue-results');
 
-  if (!result.data?.length) {
-    el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary);">Нічого не знайдено</div>';
+  let data = result.data || [];
+  if (hideAdded) {
+    data = data.filter(i => !currentEventIssueIds.has(i.id));
+  }
+
+  if (!data.length) {
+    el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary); grid-column:1/-1;">Нічого не знайдено</div>';
     return;
   }
 
-  el.innerHTML = result.data.map(issue => `
-    <div onclick="selectIssueForEvent(${issue.id}, '${(issue.name || 'Без назви').replace(/'/g, "\\'")}')"
-         style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
-         onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
-      ${issue.cv_img
-        ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" style="width:36px; height:54px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
-        : '<div style="width:36px; height:54px; background:var(--bg-secondary); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">📖</div>'}
-      <div>
-        <div style="font-weight:500;">${issue.name || 'Без назви'}</div>
-        <div style="font-size:0.8rem; color:var(--text-secondary);">${issue.volume_name || ''}${issue.issue_number ? ' · #' + issue.issue_number : ''}</div>
+  el.innerHTML = data.map(issue => {
+    const alreadyAdded = currentEventIssueIds.has(issue.id);
+    return `
+      <div onclick="${alreadyAdded ? '' : `selectIssueForEvent(${issue.id}, '${(issue.name || 'Без назви').replace(/'/g, "\\'")}')`}"
+           style="display:grid; cursor:${alreadyAdded ? 'default' : 'pointer'}; border-radius:6px; overflow:hidden;
+                  border:1px solid var(--border-color); opacity:${alreadyAdded ? '0.45' : '1'}; position:relative;"
+           title="${alreadyAdded ? 'Вже додано' : (issue.name || 'Без назви')}"
+           onmouseenter="if(!${alreadyAdded}) this.style.borderColor='var(--accent)'"
+           onmouseleave="this.style.borderColor='var(--border-color)'">
+        ${issue.cv_img
+          ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" style="width:100%; aspect-ratio:2/3; object-fit:cover;">`
+          : '<div style="aspect-ratio:2/3; background:var(--bg-secondary); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">📖</div>'}
+        <div style="padding:0.3rem 0.4rem; font-size:0.7rem;">
+          <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${issue.name || ''}">${issue.name || 'Без назви'}</div>
+          <div style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${issue.volume_name || ''}${issue.issue_number ? ' #' + issue.issue_number : ''}</div>
+        </div>
+        ${alreadyAdded ? '<div style="position:absolute; top:3px; right:3px; background:#22c55e; color:#fff; border-radius:50%; width:18px; height:18px; display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:700;">✓</div>' : ''}
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 window.selectIssueForEvent = (issueId, issueName) => {
   evSelectedIssueId = issueId;
-  document.getElementById('ev-issue-results').innerHTML = '';
-  ['ev-search-name', 'ev-search-volume', 'ev-search-number'].forEach(id => {
-    document.getElementById(id).value = '';
-  });
   document.getElementById('ev-selected-label').textContent = `Обрано: ${issueName}`;
   document.getElementById('ev-importance-row').style.display = 'block';
   document.getElementById('ev-confirm-row').style.display = 'flex';
@@ -514,7 +614,6 @@ window.cancelIssueSelection = () => {
   evSelectedIssueId = null;
   document.getElementById('ev-importance-row').style.display = 'none';
   document.getElementById('ev-confirm-row').style.display = 'none';
-  document.getElementById('ev-issue-results').innerHTML = '';
 };
 
 window.confirmAddIssueToEvent = async () => {
@@ -550,6 +649,10 @@ window.openAddCollectionToEventModal = (eventId) => {
     clearTimeout(evColSearchTimeout);
     evColSearchTimeout = setTimeout(() => searchCollectionsForEvent(e.target.value), 300);
   };
+
+  const overlay = document.getElementById('add-collection-event-modal');
+  overlay.onclick = (e) => { if (e.target === overlay) closeAddCollectionEventModal(); };
+
   input.focus();
 };
 
@@ -575,10 +678,11 @@ async function searchCollectionsForEvent(query) {
          style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
          onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
       ${col.cv_img
-        ? `<img src="${col.cv_img.startsWith('http') ? col.cv_img : cv_img_path_small + col.cv_img}" style="width:36px; height:54px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
+        ? `<img src="${col.cv_img.startsWith('http') ? col.cv_img : cv_img_path_small + (col.cv_img.startsWith('/') ? '' : '/') + col.cv_img}" style="width:36px; height:54px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
         : '<div style="width:36px; height:54px; background:var(--bg-secondary); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">📗</div>'}
       <div>
-        <div style="font-weight:500;">${col.name}</div>
+        <div style="font-weight:500;">${col.name || 'Без назви'}</div>
+        <div style="font-size:0.8rem; color:var(--text-secondary);">${col.volume_name || ''}</div>
       </div>
     </div>
   `).join('');
@@ -613,5 +717,6 @@ window.confirmAddCollectionToEvent = async () => {
   await renderPage(event);
 };
 
-// ===== Навігація =====
-window.navigateBack = () => window.history.back();
+// ===== ДОПОМІЖНЕ =====
+
+window.navigateBack = () => navigate('events');

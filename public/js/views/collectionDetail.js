@@ -1,6 +1,7 @@
 import { fetchItem } from '../api/api.js';
 import { cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
+import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
 
 const API_BASE = 'http://localhost:7000/api';
 
@@ -162,28 +163,43 @@ function renderPage(collection, seriesList = []) {
                 </div>
             </div>
         </div>
-        <div id="add-issue-modal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
-            <div style="background: var(--bg-primary); border-radius: 8px; padding: 1.5rem; width: 560px; max-width: 90vw;">
-                <h3 style="margin-bottom: 1rem;">Додати випуск до збірника</h3>
+        <div id="add-issue-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+            <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:960px; max-width:95vw; max-height:90vh; overflow-y:auto;">
+                <h3 style="margin-bottom:1rem;">Додати випуск до збірника</h3>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
-                    <div class="form-group" style="margin: 0;">
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem; display: block;">Назва випуску</label>
-                        <input type="text" id="search-issue-name" placeholder="Назва..." style="width: 100%;">
+                <!-- Рядок фільтрів -->
+                <div style="display:grid; grid-template-columns:1fr 1fr 8% 18% auto; gap:0.75rem; margin-bottom:0.5rem; align-items:flex-end;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">Назва випуску</label>
+                        <input type="text" id="search-issue-name" placeholder="Назва..." style="width:100%;">
                     </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem; display: block;">Назва тому</label>
-                        <input type="text" id="search-volume-name" placeholder="Том..." style="width: 100%;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">Назва тому</label>
+                        <input type="text" id="search-volume-name" placeholder="Том..." style="width:100%;">
                     </div>
-                    <div class="form-group" style="margin: 0;">
-                        <label style="font-size: 0.8rem; margin-bottom: 0.25rem; display: block;">Номер</label>
-                        <input type="text" id="search-issue-number" placeholder="#..." style="width: 100%;">
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">Номер</label>
+                        <input type="text" id="search-issue-number" placeholder="#..." style="width:100%;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">CV ID серії (тому)</label>
+                        <input type="number" id="search-cv-vol-id" placeholder="CV ID..." style="width:100%;">
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:0.25rem;">
+                        <label style="font-size:0.8rem; color:var(--text-secondary);">Точна назва</label>
+                        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; height:36px;">
+                            <input type="checkbox" id="search-exact-match" style="width:auto; margin:0;">
+                            <span style="font-size:0.85rem;">Точно</span>
+                        </label>
                     </div>
                 </div>
 
-                <div id="issue-search-results" style="max-height: 320px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 1rem; min-height: 48px;"></div>
+                <!-- Grid результати (як в ReadingOrderDetail) -->
+                <div id="issue-search-results" style="display:grid; grid-template-columns:repeat(6, 1fr); gap:0.5rem;
+                    max-height:340px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px;
+                    margin-bottom:1rem; min-height:60px; padding:0.5rem;"></div>
 
-                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+                <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
                     <button class="btn btn-secondary" onclick="closeCollectionAddIssueModal()">Скасувати</button>
                 </div>
             </div>
@@ -219,8 +235,18 @@ window.openEditCollectionModal = async (collectionId) => {
     currentEditCollectionId = collectionId;
 
     const formBody = document.getElementById('edit-collection-form-body');
-    formBody.innerHTML = '<div style="text-align: center; padding: 1rem; color: var(--text-secondary);">Завантаження...</div>';
+    formBody.innerHTML = '<div style="text-align:center; padding:1rem; color:var(--text-secondary);">Завантаження...</div>';
     document.getElementById('edit-collection-modal').style.display = 'flex';
+    
+    const colModalEl = document.getElementById('edit-collection-modal');
+    colModalEl.onclick = (e) => { if (e.target === colModalEl) window.closeEditCollectionModal(); };
+    function colEscHandler(e) {
+        if (e.key === 'Escape') {
+            window.closeEditCollectionModal();
+            document.removeEventListener('keydown', colEscHandler);
+        }
+    }
+    document.addEventListener('keydown', colEscHandler);
 
     try {
         const [collectionRes, collectionThemesRes, allThemesRes] = await Promise.all([
@@ -258,19 +284,13 @@ window.openEditCollectionModal = async (collectionId) => {
                     <input type="number" id="edit-col-cv_vol_id" value="${collection.cv_vol_id || ''}">
                 </div>
                 <div class="form-group">
-                    <label>Publisher (CV ID)</label>
-                    <input type="number" id="edit-col-publisher" value="${collection.publisher || ''}">
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
                     <label>Номер випуску</label>
                     <input type="text" id="edit-col-issue_number" value="${collection.issue_number || ''}">
                 </div>
-                <div class="form-group">
-                    <label>ISBN</label>
-                    <input type="text" id="edit-col-isbn" value="${collection.isbn || ''}">
-                </div>
+            </div>
+            <div class="form-group">
+                <label>ISBN</label>
+                <input type="text" id="edit-col-isbn" value="${collection.isbn || ''}">
             </div>
             <div class="form-row">
                 <div class="form-group">
@@ -286,28 +306,63 @@ window.openEditCollectionModal = async (collectionId) => {
                 <label>Опис</label>
                 <textarea id="edit-col-description" rows="3" style="width:100%; resize:vertical;">${collection.description || ''}</textarea>
             </div>
+
+            <!-- Видавництво з пошуком -->
+            ${publisherSearchHTML({
+                publisherId: collection.publisher || '',
+                publisherName: collection.publisher_name || '',
+                inputId: 'col-pub-input',
+                hiddenId: 'col-pub-id',
+                resultsId: 'col-pub-results',
+                chipId: 'col-pub-chip'
+            })}
+
+            <!-- Теми: чіпи + пошук + чекбокси -->
             <div class="form-group">
                 <label>Теми</label>
-                <input type="text" id="edit-theme-search" placeholder="Пошук тем..." style="width: 100%; margin-bottom: 0.5rem;" oninput="filterThemes(this.value)">
-                <div id="edit-themes-list" style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.25rem 0;">
+                <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0;">
+                    ${allThemes.filter(t => currentThemeIds.has(t.id)).map(t => `
+                        <span class="edit-chip edit-chip-theme" data-id="${t.id}">
+                            ${t.name}
+                            <button type="button" onclick="removeThemeChipCol(${t.id})" title="Видалити">×</button>
+                        </span>
+                    `).join('')}
+                </div>
+                <input type="text" id="edit-theme-search" placeholder="Пошук тем..." style="width:100%; margin-bottom:0.5rem;"
+                       oninput="filterThemesCol(this.value)">
+                <div id="edit-themes-list" style="max-height:200px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; padding:0.25rem 0;">
                     ${allThemes.length > 0
                         ? allThemes.map(theme => `
                             <label class="theme-checkbox-item"
                                 onmouseenter="this.style.background='var(--bg-secondary)'"
                                 onmouseleave="this.style.background=''">
-                                <input type="checkbox" value="${theme.id}" ${currentThemeIds.has(theme.id) ? 'checked' : ''} style="width: auto; margin: 0; flex-shrink: 0; accent-color: var(--accent);">
+                                <input type="checkbox" value="${theme.id}"
+                                       ${currentThemeIds.has(theme.id) ? 'checked' : ''}
+                                       style="width:auto; margin:0; flex-shrink:0; accent-color:var(--accent);"
+                                       onchange="onColThemeChange(${theme.id}, '${theme.name.replace(/'/g, "\\'")}', this.checked)">
                                 <span>${theme.name}</span>
-                                <span style="color: var(--text-secondary); font-size: 0.75rem; margin-left: auto;">(cv_id: ${theme.cv_id})</span>
+                                <span style="color:var(--text-secondary); font-size:0.75rem; margin-left:auto;">(cv_id: ${theme.cv_id})</span>
                             </label>
                         `).join('')
-                        : '<div style="color: var(--text-secondary); padding: 0.5rem;">Теми не знайдено</div>'
+                        : '<div style="color:var(--text-secondary); padding:0.5rem;">Теми не знайдено</div>'
                     }
                 </div>
             </div>
         `;
+
+        // Ініціалізуємо пошук видавництва
+        requestAnimationFrame(() => {
+            initPublisherSearch({
+                inputId: 'col-pub-input',
+                hiddenId: 'col-pub-id',
+                resultsId: 'col-pub-results',
+                chipId: 'col-pub-chip'
+            });
+        });
+
     } catch (error) {
         console.error('Помилка завантаження даних для редагування:', error);
-        formBody.innerHTML = '<div style="color: var(--danger); padding: 1rem;">Помилка завантаження даних</div>';
+        formBody.innerHTML = '<div style="color:var(--danger); padding:1rem;">Помилка завантаження даних</div>';
     }
 };
 
@@ -330,22 +385,17 @@ window.saveCollectionEdit = async () => {
     const name = document.getElementById('edit-col-name').value.trim();
     const cv_img = document.getElementById('edit-col-cv_img').value.trim();
     const cv_vol_id = document.getElementById('edit-col-cv_vol_id').value;
-    const publisher = document.getElementById('edit-col-publisher').value;
+    const publisherId = document.getElementById('col-pub-id').value;
     const issue_number = document.getElementById('edit-col-issue_number').value.trim();
     const isbn = document.getElementById('edit-col-isbn').value.trim();
     const cover_date = document.getElementById('edit-col-cover_date').value;
     const release_date = document.getElementById('edit-col-release_date').value;
     const description = document.getElementById('edit-col-description').value.trim();
 
-    if (!name) {
-        alert("Назва обов'язкова");
-        return;
-    }
+    if (!name) { alert("Назва обов'язкова"); return; }
 
     const checkboxes = document.querySelectorAll('#edit-themes-list input[type="checkbox"]');
-    const theme_ids = Array.from(checkboxes)
-        .filter(cb => cb.checked)
-        .map(cb => parseInt(cb.value));
+    const theme_ids = Array.from(checkboxes).filter(cb => cb.checked).map(cb => parseInt(cb.value));
 
     try {
         const response = await fetch(`${API_BASE}/collections/${currentEditCollectionId}`, {
@@ -357,7 +407,7 @@ window.saveCollectionEdit = async () => {
                 name,
                 cv_img: cv_img || null,
                 cv_vol_id: cv_vol_id ? parseInt(cv_vol_id) : null,
-                publisher: publisher ? parseInt(publisher) : null,
+                publisher: publisherId ? parseInt(publisherId) : null,
                 issue_number: issue_number || null,
                 isbn: isbn || null,
                 cover_date: cover_date || null,
@@ -387,6 +437,39 @@ window.saveCollectionEdit = async () => {
     }
 };
 
+function rebuildColThemeChips() {
+    const container = document.getElementById('col-theme-chips');
+    if (!container) return;
+    const checked = document.querySelectorAll('#edit-themes-list input[type="checkbox"]:checked');
+    container.innerHTML = Array.from(checked).map(cb => {
+        const name = cb.closest('label')?.querySelector('span')?.textContent || '';
+        return `
+            <span class="edit-chip edit-chip-theme" data-id="${cb.value}">
+                ${name}
+                <button type="button" onclick="removeThemeChipCol(${cb.value})" title="Видалити">×</button>
+            </span>
+        `;
+    }).join('');
+}
+
+window.removeThemeChipCol = (themeId) => {
+    const cb = document.querySelector(`#edit-themes-list input[value="${themeId}"]`);
+    if (cb) cb.checked = false;
+    rebuildColThemeChips();
+};
+
+window.onColThemeChange = (themeId, themeName, checked) => {
+    rebuildColThemeChips();
+};
+
+window.filterThemesCol = (q) => {
+    const lower = q.toLowerCase();
+    document.querySelectorAll('#edit-themes-list .theme-checkbox-item').forEach(item => {
+        const name = item.querySelector('span')?.textContent?.toLowerCase() || '';
+        item.style.display = name.includes(lower) ? '' : 'none';
+    });
+};
+
 // ===== ПОШУК І ДОДАВАННЯ ВИПУСКІВ =====
 
 let addIssueCollectionId = null;
@@ -399,14 +482,24 @@ window.openCollectionAddIssueModal = (collectionId) => {
     document.getElementById('search-issue-name').value = '';
     document.getElementById('search-volume-name').value = '';
     document.getElementById('search-issue-number').value = '';
+    document.getElementById('search-cv-vol-id').value = '';
+    document.getElementById('search-exact-match').checked = false;
     document.getElementById('issue-search-results').innerHTML = '';
 
-    ['search-issue-name', 'search-volume-name', 'search-issue-number'].forEach(inputId => {
+    ['search-issue-name', 'search-volume-name', 'search-issue-number', 'search-cv-vol-id'].forEach(inputId => {
         document.getElementById(inputId).oninput = () => {
             clearTimeout(issueSearchTimeout);
             issueSearchTimeout = setTimeout(() => searchIssues(collectionId), 300);
         };
     });
+    document.getElementById('search-exact-match').onchange = () => {
+        clearTimeout(issueSearchTimeout);
+        issueSearchTimeout = setTimeout(() => searchIssues(collectionId), 100);
+    };
+
+    // Закриття на фон
+    const overlay = document.getElementById('add-issue-modal');
+    overlay.onclick = (e) => { if (e.target === overlay) window.closeCollectionAddIssueModal(); };
 
     document.getElementById('search-issue-name').focus();
 };
@@ -417,51 +510,48 @@ window.closeCollectionAddIssueModal = () => {
 };
 
 async function searchIssues(collectionId) {
-    const name = document.getElementById('search-issue-name').value.trim();
-    const volumeName = document.getElementById('search-volume-name').value.trim();
+    const name        = document.getElementById('search-issue-name').value.trim();
+    const volumeName  = document.getElementById('search-volume-name').value.trim();
     const issueNumber = document.getElementById('search-issue-number').value.trim();
+    const cvVolId     = document.getElementById('search-cv-vol-id').value.trim();
+    const exact       = document.getElementById('search-exact-match').checked;
 
-    if (!name && !volumeName && !issueNumber) {
+    if (!name && !volumeName && !issueNumber && !cvVolId) {
         document.getElementById('issue-search-results').innerHTML = '';
         return;
     }
 
-    const params = new URLSearchParams({ limit: 20 });
-    if (name) params.set('name', name);
-    if (volumeName) params.set('volume_name', volumeName);
+    const params = new URLSearchParams({ limit: 60 });
+    if (name)        params.set('name', name);
+    if (volumeName)  params.set('volume_name', volumeName);
     if (issueNumber) params.set('issue_number', issueNumber);
+    if (cvVolId)     params.set('volume_id', cvVolId);
+    if (exact)       params.set('exact', 'true');
 
-    try {
-        const response = await fetch(`${API_BASE}/issues?${params}`);
-        const result = await response.json();
-        const resultsEl = document.getElementById('issue-search-results');
+    const res = await fetch(`${API_BASE}/issues?${params}`);
+    const result = await res.json();
+    const el = document.getElementById('issue-search-results');
 
-        if (!result.data || result.data.length === 0) {
-            resultsEl.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--text-secondary);">Нічого не знайдено</div>';
-            return;
-        }
-
-        resultsEl.innerHTML = result.data.map(issue => `
-            <div
-                onclick="addIssueToCollection(${collectionId}, ${issue.id})"
-                style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; cursor: pointer; border-bottom: 1px solid var(--border-color); transition: background 0.15s;"
-                onmouseenter="this.style.background='var(--bg-secondary)'"
-                onmouseleave="this.style.background=''"
-            >
-                ${issue.cv_img
-                    ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" style="width: 40px; height: 60px; object-fit: cover; border-radius: 3px; flex-shrink: 0;">`
-                    : '<div style="width: 40px; height: 60px; background: var(--bg-secondary); border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">&#128214;</div>'}
-                <div>
-                    <div style="font-weight: 500;">${issue.name || 'Без назви'}</div>
-                    <div style="font-size: 0.8rem; color: var(--text-secondary);">
-                        ${issue.volume_name || ''}${issue.issue_number ? ' &middot; #' + issue.issue_number : ''}
-                    </div>
-                </div>
-            </div>
-        `).join('');
-    } catch (error) {
-        console.error('Помилка пошуку:', error);
+    if (!result.data?.length) {
+        el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary); grid-column:1/-1;">Нічого не знайдено</div>';
+        return;
     }
+
+    el.innerHTML = result.data.map(issue => `
+        <div onclick="addIssueToCollectionFromSearch(${collectionId}, ${issue.id})"
+             style="display:grid; cursor:pointer; border-radius:6px; overflow:hidden; border:1px solid var(--border-color);"
+             title="${issue.name || 'Без назви'}"
+             onmouseenter="this.style.borderColor='var(--accent)'"
+             onmouseleave="this.style.borderColor='var(--border-color)'">
+            ${issue.cv_img
+                ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" style="width:100%; aspect-ratio:2/3; object-fit:cover;">`
+                : '<div style="aspect-ratio:2/3; background:var(--bg-secondary); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">📖</div>'}
+            <div style="padding:0.3rem 0.4rem; font-size:0.7rem;">
+                <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${issue.name || ''}">${issue.name || 'Без назви'}</div>
+                <div style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${issue.volume_name || ''}${issue.issue_number ? ' #' + issue.issue_number : ''}</div>
+            </div>
+        </div>
+    `).join('');
 }
 
 window.addIssueToCollection = async (collectionId, issueId) => {
@@ -576,5 +666,28 @@ window.makeIssueFromCollection = async (collectionId) => {
         navigate('issue-detail', { id: data.issue.id });
     } catch (e) {
         alert('Помилка під час конвертації');
+    }
+};
+
+window.addIssueToCollectionFromSearch = async (collectionId, issueId) => {
+    try {
+        const response = await fetch(`${API_BASE}/collections/${collectionId}/issues`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ issue_id: issueId })
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            alert(err.error || 'Помилка додавання');
+            return;
+        }
+        window.closeCollectionAddIssueModal();
+        const [collection, seriesData] = await Promise.all([
+            fetchItem('collections', collectionId),
+            fetch(`${API_BASE}/collections/${collectionId}/series`).then(r => r.json())
+        ]);
+        renderPage(collection, seriesData.data || []);
+    } catch (e) {
+        alert('Помилка: ' + e.message);
     }
 };

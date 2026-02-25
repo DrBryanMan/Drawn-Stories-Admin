@@ -17,6 +17,7 @@ const personnelRouter    = require('./routes/personnel');
 const eventsRouter       = require('./routes/events');
 const statsRouter        = require('./routes/stats');
 const wantedRouter       = require('./routes/wanted');
+const publishersRouter   = require('./routes/publishers');
 
 const app  = express();
 const PORT = 7000;
@@ -37,6 +38,7 @@ app.use('/api/personnel',      personnelRouter);
 app.use('/api/events',         eventsRouter);
 app.use('/api/stats',          statsRouter);
 app.use('/api/wanted',         wantedRouter);
+app.use('/api/publishers',     publishersRouter);
 
 // Окремий HTML-роут для wanted-сторінки
 app.get('/wanted', (req, res) => {

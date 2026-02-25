@@ -1,4 +1,5 @@
 import { fetchItem, fetchItems, updateItem } from '../api/api.js';
+import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../utils/publisherSearch.js';
 import { locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openModal } from '../components/modal.js';
@@ -282,58 +283,73 @@ window.addItemToSeries = async (seriesId) => {
 
 // ===== ФОРМИ РЕДАГУВАННЯ =====
 
+
+
 async function getVolumeFormHTML(volume = null) {
-    const [allThemesResp, currentThemesResp] = await Promise.all([
-        fetch(`${API_BASE}/themes`),
-        volume?.id ? fetch(`${API_BASE}/volumes/${volume.id}/themes`) : Promise.resolve(null)
-    ]);
-    const allThemes = (await allThemesResp.json()).data || [];
-    let currentThemeIds = new Set();
-    if (currentThemesResp) {
-        const d = await currentThemesResp.json();
-        (d.data || []).forEach(t => currentThemeIds.add(t.id));
-    }
-    return `
-        <form id="edit-form">
-            <div class="form-row">
-                <div class="form-group"><label>CV ID *</label><input type="number" name="cv_id" value="${volume?.cv_id || ''}" required></div>
-                <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${volume?.cv_slug || ''}" required></div>
-            </div>
-            <div class="form-group"><label>Назва *</label><input type="text" name="name" value="${volume?.name || ''}" required></div>
-            <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${volume?.cv_img || ''}"></div>
-            <div class="form-row">
-                <div class="form-group"><label>Мова</label><input type="text" name="lang" value="${volume?.lang || ''}" placeholder="напр. en, uk"></div>
-                <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}" placeholder="напр. 2020"></div>
-            </div>
-            <div class="form-row">
-                <div class="form-group"><label>LocG ID</label><input type="number" name="locg_id" value="${volume?.locg_id || ''}"></div>
-                <div class="form-group"><label>LocG Slug</label><input type="text" name="locg_slug" value="${volume?.locg_slug || ''}"></div>
-            </div>
-            <div class="form-group"><label>Publisher (CV ID)</label><input type="number" name="publisher" value="${volume?.publisher || ''}"></div>
-            <div class="form-group">
-                <label>Теми</label>
-                <input type="text" id="theme-search" placeholder="Пошук тем..." style="margin-bottom:0.5rem; width:100%; padding:0.5rem; border:1px solid var(--border-color); border-radius:6px;">
-                <div id="themes-list" class="themes-checkbox-list">
-                    ${allThemes.map(t => `
-                        <label class="theme-checkbox-item">
-                            <input type="checkbox" name="theme_ids" value="${t.id}" ${currentThemeIds.has(t.id) ? 'checked' : ''}>
-                            <span>${t.name}</span>
-                        </label>
-                    `).join('')}
-                </div>
-            </div>
-        </form>
-        <script>
-            (function() {
-                document.getElementById('theme-search').addEventListener('input', function() {
-                    const q = this.value.toLowerCase();
-                    document.getElementById('themes-list').querySelectorAll('.theme-checkbox-item').forEach(item => {
-                        item.style.display = item.querySelector('span').textContent.toLowerCase().includes(q) ? '' : 'none';
-                    });
-                });
-            })();
-        </script>
-    `;
+  const [themesRes, currentThemesRes] = await Promise.all([
+    fetch(`${API_BASE}/themes`).then(r => r.json()),
+    volume?.id
+      ? fetch(`${API_BASE}/volumes/${volume.id}/themes`).then(r => r.json())
+      : Promise.resolve({ data: [] })
+  ]);
+
+  const allThemes = themesRes.data || [];
+  const currentThemeIds = new Set((currentThemesRes.data || []).map(t => t.id));
+
+  // Отримуємо ім'я видавника якщо є ID
+  let publisherName = volume?.publisher_name || '';
+
+  return `
+    <form id="edit-form">
+      <div class="form-row">
+        <div class="form-group"><label>CV ID *</label><input type="number" name="cv_id" value="${volume?.cv_id || ''}" required></div>
+        <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${volume?.cv_slug || ''}" required></div>
+      </div>
+      <div class="form-group"><label>Назва</label><input type="text" name="name" value="${volume?.name || ''}"></div>
+      <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${volume?.cv_img || ''}"></div>
+      <div class="form-row">
+        <div class="form-group"><label>Мова</label><input type="text" name="lang" value="${volume?.lang || ''}" placeholder="en, uk"></div>
+        <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>LocG ID</label><input type="number" name="locg_id" value="${volume?.locg_id || ''}"></div>
+        <div class="form-group"><label>LocG Slug</label><input type="text" name="locg_slug" value="${volume?.locg_slug || ''}"></div>
+      </div>
+
+      ${publisherSearchHTML({
+        publisherId: volume?.publisher || '',
+        publisherName,
+        inputId: 'vol-pub-input',
+        hiddenId: 'vol-pub-id',
+        resultsId: 'vol-pub-results',
+        chipId: 'vol-pub-chip'
+      })}
+
+      <!-- Теми: чіпи + пошук + чекбокси -->
+      <div class="form-group">
+        <label>Теми</label>
+        <div id="vol-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0;">
+          ${allThemes.filter(t => currentThemeIds.has(t.id)).map(t => `
+            <span class="edit-chip edit-chip-theme" data-id="${t.id}">
+              ${t.name}
+              <button type="button" onclick="removeThemeChipVolume(${t.id})" title="Видалити">×</button>
+            </span>
+          `).join('')}
+        </div>
+        <input type="text" id="theme-search" placeholder="Пошук тем..." style="margin-bottom:0.5rem; width:100%;"
+               oninput="filterThemesVol(this.value)">
+        <div id="themes-list" class="themes-checkbox-list">
+          ${allThemes.map(t => `
+            <label class="theme-checkbox-item" onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
+              <input type="checkbox" name="theme_ids" value="${t.id}" ${currentThemeIds.has(t.id) ? 'checked' : ''}
+                     onchange="onThemeCheckboxChangeVol(${t.id}, '${t.name.replace(/'/g, "\\'")}', this.checked)">
+              <span>${t.name}</span>
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    </form>
+  `;
 }
 
 function getIssueFormHTML(issue = null) {
@@ -361,24 +377,82 @@ window.navigateBack = () => window.history.back();
 window.navigateToIssue = (id) => navigate('issue-detail', { id });
 
 window.editVolumeDetail = async (id) => {
-    const volume = await fetch(`${API_BASE}/volumes/${id}`).then(r => r.json());
-    const formHTML = await getVolumeFormHTML(volume);
-    openModal('Редагувати том', formHTML, async (data) => {
-        const themeCheckboxes = document.querySelectorAll('#edit-form input[name="theme_ids"]:checked');
-        const theme_ids = Array.from(themeCheckboxes).map(cb => parseInt(cb.value));
-        await fetch(`${API_BASE}/volumes/${id}`, {
-            method: 'PUT', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ...data,
-                theme_ids,
-                locg_id: data.locg_id ? parseInt(data.locg_id) : null,
-                publisher: data.publisher ? parseInt(data.publisher) : null,
-                start_year: data.start_year ? parseInt(data.start_year) : null,
-            })
-        });
-        await renderVolumeDetail({ id });
-        await window.updateStats();
+  const volume = await fetch(`${API_BASE}/volumes/${id}`).then(r => r.json());
+  const formHTML = await getVolumeFormHTML(volume);
+
+  openModal('Редагувати том', formHTML, async (data) => { // wide модалка → додай , { wide: true } як 4й параметр
+    const themeCheckboxes = document.querySelectorAll('#edit-form input[name="theme_ids"]:checked');
+    const theme_ids = Array.from(themeCheckboxes).map(cb => parseInt(cb.value));
+    const publisherId = document.getElementById('vol-pub-id')?.value;
+
+    await fetch(`${API_BASE}/volumes/${id}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...data,
+        theme_ids,
+        publisher: publisherId ? parseInt(publisherId) : null,
+        locg_id: data.locg_id ? parseInt(data.locg_id) : null,
+        start_year: data.start_year ? parseInt(data.start_year) : null,
+      })
     });
+    await renderVolumeDetail({ id });
+    await window.updateStats();
+  });
+
+  // Ініціалізуємо пошук видавництва після рендеру
+  requestAnimationFrame(() => {
+    initPublisherSearch({
+      inputId: 'vol-pub-input',
+      hiddenId: 'vol-pub-id',
+      resultsId: 'vol-pub-results',
+      chipId: 'vol-pub-chip'
+    });
+    initVolThemeChips();
+  });
+};
+
+function initVolThemeChips() {
+  // Встановлюємо обробники на всі чекбокси
+  document.querySelectorAll('#themes-list input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      rebuildVolThemeChips();
+    });
+  });
+}
+
+function rebuildVolThemeChips() {
+  const container = document.getElementById('vol-theme-chips');
+  if (!container) return;
+  const checked = document.querySelectorAll('#themes-list input[type="checkbox"]:checked');
+  container.innerHTML = Array.from(checked).map(cb => {
+    const name = cb.closest('label')?.querySelector('span')?.textContent || '';
+    return `
+      <span class="edit-chip edit-chip-theme" data-id="${cb.value}">
+        ${name}
+        <button type="button" onclick="removeThemeChipVolume(${cb.value})" title="Видалити">×</button>
+      </span>
+    `;
+  }).join('');
+}
+
+window.removeThemeChipVolume = (themeId) => {
+  const cb = document.querySelector(`#themes-list input[value="${themeId}"]`);
+  if (cb) {
+    cb.checked = false;
+  }
+  rebuildVolThemeChips();
+};
+
+window.onThemeCheckboxChangeVol = (themeId, themeName, checked) => {
+  rebuildVolThemeChips();
+};
+
+window.filterThemesVol = (q) => {
+  const lower = q.toLowerCase();
+  document.querySelectorAll('#themes-list .theme-checkbox-item').forEach(item => {
+    const name = item.querySelector('span')?.textContent?.toLowerCase() || '';
+    item.style.display = name.includes(lower) ? '' : 'none';
+  });
 };
 
 window.editIssueFromVolume = async (id) => {
@@ -421,5 +495,19 @@ window.convertAllCollectionsToIssues = async (volumeId, count) => {
         alert('Помилка під час конвертації');
     }
 };
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    ['edit-order-modal', 'add-issue-ro-modal'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el && el.style.display === 'flex') el.style.display = 'none';
+    });
+    // Також стандартна модалка
+    const mainModal = document.getElementById('modal');
+    if (mainModal?.classList.contains('active')) {
+      mainModal.classList.remove('active');
+    }
+  }
+});
 
 window.navigateToCollection = (id) => navigate('collection-detail', { id });
