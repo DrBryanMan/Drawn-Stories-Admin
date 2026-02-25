@@ -59,14 +59,14 @@ router.get('/', (req, res) => {
     let colWhere = '', colParams = [];
     if (search) { colWhere = ' WHERE (c.name LIKE ? OR v.name LIKE ?)'; colParams.push(`%${search}%`, `%${search}%`); }
 
-  const colItems = getAll(`
-    SELECT c.id, c.name, c.cv_img, c.issue_number, c.created_at as release_date,
-           v.name as volume_name, 'collection' as _type,
-           p.name as publisher_name,
-           (SELECT COUNT(*) FROM collection_issues ci WHERE ci.collection_id = c.id) as issue_count
+    colItems = getAll(`
+      SELECT c.id, c.name, c.cv_img, c.issue_number, c.created_at as release_date,
+             v.name as volume_name, 'collection' as _type,
+             p.name as publisher_name,
+             (SELECT COUNT(*) FROM collection_issues ci WHERE ci.collection_id = c.id) as issue_count
       FROM collections c
       LEFT JOIN volumes v ON c.cv_vol_id = v.cv_id
-    LEFT JOIN publishers p ON c.publisher = p.id
+      LEFT JOIN publishers p ON c.publisher = p.id
       ${colWhere}
       ORDER BY c.name ASC
     `, colParams);
@@ -213,25 +213,49 @@ const MANGA_THEME_ID = 36;
 const mangaRouter = Router();
 
 mangaRouter.get('/', (req, res) => {
-  const { search, limit = 50, offset = 0 } = req.query;
+  const { search, limit = 50, offset = 0, type } = req.query;
 
-  let where = 'WHERE vt.theme_id = ?';
-  let params = [MANGA_THEME_ID];
-  if (search) { where += ' AND (i.name LIKE ? OR v.name LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+  let issueItems = [];
+  if (!type || type === 'issue') {
+    let where = 'WHERE vt.theme_id = ?';
+    let params = [MANGA_THEME_ID];
+    if (search) { where += ' AND (i.name LIKE ? OR v.name LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
 
-  const data = getAll(`
-    SELECT DISTINCT i.id, i.name, i.cv_img, i.issue_number, i.release_date,
-                    v.name as volume_name, v.id as volume_id, 'issue' as _type
-    FROM issues i
-    JOIN volumes v ON i.cv_vol_id = v.cv_id
-    JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
-    ${where}
-    ORDER BY v.name ASC, CAST(i.issue_number AS REAL) ASC
-  `, params);
+    issueItems = getAll(`
+      SELECT DISTINCT i.id, i.name, i.cv_img, i.issue_number, i.release_date,
+                      v.name as volume_name, v.id as volume_id, 'issue' as _type
+      FROM issues i
+      JOIN volumes v ON i.cv_vol_id = v.cv_id
+      JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
+      ${where}
+      ORDER BY v.name ASC, CAST(i.issue_number AS REAL) ASC
+    `, params);
+  }
+
+  let colItems = [];
+  if (!type || type === 'collection') {
+    let where = '', params = [];
+    if (search) { where = ' WHERE (c.name LIKE ? OR v.name LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+
+    colItems = getAll(`
+      SELECT DISTINCT c.id, c.name, c.cv_img, c.issue_number, c.release_date,
+                      v.name as volume_name, v.id as volume_id, 'collection' as _type
+      FROM collections c
+      JOIN volumes v ON c.cv_vol_id = v.cv_id
+      JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
+      WHERE vt.theme_id = ?
+      ${where ? 'AND ' + where.replace(' WHERE ', '') : ''}
+      ORDER BY v.name ASC, CAST(c.issue_number AS REAL) ASC
+    `, [MANGA_THEME_ID, ...params]);
+  }
+
+  const allItems = [...issueItems, ...colItems];
+  const lim = parseInt(limit);
+  const off = parseInt(offset);
 
   res.json({
-    data: data.slice(parseInt(offset), parseInt(offset) + parseInt(limit)),
-    total: data.length,
+    data: allItems.slice(off, off + lim),
+    total: allItems.length,
   });
 });
 

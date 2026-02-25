@@ -93,6 +93,8 @@ export function createPagination({ total, limit, offset, onPageChange }) {
     inputEl.min = 1;
     inputEl.max = pages;
     inputEl.value = page;
+    inputEl.name = 'page';
+    inputEl.id = 'pagination-page-input';
     inputEl.style.cssText = `
         width: 4rem;
         padding: 0.25rem 0.4rem;
