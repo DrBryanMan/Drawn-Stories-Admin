@@ -96,7 +96,7 @@ export function attachVolumeChipsHandlers(container, navigate, signal) {
     navigator.clipboard.writeText(id).then(() => {
       const prev = chip.textContent;
       chip.textContent = '✓ скопійовано';
-      setTimeout(() => { chip.textContent = `id: ${id}`; }, 1200);
+      setTimeout(() => { chip.textContent = prev }, 1200);
     });
   }, { signal });
 }

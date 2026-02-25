@@ -363,6 +363,7 @@
   }
 
   .add-card {
+    box-sizing: content-box;
     background: var(--bg-primary);
     border: 1px solid var(--border);
     border-radius: 10px;
@@ -447,12 +448,10 @@
       </a>
     </li>
   </ul>
-
-  <div class="sidebar-section">Додати</div>
   <ul class="nav-list">
     <li class="nav-item">
-      <a data-section="add-issue" onclick="switchSection('add-issue')">
-        ➕ Випуск
+      <a data-section="add" onclick="switchSection('add')">
+        ➕ Додавання
       </a>
     </li>
   </ul>
@@ -488,14 +487,14 @@
       <div class="add-card">
         <div class="add-card-title">📖 Додати випуск</div>
         <div class="add-card-desc">
-          Вкажіть ComicVine ID випуску — скрипт завантажить дані зі сторінки
+          Вкажіть ComicVine ID випуску — скрипт завантажить дані з API
           та збереже у базу.
         </div>
         <div class="add-card-row">
           <input
             type="number" min="1"
             id="add-issue-input"
-            placeholder="CV ID, напр. 306640"
+            placeholder="CV ID"
             onkeydown="if(event.key==='Enter') addIssue()"
           >
           <button class="btn btn-accent" id="add-issue-btn" onclick="addIssue()">
@@ -503,6 +502,49 @@
           </button>
         </div>
         <div class="add-card-status" id="add-issue-status"></div>
+      </div>
+
+      <!-- Додати том -->
+      <div class="add-card">
+        <div class="add-card-title">📚 Додати том</div>
+        <div class="add-card-desc">
+          Вкажіть ComicVine ID тому — скрипт завантажить назву, обкладинку,
+          видавця та рік початку і збереже у базу.
+        </div>
+        <div class="add-card-row">
+          <input
+            type="number" min="1"
+            id="add-volume-input"
+            placeholder="CV Vol ID"
+            onkeydown="if(event.key==='Enter') addVolume()"
+          >
+          <button class="btn btn-accent" id="add-volume-btn" onclick="addVolume()">
+            Додати
+          </button>
+        </div>
+        <div class="add-card-status" id="add-volume-status"></div>
+      </div>
+
+      <!-- Додати всі випуски тому -->
+      <div class="add-card">
+        <div class="add-card-title">📦 Всі випуски тому</div>
+        <div class="add-card-desc">
+          Вкажіть CV ID тому — скрипт завантажить <em>усі</em> його випуски
+          з API та збереже у базу. Вже наявні випуски пропускаються.
+          Може тривати кілька хвилин для великих томів.
+        </div>
+        <div class="add-card-row">
+          <input
+            type="number" min="1"
+            id="add-vol-issues-input"
+            placeholder="CV Vol ID"
+            onkeydown="if(event.key==='Enter') addVolumeIssues()"
+          >
+          <button class="btn btn-accent" id="add-vol-issues-btn" onclick="addVolumeIssues()">
+            Завантажити
+          </button>
+        </div>
+        <div class="add-card-status" id="add-vol-issues-status"></div>
       </div>
 
     </div>
@@ -624,7 +666,7 @@ function switchSection(sec) {
     a.classList.toggle('active', a.dataset.section === sec);
   });
 
-  const isAdd = sec === 'add-issue';
+  const isAdd = sec === 'add';
 
   // Показати/приховати панелі
   document.getElementById('filters-panel').style.display  = isAdd ? 'none' : '';
@@ -633,10 +675,13 @@ function switchSection(sec) {
   document.getElementById('add-panel').classList.toggle('visible', isAdd);
 
   if (isAdd) {
-    document.getElementById('section-title').textContent = 'Додати';
+    document.getElementById('section-title').textContent = 'Додавання';
     document.getElementById('result-count').textContent  = '';
+    document.getElementById('search-input').style.display = 'none';
     return;
   }
+
+  document.getElementById('search-input').style.display = '';
 
   // Заголовок
   document.getElementById('section-title').textContent = SECTIONS[sec].title;
@@ -910,6 +955,95 @@ async function addIssue() {
   } finally {
     btn.disabled    = false;
     btn.textContent = 'Додати';
+  }
+}
+
+// ── Додавання тому ─────────────────────────────────────────────────────────
+
+async function addVolume() {
+  const input  = document.getElementById('add-volume-input');
+  const btn    = document.getElementById('add-volume-btn');
+  const status = document.getElementById('add-volume-status');
+
+  const cvId = parseInt(input.value.trim(), 10);
+  if (!cvId || cvId <= 0) {
+    setAddStatus(status, '⚠ Введіть коректний CV ID тому.', 'warn');
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = '⏳ Обробка…';
+  setAddStatus(status, 'Завантаження даних тому…', '');
+
+  try {
+    const r    = await fetch(`${API}/parser/add-volume`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ cv_id: cvId }),
+    });
+    const data = await r.json();
+
+    if (data.ok) {
+      setAddStatus(status, data.message, 'ok');
+      input.value = '';
+    } else {
+      setAddStatus(status, '○ ' + data.message, 'err');
+    }
+  } catch (e) {
+    setAddStatus(status, '✗ Не вдалося підключитися до сервера.', 'err');
+    console.error(e);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Додати';
+  }
+}
+
+// ── Додавання всіх випусків тому ───────────────────────────────────────────
+
+async function addVolumeIssues() {
+  const input  = document.getElementById('add-vol-issues-input');
+  const btn    = document.getElementById('add-vol-issues-btn');
+  const status = document.getElementById('add-vol-issues-status');
+
+  const cvVolId = parseInt(input.value.trim(), 10);
+  if (!cvVolId || cvVolId <= 0) {
+    setAddStatus(status, '⚠ Введіть коректний CV ID тому.', 'warn');
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = '⏳ Завантаження…';
+  setAddStatus(status, 'Запит відправлено. Для великих томів може тривати кілька хвилин — не закривайте вкладку…', '');
+
+  // Таймер щоб користувач бачив що щось відбувається
+  let elapsed = 0;
+  const timer = setInterval(() => {
+    elapsed++;
+    setAddStatus(status, `Завантаження… ${elapsed}с`, '');
+  }, 1000);
+
+  try {
+    const r    = await fetch(`${API}/parser/add-volume-issues`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ cv_vol_id: cvVolId }),
+    });
+    clearInterval(timer);
+    const data = await r.json();
+
+    if (data.ok) {
+      setAddStatus(status, `✓ ${data.message}`, 'ok');
+      input.value = '';
+    } else {
+      setAddStatus(status, '○ ' + data.message, 'err');
+    }
+  } catch (e) {
+    clearInterval(timer);
+    setAddStatus(status, '✗ Не вдалося підключитися до сервера.', 'err');
+    console.error(e);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Завантажити';
   }
 }
 

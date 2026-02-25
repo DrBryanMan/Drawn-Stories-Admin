@@ -282,7 +282,11 @@ function openROAddIssueModal(orderId) {
         showImportance: false,
         apiBase: API_BASE,
         cvImgPathSmall: cv_img_path_small,
-        onAdd: (issueId) => addIssueToOrder(orderId, issueId),
+        onAdd: async (issueIds) => {
+            for (const issueId of issueIds) {
+                await addIssueToOrder(orderId, issueId);
+            }
+        },
     });
 }
 
