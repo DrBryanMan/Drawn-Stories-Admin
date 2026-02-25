@@ -66,9 +66,104 @@ const MIGRATIONS = [
     },
   },
 
+  // ── M005: volumes — прибираємо зайвий стовпець themes, ──────────────────
+  {
+    id: 'M005_volumes_publisher_cleanup',
+    up(db) {
+      // Видаляємо зайвий стовпець themes (дані зберігаються у volume_themes)
+      db.run(`ALTER TABLE volumes DROP COLUMN themes`);
+
+      // Індекс на publisher_id
+      db.run(`CREATE INDEX IF NOT EXISTS idx_volumes_publisher ON volumes(publisher)`);
+    },
+  },
+
+  // ── M006: collections — перейменовуємо publisher → publisher_id, ─────────
+  //         додаємо поля issue_number, isbn, cover_date, release_date        
+  {
+    id: 'M006_collections_improvements',
+    up(db) {
+      db.run(`ALTER TABLE collections ADD COLUMN issue_number TEXT`);
+      db.run(`ALTER TABLE collections ADD COLUMN isbn         TEXT`);
+      db.run(`ALTER TABLE collections ADD COLUMN cover_date   TEXT`);
+      db.run(`ALTER TABLE collections ADD COLUMN release_date TEXT`);
+
+      db.run(`CREATE INDEX IF NOT EXISTS idx_collections_publisher ON collections(publisher)`);
+    },
+  },
+
+  // ── M007: issues — додаємо поле description ──────────────────────────────
+  {
+    id: 'M007_issues_description',
+    up(db) {
+      db.run(`ALTER TABLE issues ADD COLUMN description TEXT`);
+    },
+  },
+
+  // ── M008: нові таблиці ───────────────────────────────────────────────────
+  //   • character_aliases        — альтернативні імена персонажа             
+  //   • issue_characters         — персонажі у випуску                       
+  //   • issue_personnel          — творці випуску (автор, художник тощо)     
+  //   • reading_order_collections — колекції у порядку читання               
+  {
+    id: 'M008_new_tables',
+    up(db) {
+
+      // Альтернативні імена персонажа (Бетмен / Брюс Вейн / Dark Knight)
+      db.run(`CREATE TABLE IF NOT EXISTS character_aliases (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+        alias        TEXT    NOT NULL
+      )`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_character_aliases_character_id ON character_aliases(character_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_character_aliases_alias        ON character_aliases(alias COLLATE NOCASE)`);
+
+      // Які персонажі є у випуску та їхня роль
+      db.run(`CREATE TABLE IF NOT EXISTS issue_characters (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_id     INTEGER NOT NULL REFERENCES issues(id)     ON DELETE CASCADE,
+        character_id INTEGER NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+        role         TEXT    DEFAULT 'hero' CHECK(role IN ('hero','villain','supporting','cameo')),
+        UNIQUE(issue_id, character_id)
+      )`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_issue_characters_issue_id     ON issue_characters(issue_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_issue_characters_character_id ON issue_characters(character_id)`);
+
+      // Творці випуску з роллю (writer, penciler, inker, colorist тощо)
+      db.run(`CREATE TABLE IF NOT EXISTS issue_personnel (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        issue_id     INTEGER NOT NULL REFERENCES issues(id)    ON DELETE CASCADE,
+        personnel_id INTEGER NOT NULL REFERENCES personnel(id) ON DELETE CASCADE,
+        role         TEXT    NOT NULL,
+        UNIQUE(issue_id, personnel_id, role)
+      )`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_issue_personnel_issue_id     ON issue_personnel(issue_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_issue_personnel_personnel_id ON issue_personnel(personnel_id)`);
+
+      // Колекції у порядку читання (раніше були лише issues)
+      db.run(`CREATE TABLE IF NOT EXISTS reading_order_collections (
+        id               INTEGER PRIMARY KEY AUTOINCREMENT,
+        reading_order_id INTEGER NOT NULL REFERENCES reading_orders(id) ON DELETE CASCADE,
+        collection_id    INTEGER NOT NULL REFERENCES collections(id)    ON DELETE CASCADE,
+        order_num        INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(reading_order_id, collection_id)
+      )`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_ro_collections_order         ON reading_order_collections(reading_order_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_ro_collections_collection_id ON reading_order_collections(collection_id)`);
+    },
+  },
+
+  // ── M009: collection_issues — додаємо order_num для сортування ───────────
+  {
+    id: 'M009_collection_issues_order',
+    up(db) {
+      db.run(`ALTER TABLE collection_issues ADD COLUMN order_num INTEGER NOT NULL DEFAULT 0`);
+    },
+  },
+
   // ── Наступні міграції додавати тут у форматі: ────────────────────────────
   // {
-  //   id: 'M005_...',
+  //   id: 'M010_...',
   //   up(db) { db.run(`...`); },
   // },
 

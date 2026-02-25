@@ -8,6 +8,7 @@ import { showEmpty, showError, showLoading } from '../utils/helpers.js';
 let viewMode = 'grid';
 let currentOffset = 0;
 let currentSearch = '';
+let currentCvId = '';           // ← нове поле для cv_id
 let exactMatch = false;
 const LIMIT = 100;
 
@@ -19,26 +20,11 @@ let _lastData = null;     // останні завантажені дані (д�
 /**
  * Ініціалізує сторінку-список.
  * Скидає offset/search/exact, налаштовує UI, завантажує дані.
- *
- * config = {
- *   title        : string,
- *   endpoint     : string,           // 'volumes' | 'issues' | ...
- *   imageKey     : string,           // поле з URL зображення
- *   imagePrefix  : string | null,    // префікс для відносних шляхів
- *   titleKey     : string,           // поле для заголовка картки
- *   defaultIcon  : string,           // емодзі-заглушка
- *   showActions  : boolean,          // показувати кнопки Редагувати/Видалити (default: true)
- *   gridMeta     : [{ key, prefix }] // рядки мета-інфо в режимі grid
- *   tableColumns : [{ key, label, type? }]  // type: 'image' для першої колонки
- *   onAdd        : function | null,
- *   onEdit       : function(id),
- *   onDelete     : function(id),
- *   onNavigate   : function(id),
- * }
  */
 export async function initListPage(config) {
   currentOffset = 0;
   currentSearch = '';
+  currentCvId = '';
   exactMatch = false;
   _config = config;
   _lastData = null;
@@ -71,34 +57,87 @@ function setupAddBtn(onAdd) {
 }
 
 function setupSearchArea() {
-  // Прибираємо старий wrapper якщо є (при навігації між сторінками)
+  // Прибираємо старі елементи, якщо є (при навігації між сторінками)
   document.getElementById('exact-match-wrapper')?.remove();
+  document.getElementById('cv-id-search-wrapper')?.remove();
 
   const searchInput = document.getElementById('search-input');
-  searchInput.style.display = 'block';
+  searchInput.style.display = 'inline-block';
+  searchInput.style.width = '240px';
+  searchInput.style.padding = '0.5rem';
+  searchInput.style.border = '1px solid #ccc';
+  searchInput.style.borderRadius = '4px';
+  searchInput.style.fontSize = '1rem';
+  searchInput.style.marginRight = '0.75rem';
   searchInput.value = currentSearch;
 
-  // Чекбокс "Точне співпадіння"
-  const wrapper = document.createElement('label');
-  wrapper.id = 'exact-match-wrapper';
-  wrapper.className = 'exact-match-label';
-  wrapper.innerHTML = '<input type="checkbox" id="exact-match-cb"> Точне';
-  searchInput.insertAdjacentElement('afterend', wrapper);
-
-  let debounce;
-  searchInput.oninput = (e) => {
-    clearTimeout(debounce);
-    debounce = setTimeout(() => {
-      currentSearch = e.target.value;
-      currentOffset = 0;
-      loadAndRender();
-    }, 300);
-  };
+  // ── Чекбокс "Точне співпадіння" ──
+  const exactWrapper = document.createElement('label');
+  exactWrapper.id = 'exact-match-wrapper';
+  exactWrapper.style.display = 'inline-flex';
+  exactWrapper.style.alignItems = 'center';
+  exactWrapper.style.gap = '0.4rem';
+  exactWrapper.style.marginRight = '1.5rem';
+  exactWrapper.innerHTML = `
+    <input type="checkbox" id="exact-match-cb">
+    <span>Точне</span>
+  `;
+  searchInput.insertAdjacentElement('afterend', exactWrapper);
 
   document.getElementById('exact-match-cb').onchange = (e) => {
     exactMatch = e.target.checked;
     currentOffset = 0;
     loadAndRender();
+  };
+
+  // ── Пошук по cv_id ──
+  const cvWrapper = document.createElement('div');
+  cvWrapper.id = 'cv-id-search-wrapper';
+  cvWrapper.style.display = 'inline-flex';
+  cvWrapper.style.alignItems = 'center';
+  cvWrapper.style.gap = '0.5rem';
+
+  const cvLabel = document.createElement('span');
+  cvLabel.textContent = 'cv_id:';
+  cvLabel.style.fontSize = '0.95rem';
+  cvLabel.style.color = '#555';
+
+  const cvInput = document.createElement('input');
+  cvInput.type = 'text';
+  cvInput.id = 'cv-id-input';
+  cvInput.placeholder = 'наприклад 42513';
+  cvInput.value = currentCvId;
+  cvInput.style.width = '140px';
+  cvInput.style.padding = '0.5rem';
+  cvInput.style.border = '1px solid #ccc';
+  cvInput.style.borderRadius = '4px';
+  cvInput.style.fontSize = '1rem';
+
+  cvWrapper.appendChild(cvLabel);
+  cvWrapper.appendChild(cvInput);
+
+  exactWrapper.insertAdjacentElement('afterend', cvWrapper);
+
+  // Debounce для основного пошуку
+  let debounceMain;
+  searchInput.oninput = (e) => {
+    clearTimeout(debounceMain);
+    debounceMain = setTimeout(() => {
+      currentSearch = e.target.value.trim();
+      currentOffset = 0;
+      loadAndRender();
+    }, 350);
+  };
+
+  // Debounce для cv_id
+  let debounceCv;
+  cvInput.oninput = (e) => {
+    clearTimeout(debounceCv);
+    debounceCv = setTimeout(() => {
+      currentCvId = e.target.value.trim();
+      currentOffset = 0;
+      loadAndRender();
+    }, 350);
   };
 }
 
@@ -137,8 +176,9 @@ async function loadAndRender() {
   showLoading();
 
   const params = { limit: LIMIT, offset: currentOffset };
-  if (currentSearch) params.search = currentSearch;
-  if (exactMatch)    params.exact  = 'true';
+  if (currentSearch)   params.search = currentSearch;
+  if (exactMatch)      params.exact  = 'true';
+  if (currentCvId)     params.cv_id  = currentCvId;     // ← передаємо cv_id в API
 
   try {
     const result = await fetchItems(_config.endpoint, params);
@@ -179,6 +219,15 @@ function buildGrid(items) {
       <div class="card" data-item-id="${item.id}" style="cursor:pointer; position:relative">
         ${badges.map(m => {
           const v = item[m.key];
+          
+          if ((m.key === 'themes') && Array.isArray(v) && v.length > 0) {
+            return v.slice(0, 4).map((theme, idx) => `
+              <span class="badge badge-theme" 
+                    style="position:absolute; bottom:0.5rem; left: calc(0.5rem + ${idx * 5}rem); z-index:1; font-size:0.7rem; padding:0.2rem 0.5rem;">
+                ${theme.trim()}
+              </span>
+            `).join('');
+          }
           return v != null && v !== ''
             ? `<span class="badge ${m.badgeClass || ''}" style="position:absolute; top:0.5rem; ${m.badgePosition || 'right:0.5rem'}; z-index:1">${m.prefix || ''}${v}</span>`
             : '';

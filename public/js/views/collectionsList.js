@@ -86,7 +86,7 @@ function renderItems(items) {
 
     const cards = items.map(item => {
         const isCollection = item._type === 'collection';
-        const imgUrl = item.cv_img ? cv_img_path_small + item.cv_img : null;
+        const imgUrl = item.cv_img.startsWith('https') ? item.cv_img : item.cv_img.startsWith('/') ? cv_img_path_small + item.cv_img : cv_img_path_small + '/' + item.cv_img
         const title = item.name || 'Без назви';
         const badgeClass = isCollection ? 'badge-collection' : 'badge-issue';
         const badgeText  = isCollection ? 'Збірник' : 'Випуск';

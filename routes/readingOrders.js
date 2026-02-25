@@ -67,23 +67,50 @@ router.delete('/:id', (req, res) => {
 router.post('/:id/issues', (req, res) => {
   const { issue_id, order_num: requestedPos } = req.body;
   const orderId = req.params.id;
-  try {
-    const exists = getOne('SELECT id FROM reading_order_issues WHERE reading_order_id = ? AND issue_id = ?', [orderId, issue_id]);
-    if (exists) return res.status(400).json({ error: 'Випуск вже є у порядку читання' });
 
-    const totalRow = getOne('SELECT COUNT(*) as cnt FROM reading_order_issues WHERE reading_order_id = ?', [orderId]);
+  try {
+    const issueExists = getOne('SELECT id FROM issues WHERE id = ?', [issue_id]);
+    if (!issueExists) {
+      return res.status(400).json({ error: 'Випуск не існує' });
+    }
+
+    const exists = getOne(
+      'SELECT id FROM reading_order_issues WHERE reading_order_id = ? AND issue_id = ?',
+      [orderId, issue_id]
+    );
+    if (exists) {
+      return res.status(400).json({ error: 'Випуск вже є у порядку читання' });
+    }
+
+    const totalRow = getOne(
+      'SELECT COUNT(*) as cnt FROM reading_order_issues WHERE reading_order_id = ?',
+      [orderId]
+    );
+
     const total = totalRow?.cnt || 0;
     let insertPos;
+
     if (requestedPos != null && requestedPos !== '') {
       insertPos = Math.max(1, Math.min(parseInt(requestedPos), total + 1));
-      rawRun('UPDATE reading_order_issues SET order_num = order_num + 1 WHERE reading_order_id = ? AND order_num >= ?', [orderId, insertPos]);
+      rawRun(
+        'UPDATE reading_order_issues SET order_num = order_num + 1 WHERE reading_order_id = ? AND order_num >= ?',
+        [orderId, insertPos]
+      );
     } else {
       insertPos = total + 1;
     }
-    rawRun('INSERT INTO reading_order_issues (reading_order_id, issue_id, order_num) VALUES (?, ?, ?)', [orderId, issue_id, insertPos]);
+
+    rawRun(
+      'INSERT INTO reading_order_issues (reading_order_id, issue_id, order_num) VALUES (?, ?, ?)',
+      [orderId, issue_id, insertPos]
+    );
+
     saveDatabase();
+
     res.json({ message: 'Додано', order_num: insertPos });
-  } catch (error) { res.status(400).json({ error: error.message }); }
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
 });
 
 router.delete('/:id/issues/:issue_id', (req, res) => {

@@ -69,6 +69,13 @@ export async function renderVolumesList() {
     gridMeta: [
       { key: 'lang',         prefix: '',     badge: true, badgeClass: 'badge-lang',         badgePosition: 'left:0.5rem' },
       { key: 'issue_count',  prefix: '📖 ',  badge: true, badgeClass: 'badge-issue-count',  badgePosition: 'right:0.5rem' },
+      { 
+        key: 'themes', 
+        prefix: '', 
+        badge: true, 
+        badgeClass: 'badge-theme', 
+        badgePosition: 'bottom:0.5rem; left:0.5rem;' 
+      },
       { key: 'publisher_name', prefix: ''        },
       { key: 'cv_id',        prefix: 'CV ID: '  },
     ],

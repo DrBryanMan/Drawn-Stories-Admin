@@ -118,9 +118,11 @@ router.post('/:id/make-collection', (req, res) => {
     const existing = getOne('SELECT id FROM collections WHERE cv_id = ?', [issue.cv_id]);
     if (existing) return res.status(400).json({ error: 'Збірник вже існує для цього випуску', collection_id: existing.id });
 
+    const volume = getOne('SELECT publisher_id FROM volumes WHERE cv_id = ?', [issue.cv_vol_id]);
+
     rawRun(
-      'INSERT INTO collections (cv_vol_id, name, cv_img, cv_id, cv_slug) VALUES (?, ?, ?, ?, ?)',
-      [issue.cv_vol_id || null, issue.name || 'Без назви', issue.cv_img || null, issue.cv_id, issue.cv_slug]
+      'INSERT INTO collections (cv_vol_id, name, cv_img, cv_id, cv_slug, publisher_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [issue.cv_vol_id || null, issue.name || 'Без назви', issue.cv_img || null, issue.cv_id, issue.cv_slug, volume?.publisher_id || null]
     );
     rawRun('DELETE FROM issues WHERE id = ?', [issueId]);
     saveDatabase();

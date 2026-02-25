@@ -8,6 +8,9 @@ const API_BASE = 'http://localhost:7000/api';
 
 // ID вже доданих випусків для фільтрації в пошуку
 let currentCollectionIssueIds = new Set();
+let currentIssues = [];
+let currentCollectionId = null;
+let currentSortOrder = 'series'; // 'series' | 'date' | 'name'
 
 export async function renderCollectionDetail(params) {
     const collectionId = params.id;
@@ -35,6 +38,8 @@ export async function renderCollectionDetail(params) {
 function renderPage(collection, seriesList = []) {
     // Оновлюємо Set вже доданих випусків
     currentCollectionIssueIds = new Set((collection.issues || []).map(i => i.id));
+    currentIssues = collection.issues || [];
+    currentCollectionId = collection.id;
 
     document.getElementById('page-title').innerHTML = `
         <a href="#" onclick="event.preventDefault(); window.navigateBack()" style="color: var(--text-secondary); text-decoration: none;">
@@ -104,34 +109,35 @@ function renderPage(collection, seriesList = []) {
                 </div>
             </div>
 
-            <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
-                    <h2 style="font-size: 1.5rem; margin: 0;">
-                        Випуски у збірнику (${collection.issues?.length || 0})
-                    </h2>
-                    <button class="btn btn-primary" onclick="openCollectionAddIssueModal(${collection.id})">
-                        + Додати випуск
-                    </button>
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
+                <h2 style="font-size: 1.5rem; margin: 0;">Випуски (${collection.issues.length})</h2>
+                <div style="display:flex; gap:0.75rem; align-items:center;">
+                    <select id="collection-sort-select" style="padding:0.4rem 0.75rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-secondary); color:var(--text-primary); font-size:0.9rem;">
+                        <option value="series" ${currentSortOrder === 'series' ? 'selected' : ''}>За серією і номером</option>
+                        <option value="date"   ${currentSortOrder === 'date'   ? 'selected' : ''}>За датою</option>
+                        <option value="name"   ${currentSortOrder === 'name'   ? 'selected' : ''}>За назвою</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="openCollectionAddIssueModal(${collection.id})">+ Додати випуск</button>
                 </div>
-
-                ${collection.issues && collection.issues.length > 0 ? `
-                    <div class="table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Обкладинка</th>
-                                    <th>Назва</th>
-                                    <th>Том</th>
-                                    <th>Номер</th>
-                                    <th>Дата</th>
-                                    <th>Дії</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${renderIssueRows(collection.issues, collection.id)}
-                            </tbody>
-                        </table>
-                    </div>
+            </div>
+            ${collection.issues.length ? `
+                <div class="table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Обкладинка</th>
+                                <th>Назва</th>
+                                <th>Том</th>
+                                <th>Номер</th>
+                                <th>Дата</th>
+                                <th>Дії</th>
+                            </tr>
+                        </thead>
+                        <tbody id="collection-issues-tbody">
+                            ${renderIssueRows(sortIssues(collection.issues, currentSortOrder), collection.id)}
+                        </tbody>
+                    </table>
+                </div>
                 ` : `
                     <p style="text-align: center; color: var(--text-secondary); padding: 2rem;">
                         Немає випусків. Додайте перший!
@@ -166,6 +172,14 @@ function renderPage(collection, seriesList = []) {
             </div>
         </div>
     `;
+    const sortSelect = document.getElementById('collection-sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', () => {
+            currentSortOrder = sortSelect.value;
+            const tbody = document.getElementById('collection-issues-tbody');
+            if (tbody) tbody.innerHTML = renderIssueRows(sortIssues(currentIssues, currentSortOrder), currentCollectionId);
+        });
+    }
 }
 
 function renderIssueRows(issues, collectionId) {
@@ -186,6 +200,27 @@ function renderIssueRows(issues, collectionId) {
             </td>
         </tr>
     `).join('');
+}
+
+function sortIssues(issues, order) {
+    const sorted = [...issues];
+    if (order === 'date') {
+        sorted.sort((a, b) => {
+            const da = a.release_date || '';
+            const db = b.release_date || '';
+            return da.localeCompare(db);
+        });
+    } else if (order === 'name') {
+        sorted.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'uk'));
+    } else {
+        // 'series' — за назвою серії (volume_name), потім за номером
+        sorted.sort((a, b) => {
+            const seriesCmp = (a.volume_name || '').localeCompare(b.volume_name || '', 'uk');
+            if (seriesCmp !== 0) return seriesCmp;
+            return parseFloat(a.issue_number || 0) - parseFloat(b.issue_number || 0);
+        });
+    }
+    return sorted;
 }
 
 // ===== ДОДАВАННЯ ВИПУСКУ (через уніфікований компонент) =====
