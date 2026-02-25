@@ -161,11 +161,26 @@ const MIGRATIONS = [
     },
   },
 
-  // ── Наступні міграції додавати тут у форматі: ────────────────────────────
-  // {
-  //   id: 'M010_...',
-  //   up(db) { db.run(`...`); },
-  // },
+  // ── M010: reading_order_issues — додаємо issue_cv_id ─────────────────────
+  {
+    id: 'M010_roi_issue_cv_id',
+    up(db) {
+      // Додаємо колонку
+      db.run(`ALTER TABLE reading_order_issues ADD COLUMN issue_cv_id INTEGER`);
+
+      // Заповнюємо існуючі рядки через JOIN з таблицею issues
+      db.run(`
+        UPDATE reading_order_issues
+        SET issue_cv_id = (
+          SELECT cv_id FROM issues WHERE issues.id = reading_order_issues.issue_id
+        )
+        WHERE issue_cv_id IS NULL
+      `);
+
+      // Індекс для швидкого пошуку
+      db.run(`CREATE INDEX IF NOT EXISTS idx_roi_issue_cv_id ON reading_order_issues(issue_cv_id)`);
+    },
+  }
 
 ];
 

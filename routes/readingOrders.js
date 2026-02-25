@@ -69,7 +69,11 @@ router.post('/:id/issues', (req, res) => {
   const orderId = req.params.id;
 
   try {
-    const issueExists = getOne('SELECT id FROM issues WHERE id = ?', [issue_id]);
+    rawRun(
+      'DELETE FROM reading_order_issues WHERE reading_order_id = ? AND issue_id NOT IN (SELECT id FROM issues)',
+      [orderId]
+    );
+    const issueExists = getOne('SELECT id, cv_id FROM issues WHERE id = ?', [issue_id]);
     if (!issueExists) {
       return res.status(400).json({ error: 'Випуск не існує' });
     }
@@ -101,8 +105,8 @@ router.post('/:id/issues', (req, res) => {
     }
 
     rawRun(
-      'INSERT INTO reading_order_issues (reading_order_id, issue_id, order_num) VALUES (?, ?, ?)',
-      [orderId, issue_id, insertPos]
+      'INSERT INTO reading_order_issues (reading_order_id, issue_id, order_num, issue_cv_id) VALUES (?, ?, ?, ?)',
+      [orderId, issue_id, insertPos, issueExists.cv_id || null]
     );
 
     saveDatabase();

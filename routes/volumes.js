@@ -7,13 +7,17 @@ const COLLECTION_THEME_ID = 44;
 const router = Router();
 
 router.get('/', (req, res) => {
-  const { search, exact, limit = 50, offset = 0 } = req.query;
+  const { search, exact, cv_id, limit = 50, offset = 0 } = req.query;
   const isExact = exact === 'true';
   let conditions = [], searchParams = [], params = [];
 
   if (search) {
     conditions.push(isExact ? 'LOWER(v.name) = LOWER(?)' : '(v.name LIKE ? OR v.cv_slug LIKE ?)');
     searchParams = isExact ? [search] : [`%${search}%`, `%${search}%`];
+  }
+  if (cv_id) {
+    conditions.push('v.cv_id = ?');
+    searchParams.push(parseInt(cv_id));
   }
 
   const whereClause = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
