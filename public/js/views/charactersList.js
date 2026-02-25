@@ -83,6 +83,6 @@ export async function renderCharactersList() {
     onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
-    onNavigate: (id) => navigate('character-detail', { id })
+    onNavigate: (id, cv_id) => navigate('character-detail', { id, cv_id })
   });
 }

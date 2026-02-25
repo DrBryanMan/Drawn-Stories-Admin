@@ -68,8 +68,8 @@ async function renderPage(event) {
 
   // Уніфікований компонент томів (clickable: false — без навігації, бо в event немає vol_db_id)
   injectVolumeChipsStyles();
-  const volumesMap = buildVolumesMap(issues, { keyField: 'volume_cv_id', nameField: 'volume_name' });
-  const volumesHtml = renderVolumeSummary(volumesMap, { label: 'Томи у події', clickable: false });
+  const volumesMap = buildVolumesMap(issues, { keyField: 'volume_cv_id', nameField: 'volume_name', dbIdField: 'volume_db_id' });
+  const volumesHtml = renderVolumeSummary(volumesMap, { label: 'Томи у події', clickable: true });
 
   const content = document.getElementById('content');
   content.innerHTML = `

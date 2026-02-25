@@ -28,7 +28,7 @@ router.get('/:id', (req, res) => {
   const order = getOne('SELECT * FROM reading_orders WHERE id = ?', [req.params.id]);
   if (!order) return res.status(404).json({ error: 'Порядок читання не знайдено' });
   const issues = getAll(`
-    SELECT i.*, v.name as volume_name, roi.order_num
+    SELECT i.*, v.name as volume_name, v.id as volume_db_id, roi.order_num
     FROM issues i
     JOIN reading_order_issues roi ON i.id = roi.issue_id
     LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id

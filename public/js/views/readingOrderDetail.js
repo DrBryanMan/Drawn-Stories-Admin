@@ -40,7 +40,7 @@ function renderPage(order) {
 
     // Уніфікований компонент томів
     injectVolumeChipsStyles();
-    const volumesMap = buildVolumesMap(issues, { keyField: 'cv_vol_id', nameField: 'volume_name' });
+    const volumesMap = buildVolumesMap(issues, { keyField: 'cv_vol_id', nameField: 'volume_name', dbIdField: 'volume_db_id' });
     const volumesHtml = renderVolumeSummary(volumesMap, { label: 'Додані серії', clickable: true });
 
     const content = document.getElementById('content');

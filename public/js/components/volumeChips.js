@@ -1,33 +1,34 @@
 // public/js/components/volumeChips.js
 //
 // Уніфікований компонент для відображення списку томів (серій) у detail-сторінках.
-// Замінює дві різні реалізації в readingOrderDetail та eventDetail.
 //
 // API:
-//   buildVolumesMap(issues, options)          → Map<key, {name, cv_id, count}>
+//   buildVolumesMap(issues, options)          → Map<key, {name, cv_id, db_id, count}>
 //   renderVolumeSummary(volumesMap, options)  → HTML-рядок
 //   attachVolumeChipsHandlers(container, navigate, signal)
 //
 // options для buildVolumesMap = {
-//   keyField  : string   — поле ID тому у об'єкті issue ('cv_vol_id' | 'volume_cv_id')
-//   nameField : string   — поле назви тому ('volume_name')
+//   keyField   : string — поле CV ID тому ('cv_vol_id' | 'volume_cv_id')
+//   nameField  : string — поле назви тому ('volume_name')
+//   dbIdField  : string — поле db id тому ('volume_db_id') — потрібне для навігації
 // }
 //
 // options для renderVolumeSummary = {
-//   label      : string   — заголовок блоку (default: 'Томи')
-//   clickable  : boolean  — чи можна клікати на назву (navigate) і копіювати id
+//   label      : string  — заголовок блоку (default: 'Томи')
+//   clickable  : boolean — чи можна клікати на назву (navigate) і копіювати cv_id
 // }
 
 // ── Побудова Map ─────────────────────────────────────────────────────────
 
-export function buildVolumesMap(issues, { keyField = 'cv_vol_id', nameField = 'volume_name' } = {}) {
+export function buildVolumesMap(issues, { keyField = 'cv_vol_id', nameField = 'volume_name', dbIdField = 'volume_db_id' } = {}) {
   const map = new Map();
   for (const issue of issues) {
-    const key  = issue[keyField];
-    const name = issue[nameField] || 'Без назви';
+    const key   = issue[keyField];
+    const name  = issue[nameField] || 'Без назви';
+    const db_id = issue[dbIdField] || null;
     if (!key) continue;
     if (!map.has(key)) {
-      map.set(key, { name, cv_id: key, count: 0 });
+      map.set(key, { name, cv_id: key, db_id, count: 0 });
     }
     map.get(key).count++;
   }
@@ -41,29 +42,43 @@ export function renderVolumeSummary(volumesMap, { label = 'Томи', clickable 
 
   const entries = [...volumesMap.entries()].sort((a, b) => b[1].count - a[1].count);
 
-  const chips = entries.map(([id, vol]) => {
+  const chips = entries.map(([cvId, vol]) => {
     if (clickable) {
-      // Режим readingOrderDetail: клік на назву = навігація, клік на id = копіювання
+      // Клік на назву = навігація (за db_id), клік на cv_id = копіювання
+      const canNavigate = !!vol.db_id;
       return `
         <span class="vol-chip">
           <span class="vol-chip__name volume-name-link"
-                data-vol-id="${id}"
-                title="Перейти до серії">
+                data-vol-db-id="${vol.db_id || ''}"
+                data-vol-cv-id="${cvId}"
+                style="cursor:${canNavigate ? 'pointer' : 'default'};"
+                title="${canNavigate ? 'Перейти до серії' : 'Немає db id'}">
             📚 ${vol.name}
           </span>
           <span class="vol-chip__id volume-id-chip"
-                data-vol-id="${id}"
-                title="Скопіювати CV ID: ${id}">
-            id: ${id}
+                data-vol-cv-id="${cvId}"
+                title="Скопіювати CV ID: ${cvId}">
+            cv_id: ${cvId}
           </span>
           <span class="vol-chip__count">${vol.count}</span>
         </span>
       `;
     } else {
-      // Режим eventDetail: простий бейдж без взаємодії
+      // Некліковний режим (eventDetail)
       return `
         <span class="vol-chip">
-          <span class="vol-chip__name">📚 ${vol.name}</span>
+          <span class="vol-chip__name volume-name-link"
+                data-vol-db-id="${vol.db_id || ''}"
+                data-vol-cv-id="${cvId}"
+                style="cursor:${vol.db_id ? 'pointer' : 'default'};"
+                title="${vol.db_id ? 'Перейти до серії' : ''}">
+            📚 ${vol.name}
+          </span>
+          <span class="vol-chip__id volume-id-chip"
+                data-vol-cv-id="${cvId}"
+                title="Скопіювати CV ID: ${cvId}">
+            cv_id: ${cvId}
+          </span>
           <span class="vol-chip__count">${vol.count}</span>
         </span>
       `;
@@ -78,25 +93,29 @@ export function renderVolumeSummary(volumesMap, { label = 'Томи', clickable 
   `;
 }
 
-// ── Обробники кліків (тільки для clickable-режиму) ───────────────────────
+// ── Обробники кліків ──────────────────────────────────────────────────────
+// Працює як для clickable:true, так і для clickable:false — навігація по db_id
 
 export function attachVolumeChipsHandlers(container, navigate, signal) {
   container.addEventListener('click', (e) => {
-    // Навігація до серії
+    // Навігація до тому (серії) по db_id
     const nameLink = e.target.closest('.volume-name-link');
     if (nameLink) {
-      navigate('volume-detail', { id: parseInt(nameLink.dataset.volId) });
+      const dbId = nameLink.dataset.volDbId;
+      if (dbId) {
+        navigate('volume-detail', { id: parseInt(dbId) });
+      }
       return;
     }
 
     // Копіювання CV ID
     const chip = e.target.closest('.volume-id-chip');
     if (!chip) return;
-    const id = chip.dataset.volId;
-    navigator.clipboard.writeText(id).then(() => {
+    const cvId = chip.dataset.volCvId;
+    navigator.clipboard.writeText(cvId).then(() => {
       const prev = chip.textContent;
       chip.textContent = '✓ скопійовано';
-      setTimeout(() => { chip.textContent = prev }, 1200);
+      setTimeout(() => { chip.textContent = prev; }, 1200);
     });
   }, { signal });
 }
@@ -104,9 +123,9 @@ export function attachVolumeChipsHandlers(container, navigate, signal) {
 // ── CSS-стилі (ін'єктуються один раз) ───────────────────────────────────
 
 export function injectVolumeChipsStyles() {
-  if (document.getElementById('volume-chips-styles')) return;
+  if (document.getElementById('vol-chips-style')) return;
   const style = document.createElement('style');
-  style.id = 'volume-chips-styles';
+  style.id = 'vol-chips-style';
   style.textContent = `
     .vol-summary {
       background: var(--bg-secondary);

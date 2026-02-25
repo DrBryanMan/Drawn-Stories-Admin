@@ -216,7 +216,7 @@ function buildGrid(items) {
     const meta   = (_config.gridMeta || []).filter(m => !m.badge);
 
     return `
-      <div class="card" data-item-id="${item.id}" style="cursor:pointer; position:relative">
+      <div class="card" data-item-id="${item.id}" data-item-cv-id="${item.cv_id || ''}" style="cursor:pointer; position:relative">
         ${badges.map(m => {
           const v = item[m.key];
           
@@ -287,7 +287,7 @@ function buildTable(items) {
       </td>
     ` : '';
 
-    return `<tr data-item-id="${item.id}" style="cursor:pointer">${cells}${actionsCell}</tr>`;
+    return `<tr data-item-id="${item.id}" data-item-cv-id="${item.cv_id || ''}" style="cursor:pointer">${cells}${actionsCell}</tr>`;
   }).join('');
 
   return `
@@ -316,7 +316,11 @@ function attachClickHandlers(content) {
 
     // Клік по картці / рядку
     const row = e.target.closest('[data-item-id]');
-    if (row && _config.onNavigate) _config.onNavigate(parseInt(row.dataset.itemId));
+    if (row && _config.onNavigate) {
+       const id    = parseInt(row.dataset.itemId);
+       const cv_id = row.dataset.itemCvId ? parseInt(row.dataset.itemCvId) : null;
+       _config.onNavigate(id, cv_id);
+     }
   };
 }
 

@@ -78,6 +78,6 @@ export async function renderPersonnelList() {
     onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
-    onNavigate: (id) => navigate('personnel-detail', { id })
+    onNavigate: (id, cv_id) => navigate('personnel-detail', { id, cv_id })
   });
 }

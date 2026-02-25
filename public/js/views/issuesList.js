@@ -101,6 +101,6 @@ export async function renderIssuesList() {
     onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
-    onNavigate: (id) => navigate('issue-detail', { id })
+    onNavigate: (id, cv_id) => navigate('issue-detail', { id, cv_id })
   });
 }

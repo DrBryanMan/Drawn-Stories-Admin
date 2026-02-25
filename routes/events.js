@@ -31,7 +31,8 @@ router.get('/:id/issues', (req, res) => {
   const items = getAll(`
     SELECT ei.id as link_id, ei.order_num, ei.importance,
            i.id, i.cv_id, i.cv_slug, i.name, i.cv_img, i.issue_number, i.cover_date, i.release_date,
-           v.name as volume_name, v.cv_id as volume_cv_id, v.cv_slug as volume_cv_slug
+           v.name as volume_name, v.cv_id as volume_cv_id, v.cv_slug as volume_cv_slug,
+           v.id as volume_db_id
     FROM event_items ei
     JOIN issues i ON ei.item_id = i.id
     LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id
