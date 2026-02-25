@@ -11,12 +11,12 @@ function getFormHTML(issue = null) {
     <form id="edit-form">
       <div class="form-row">
         <div class="form-group">
-          <label>CV ID *</label>
-          <input type="number" name="cv_id" value="${issue?.cv_id || ''}" required>
+          <label>CV ID</label>
+          <input type="number" name="cv_id" value="${issue?.cv_id || ''}">
         </div>
         <div class="form-group">
-          <label>CV Slug *</label>
-          <input type="text" name="cv_slug" value="${issue?.cv_slug || ''}" required>
+          <label>CV Slug</label>
+          <input type="text" name="cv_slug" value="${issue?.cv_slug || ''}">
         </div>
       </div>
       <div class="form-group">

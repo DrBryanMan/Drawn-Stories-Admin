@@ -138,12 +138,16 @@ def parse_issue_page(html, cv_id):
         'release_date': None,
     }
 
-    # ── Slug із canonical-тегу ─────────────────────────────────
-    canonical = soup.find('link', rel='canonical')
-    if canonical:
-        m = re.search(r'/([^/]+)/4000-\d+/?$', canonical.get('href', ''))
-        if m:
-            data['slug'] = m.group(1)
+    # ── Slug із wiki-title (найнадійніше місце) ────────────────────────────────
+    wiki_title = soup.find(['h1', 'header'], class_='wiki-title')
+    if wiki_title:
+        a = wiki_title.find('a', href=re.compile(r'^/[^/]+/4050-\d+'))
+        if a:
+            href = a['href'].rstrip('/')
+            m = re.match(r'^/([^/]+)/4050-\d+/?$', href)
+            if m:
+                data['slug'] = m.group(1)
+                # print(f"  → знайдено slug з wiki-title: {data['slug']}")
 
     aside = soup.find('aside', class_='secondary-content')
 

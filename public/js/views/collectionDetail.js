@@ -48,7 +48,7 @@ function renderPage(collection, seriesList = []) {
             <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                 <div style="flex-shrink: 0;">
                     ${collection.cv_img
-                        ? `<img src="${cv_img_path_original}${collection.cv_img.startsWith('/') ? '' : '/'}${collection.cv_img}" alt="${collection.name}"
+                        ? `<img src="${collection.cv_img.startsWith('https') ? collection.cv_img : collection.cv_img.startsWith('/') ? cv_img_path_original + collection.cv_img : cv_img_path_original + '/' + collection.cv_img}" alt="${collection.name}"
                             style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
                         : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">&#128213;</div>'}
                 </div>

@@ -41,7 +41,7 @@ export async function renderIssueDetail(params) {
                 <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                     <div style="flex-shrink: 0;">
                         ${issue.cv_img
-                            ? `<img src="${cv_img_path_original}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}"
+                            ? `<img src="${issue.cv_img.startsWith('https') ? issue.cv_img : issue.cv_img.startsWith('/') ? cv_img_path_original + issue.cv_img : cv_img_path_original + '/' + issue.cv_img}" alt="${issue.name}"
                                 style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
                             : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📖</div>'}
                     </div>

@@ -27,8 +27,8 @@ function applySchema(db) {
 
   db.run(`CREATE TABLE IF NOT EXISTS issues (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    cv_id          INTEGER NOT NULL UNIQUE,
-    cv_slug        TEXT    NOT NULL,
+    cv_id          INTEGER UNIQUE,
+    cv_slug        TEXT,
     name           TEXT,
     cv_img         TEXT,
     cv_vol_id   INTEGER,
