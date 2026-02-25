@@ -2,6 +2,7 @@
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
+const parserRouter = require('./routes/parser');
 
 const { initDatabase } = require('./db');
 
@@ -39,6 +40,7 @@ app.use('/api/events',         eventsRouter);
 app.use('/api/stats',          statsRouter);
 app.use('/api/wanted',         wantedRouter);
 app.use('/api/publishers',     publishersRouter);
+app.use('/api/parser',         parserRouter);
 
 // Окремий HTML-роут для wanted-сторінки
 app.get('/wanted', (req, res) => {

@@ -2,8 +2,12 @@ import { fetchItem } from '../api/api.js';
 import { cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
+import { openAddIssueModal } from '../components/addIssueModal.js';
 
 const API_BASE = 'http://localhost:7000/api';
+
+// ID вже доданих випусків для фільтрації в пошуку
+let currentCollectionIssueIds = new Set();
 
 export async function renderCollectionDetail(params) {
     const collectionId = params.id;
@@ -29,6 +33,9 @@ export async function renderCollectionDetail(params) {
 }
 
 function renderPage(collection, seriesList = []) {
+    // Оновлюємо Set вже доданих випусків
+    currentCollectionIssueIds = new Set((collection.issues || []).map(i => i.id));
+
     document.getElementById('page-title').innerHTML = `
         <a href="#" onclick="event.preventDefault(); window.navigateBack()" style="color: var(--text-secondary); text-decoration: none;">
             &larr; Збірники
@@ -55,22 +62,17 @@ function renderPage(collection, seriesList = []) {
                                 <a href="#" onclick="event.preventDefault(); window.navigateToVolume(${collection.volume_id})"
                                    style="color: var(--accent); text-decoration: none;">
                                     ${collection.volume_name}
-                                    ${collection.cv_vol_id ? `<span style="color: var(--text-secondary); font-size: 0.85rem;">(id: ${collection.cv_vol_id})</span>` : ''}
+                                    ${collection.cv_vol_id
+                                        ? `<span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${collection.cv_vol_id})</span>`
+                                        : ''}
                                 </a>
                             </div>
                         ` : ''}
-                        ${collection.issue_number ? `<div><strong>Номер:</strong> ${collection.issue_number}</div>` : ''}
+                        ${collection.issue_number ? `<div><strong>Номер:</strong> #${collection.issue_number}</div>` : ''}
                         ${collection.isbn ? `<div><strong>ISBN:</strong> ${collection.isbn}</div>` : ''}
                         ${collection.cover_date ? `<div><strong>Дата обкладинки:</strong> ${collection.cover_date}</div>` : ''}
-                        ${collection.release_date ? `<div><strong>Дата виходу:</strong> ${collection.release_date}</div>` : ''}
-                        ${collection.publisher || collection.publisher_name ? `
-                            <div>
-                                <strong>Видавець:</strong>
-                                ${collection.publisher_name
-                                    ? `${collection.publisher_name} <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${collection.publisher})</span>`
-                                    : `cv_id: ${collection.publisher}`}
-                            </div>
-                        ` : ''}
+                        ${collection.release_date ? `<div><strong>Дата релізу:</strong> ${formatDate(collection.release_date)}</div>` : ''}
+                        ${collection.publisher_name ? `<div><strong>Видавець:</strong> ${collection.publisher_name}</div>` : ''}
                         ${collection.description ? `<div><strong>Опис:</strong> ${collection.description}</div>` : ''}
                         ${collection.themes && collection.themes.length > 0 ? `
                             <div>
@@ -158,49 +160,8 @@ function renderPage(collection, seriesList = []) {
                     <input type="text" id="col-series-search-input" placeholder="Введіть назву серії..." style="width:100%;">
                 </div>
                 <div id="col-series-search-results" style="max-height:320px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; margin-bottom:1rem; min-height:48px;"></div>
-                <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                <div style="display: flex; gap: 0.5rem; justify-content: flex-end;">
                     <button class="btn btn-secondary" onclick="closeCollectionAddToSeriesModal()">Скасувати</button>
-                </div>
-            </div>
-        </div>
-        <div id="add-issue-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-            <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:960px; max-width:95vw; max-height:90vh; overflow-y:auto;">
-                <h3 style="margin-bottom:1rem;">Додати випуск до збірника</h3>
-
-                <!-- Рядок фільтрів -->
-                <div style="display:grid; grid-template-columns:1fr 1fr 8% 18% auto; gap:0.75rem; margin-bottom:0.5rem; align-items:flex-end;">
-                    <div class="form-group" style="margin:0;">
-                        <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">Назва випуску</label>
-                        <input type="text" id="search-issue-name" placeholder="Назва..." style="width:100%;">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">Назва тому</label>
-                        <input type="text" id="search-volume-name" placeholder="Том..." style="width:100%;">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">Номер</label>
-                        <input type="text" id="search-issue-number" placeholder="#..." style="width:100%;">
-                    </div>
-                    <div class="form-group" style="margin:0;">
-                        <label style="font-size:0.8rem; display:block; margin-bottom:0.25rem;">CV ID серії (тому)</label>
-                        <input type="number" id="search-cv-vol-id" placeholder="CV ID..." style="width:100%;">
-                    </div>
-                    <div style="display:flex; flex-direction:column; gap:0.25rem;">
-                        <label style="font-size:0.8rem; color:var(--text-secondary);">Точна назва</label>
-                        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; height:36px;">
-                            <input type="checkbox" id="search-exact-match" style="width:auto; margin:0;">
-                            <span style="font-size:0.85rem;">Точно</span>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Grid результати (як в ReadingOrderDetail) -->
-                <div id="issue-search-results" style="display:grid; grid-template-columns:repeat(6, 1fr); gap:0.5rem;
-                    max-height:340px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px;
-                    margin-bottom:1rem; min-height:60px; padding:0.5rem;"></div>
-
-                <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-                    <button class="btn btn-secondary" onclick="closeCollectionAddIssueModal()">Скасувати</button>
                 </div>
             </div>
         </div>
@@ -227,6 +188,72 @@ function renderIssueRows(issues, collectionId) {
     `).join('');
 }
 
+// ===== ДОДАВАННЯ ВИПУСКУ (через уніфікований компонент) =====
+
+window.openCollectionAddIssueModal = (collectionId) => {
+  openAddIssueModal({
+    title: 'Додати випуски до збірника',
+    alreadyIds: currentCollectionIssueIds,
+    showImportance: false,
+    apiBase: API_BASE,
+    cvImgPathSmall: cv_img_path_small,
+    onAdd: async (issueIds, importance) => {  // ← тепер масив
+      if (!Array.isArray(issueIds) || issueIds.length === 0) return;
+
+      try {
+        // можна додати глобальний індикатор завантаження, якщо є
+        // showLoading?.();
+
+        for (const issueId of issueIds) {
+          const response = await fetch(`${API_BASE}/collections/${collectionId}/issues`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ issue_id: issueId }),
+          });
+
+          if (!response.ok) {
+            const err = await response.json();
+            console.warn(`Не вдалося додати випуск ${issueId}:`, err);
+            // можна показати повідомлення, але не переривати весь цикл
+          }
+        }
+
+        // Оновлюємо сторінку
+        const [collection, seriesData] = await Promise.all([
+          fetchItem('collections', collectionId),
+          fetch(`${API_BASE}/collections/${collectionId}/series`).then(r => r.json()),
+        ]);
+
+        renderPage(collection, seriesData.data || []);
+
+        // оновлюємо глобальний Set (щоб при наступному відкритті модалки вже не показувати додані)
+        currentCollectionIssueIds = new Set((collection.issues || []).map(i => i.id));
+
+      } catch (err) {
+        console.error('Помилка масового додавання випусків:', err);
+        alert('Сталася помилка під час додавання випусків');
+      } finally {
+        // hideLoading?.();
+      }
+    },
+  });
+};
+
+window.removeIssueFromCollection = async (collectionId, issueId) => {
+    if (!confirm('Видалити цей випуск зі збірника?')) return;
+    try {
+        await fetch(`${API_BASE}/collections/${collectionId}/issues/${issueId}`, { method: 'DELETE' });
+        const [collection, seriesData] = await Promise.all([
+            fetchItem('collections', collectionId),
+            fetch(`${API_BASE}/collections/${collectionId}/series`).then(r => r.json())
+        ]);
+        renderPage(collection, seriesData.data || []);
+    } catch (error) {
+        console.error('Помилка:', error);
+        alert('Помилка видалення випуску');
+    }
+};
+
 // ===== РЕДАГУВАННЯ ЗБІРНИКА =====
 
 let currentEditCollectionId = null;
@@ -237,7 +264,7 @@ window.openEditCollectionModal = async (collectionId) => {
     const formBody = document.getElementById('edit-collection-form-body');
     formBody.innerHTML = '<div style="text-align:center; padding:1rem; color:var(--text-secondary);">Завантаження...</div>';
     document.getElementById('edit-collection-modal').style.display = 'flex';
-    
+
     const colModalEl = document.getElementById('edit-collection-modal');
     colModalEl.onclick = (e) => { if (e.target === colModalEl) window.closeEditCollectionModal(); };
     function colEscHandler(e) {
@@ -258,35 +285,40 @@ window.openEditCollectionModal = async (collectionId) => {
         const collection = collectionRes;
         const currentThemeIds = new Set((collectionThemesRes.data || []).map(t => t.id));
         const allThemes = allThemesRes.data || [];
+        let publisherName = collection?.publisher_name || '';
 
         formBody.innerHTML = `
-            <div class="form-row">
-                <div class="form-group">
-                    <label>CV ID</label>
-                    <input type="number" id="edit-col-cv_id" value="${collection.cv_id || ''}">
-                </div>
-                <div class="form-group">
-                    <label>CV Slug</label>
-                    <input type="text" id="edit-col-cv_slug" value="${collection.cv_slug || ''}">
-                </div>
+            <div class="form-group">
+                <label>CV ID</label>
+                <input type="number" id="edit-col-cv_id" value="${collection.cv_id || ''}">
+            </div>
+            <div class="form-group">
+                <label>CV Slug</label>
+                <input type="text" id="edit-col-cv_slug" value="${collection.cv_slug || ''}">
             </div>
             <div class="form-group">
                 <label>Назва *</label>
-                <input type="text" id="edit-col-name" value="${collection.name || ''}">
+                <input type="text" id="edit-col-name" value="${collection.name || ''}" required>
             </div>
             <div class="form-group">
                 <label>URL зображення</label>
-                <input type="url" id="edit-col-cv_img" value="${collection.cv_img || ''}">
+                <input type="text" id="edit-col-cv_img" value="${collection.cv_img || ''}">
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Volume CV ID</label>
-                    <input type="number" id="edit-col-cv_vol_id" value="${collection.cv_vol_id || ''}">
-                </div>
-                <div class="form-group">
-                    <label>Номер випуску</label>
-                    <input type="text" id="edit-col-issue_number" value="${collection.issue_number || ''}">
-                </div>
+            <div class="form-group">
+                <label>CV Vol ID (тому)</label>
+                <input type="number" id="edit-col-cv_vol_id" value="${collection.cv_vol_id || ''}">
+            </div>
+            ${publisherSearchHTML({
+                publisherId: collection?.publisher || '',
+                publisherName,
+                inputId: 'col-pub-input',
+                hiddenId: 'col-pub-id',
+                resultsId: 'col-pub-results',
+                chipId: 'col-pub-chip'
+            })}
+            <div class="form-group">
+                <label>Номер випуску</label>
+                <input type="text" id="edit-col-issue_number" value="${collection.issue_number || ''}">
             </div>
             <div class="form-group">
                 <label>ISBN</label>
@@ -298,26 +330,16 @@ window.openEditCollectionModal = async (collectionId) => {
                     <input type="date" id="edit-col-cover_date" value="${collection.cover_date || ''}">
                 </div>
                 <div class="form-group">
-                    <label>Дата виходу</label>
+                    <label>Дата релізу</label>
                     <input type="date" id="edit-col-release_date" value="${collection.release_date || ''}">
                 </div>
             </div>
             <div class="form-group">
                 <label>Опис</label>
-                <textarea id="edit-col-description" rows="3" style="width:100%; resize:vertical;">${collection.description || ''}</textarea>
+                <textarea id="edit-col-description" rows="3">${collection.description || ''}</textarea>
             </div>
 
-            <!-- Видавництво з пошуком -->
-            ${publisherSearchHTML({
-                publisherId: collection.publisher || '',
-                publisherName: collection.publisher_name || '',
-                inputId: 'col-pub-input',
-                hiddenId: 'col-pub-id',
-                resultsId: 'col-pub-results',
-                chipId: 'col-pub-chip'
-            })}
-
-            <!-- Теми: чіпи + пошук + чекбокси -->
+            <!-- Теми -->
             <div class="form-group">
                 <label>Теми</label>
                 <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0;">
@@ -328,10 +350,10 @@ window.openEditCollectionModal = async (collectionId) => {
                         </span>
                     `).join('')}
                 </div>
-                <input type="text" id="edit-theme-search" placeholder="Пошук тем..." style="width:100%; margin-bottom:0.5rem;"
+                <input type="text" placeholder="Пошук тем..." style="margin-bottom:0.5rem; width:100%;"
                        oninput="filterThemesCol(this.value)">
-                <div id="edit-themes-list" style="max-height:200px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; padding:0.25rem 0;">
-                    ${allThemes.length > 0
+                <div id="edit-themes-list" class="themes-checkbox-list">
+                    ${allThemes.length
                         ? allThemes.map(theme => `
                             <label class="theme-checkbox-item"
                                 onmouseenter="this.style.background='var(--bg-secondary)'"
@@ -350,7 +372,6 @@ window.openEditCollectionModal = async (collectionId) => {
             </div>
         `;
 
-        // Ініціалізуємо пошук видавництва
         requestAnimationFrame(() => {
             initPublisherSearch({
                 inputId: 'col-pub-input',
@@ -364,14 +385,6 @@ window.openEditCollectionModal = async (collectionId) => {
         console.error('Помилка завантаження даних для редагування:', error);
         formBody.innerHTML = '<div style="color:var(--danger); padding:1rem;">Помилка завантаження даних</div>';
     }
-};
-
-window.filterThemes = (q) => {
-    const lower = q.toLowerCase();
-    document.querySelectorAll('#edit-themes-list .theme-checkbox-item').forEach(item => {
-        const name = item.querySelector('span')?.textContent?.toLowerCase() || '';
-        item.style.display = name.includes(lower) ? '' : 'none';
-    });
 };
 
 window.closeEditCollectionModal = () => {
@@ -458,7 +471,7 @@ window.removeThemeChipCol = (themeId) => {
     rebuildColThemeChips();
 };
 
-window.onColThemeChange = (themeId, themeName, checked) => {
+window.onColThemeChange = () => {
     rebuildColThemeChips();
 };
 
@@ -470,136 +483,23 @@ window.filterThemesCol = (q) => {
     });
 };
 
-// ===== ПОШУК І ДОДАВАННЯ ВИПУСКІВ =====
+// ===== КОНВЕРТАЦІЯ =====
 
-let addIssueCollectionId = null;
-let issueSearchTimeout = null;
-
-window.openCollectionAddIssueModal = (collectionId) => {
-    addIssueCollectionId = collectionId;
-
-    document.getElementById('add-issue-modal').style.display = 'flex';
-    document.getElementById('search-issue-name').value = '';
-    document.getElementById('search-volume-name').value = '';
-    document.getElementById('search-issue-number').value = '';
-    document.getElementById('search-cv-vol-id').value = '';
-    document.getElementById('search-exact-match').checked = false;
-    document.getElementById('issue-search-results').innerHTML = '';
-
-    ['search-issue-name', 'search-volume-name', 'search-issue-number', 'search-cv-vol-id'].forEach(inputId => {
-        document.getElementById(inputId).oninput = () => {
-            clearTimeout(issueSearchTimeout);
-            issueSearchTimeout = setTimeout(() => searchIssues(collectionId), 300);
-        };
-    });
-    document.getElementById('search-exact-match').onchange = () => {
-        clearTimeout(issueSearchTimeout);
-        issueSearchTimeout = setTimeout(() => searchIssues(collectionId), 100);
-    };
-
-    // Закриття на фон
-    const overlay = document.getElementById('add-issue-modal');
-    overlay.onclick = (e) => { if (e.target === overlay) window.closeCollectionAddIssueModal(); };
-
-    document.getElementById('search-issue-name').focus();
-};
-
-window.closeCollectionAddIssueModal = () => {
-    document.getElementById('add-issue-modal').style.display = 'none';
-    addIssueCollectionId = null;
-};
-
-async function searchIssues(collectionId) {
-    const name        = document.getElementById('search-issue-name').value.trim();
-    const volumeName  = document.getElementById('search-volume-name').value.trim();
-    const issueNumber = document.getElementById('search-issue-number').value.trim();
-    const cvVolId     = document.getElementById('search-cv-vol-id').value.trim();
-    const exact       = document.getElementById('search-exact-match').checked;
-
-    if (!name && !volumeName && !issueNumber && !cvVolId) {
-        document.getElementById('issue-search-results').innerHTML = '';
-        return;
-    }
-
-    const params = new URLSearchParams({ limit: 60 });
-    if (name)        params.set('name', name);
-    if (volumeName)  params.set('volume_name', volumeName);
-    if (issueNumber) params.set('issue_number', issueNumber);
-    if (cvVolId)     params.set('volume_id', cvVolId);
-    if (exact)       params.set('exact', 'true');
-
-    const res = await fetch(`${API_BASE}/issues?${params}`);
-    const result = await res.json();
-    const el = document.getElementById('issue-search-results');
-
-    if (!result.data?.length) {
-        el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary); grid-column:1/-1;">Нічого не знайдено</div>';
-        return;
-    }
-
-    el.innerHTML = result.data.map(issue => `
-        <div onclick="addIssueToCollectionFromSearch(${collectionId}, ${issue.id})"
-             style="display:grid; cursor:pointer; border-radius:6px; overflow:hidden; border:1px solid var(--border-color);"
-             title="${issue.name || 'Без назви'}"
-             onmouseenter="this.style.borderColor='var(--accent)'"
-             onmouseleave="this.style.borderColor='var(--border-color)'">
-            ${issue.cv_img
-                ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" style="width:100%; aspect-ratio:2/3; object-fit:cover;">`
-                : '<div style="aspect-ratio:2/3; background:var(--bg-secondary); display:flex; align-items:center; justify-content:center; font-size:1.5rem;">📖</div>'}
-            <div style="padding:0.3rem 0.4rem; font-size:0.7rem;">
-                <div style="font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${issue.name || ''}">${issue.name || 'Без назви'}</div>
-                <div style="color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${issue.volume_name || ''}${issue.issue_number ? ' #' + issue.issue_number : ''}</div>
-            </div>
-        </div>
-    `).join('');
-}
-
-window.addIssueToCollection = async (collectionId, issueId) => {
+window.makeIssueFromCollection = async (collectionId) => {
+    if (!confirm('Перетворити цей збірник на випуск? Збірник буде видалено, а натомість створено випуск з тими самими даними.')) return;
     try {
-        const response = await fetch(`${API_BASE}/collections/${collectionId}/issues`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ issue_id: issueId })
-        });
-
-        if (!response.ok) {
-            const err = await response.json();
-            alert(err.error || 'Помилка додавання');
-            return;
-        }
-
-        window.closeCollectionAddIssueModal();
-        const [collection, seriesData] = await Promise.all([
-            fetchItem('collections', collectionId),
-            fetch(`${API_BASE}/collections/${collectionId}/series`).then(r => r.json())
-        ]);
-        renderPage(collection, seriesData.data || []);
-    } catch (error) {
-        console.error('Помилка:', error);
-        alert('Помилка додавання випуску');
+        const res = await fetch(`${API_BASE}/collections/${collectionId}/make-issue`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) { alert(data.error || 'Помилка конвертації'); return; }
+        await window.updateStats();
+        navigate('issue-detail', { id: data.issue.id });
+    } catch (e) {
+        alert('Помилка під час конвертації');
     }
 };
-
-window.removeIssueFromCollection = async (collectionId, issueId) => {
-    if (!confirm('Видалити цей випуск зі збірника?')) return;
-    try {
-        await fetch(`${API_BASE}/collections/${collectionId}/issues/${issueId}`, { method: 'DELETE' });
-        const [collection, seriesData] = await Promise.all([
-            fetchItem('collections', collectionId),
-            fetch(`${API_BASE}/collections/${collectionId}/series`).then(r => r.json())
-        ]);
-        renderPage(collection, seriesData.data || []);
-    } catch (error) {
-        console.error('Помилка:', error);
-        alert('Помилка видалення випуску');
-    }
-};
-
-window.navigateBack = () => navigate('collections');
-window.navigateToIssue = (id) => navigate('issue-detail', { id });
-window.navigateToVolume = (id) => navigate('volume-detail', { id });
 
 // ===== ДОДАТИ ЗБІРНИК ДО СЕРІЇ =====
+
 let colAddToSeriesId = null;
 let colSeriesSearchTimeout = null;
 
@@ -656,38 +556,8 @@ window.addCollectionToSeriesFromDetail = async (seriesId) => {
     renderPage(collection, seriesData.data || []);
 };
 
-window.makeIssueFromCollection = async (collectionId) => {
-    if (!confirm('Перетворити цей збірник на випуск? Збірник буде видалено, а натомість створено випуск з тими самими даними.')) return;
-    try {
-        const res = await fetch(`${API_BASE}/collections/${collectionId}/make-issue`, { method: 'POST' });
-        const data = await res.json();
-        if (!res.ok) { alert(data.error || 'Помилка конвертації'); return; }
-        await window.updateStats();
-        navigate('issue-detail', { id: data.issue.id });
-    } catch (e) {
-        alert('Помилка під час конвертації');
-    }
-};
+// ===== НАВІГАЦІЯ =====
 
-window.addIssueToCollectionFromSearch = async (collectionId, issueId) => {
-    try {
-        const response = await fetch(`${API_BASE}/collections/${collectionId}/issues`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ issue_id: issueId })
-        });
-        if (!response.ok) {
-            const err = await response.json();
-            alert(err.error || 'Помилка додавання');
-            return;
-        }
-        window.closeCollectionAddIssueModal();
-        const [collection, seriesData] = await Promise.all([
-            fetchItem('collections', collectionId),
-            fetch(`${API_BASE}/collections/${collectionId}/series`).then(r => r.json())
-        ]);
-        renderPage(collection, seriesData.data || []);
-    } catch (e) {
-        alert('Помилка: ' + e.message);
-    }
-};
+window.navigateBack = () => navigate('collections');
+window.navigateToIssue = (id) => navigate('issue-detail', { id });
+window.navigateToVolume = (id) => navigate('volume-detail', { id });

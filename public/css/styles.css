@@ -648,7 +648,7 @@ text-decoration: none;
 }
 
 /* Reading order */
-
+#issue-search-results,
 #ro-issue-results {
 	display: grid;
 	grid-template-columns: repeat(5, calc(20% - .5em));
@@ -661,10 +661,12 @@ text-decoration: none;
 	gap: .5em;
 }
 
+#issue-search-results div,
 #ro-issue-results > div {
 	display: grid !important;
 }
 
+#issue-search-results div > img,
 #ro-issue-results > div > img {
 	width: 100%;
 	height: auto;
