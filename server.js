@@ -52,7 +52,7 @@ initDatabase().then(() => {
 });
 
 process.on('SIGINT', () => {
-  const { saveDatabase } = require('./db');
-  saveDatabase();
+  const { closeDatabase } = require('./db');
+  closeDatabase();
   process.exit(0);
 });

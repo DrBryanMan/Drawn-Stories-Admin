@@ -121,9 +121,16 @@ async function initDatabase() {
   }
 }
 
+function closeDatabase() {
+  if (db) {
+    db.close(); // це і зробить WAL checkpoint і злиє файли
+  }
+}
+
 module.exports = {
   initDatabase,
   saveDatabase,
+  closeDatabase,
   runQuery,
   getAll,
   getOne,

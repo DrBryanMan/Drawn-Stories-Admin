@@ -244,12 +244,24 @@ def save_issue(db_path, issue):
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+
+        # Знаходимо перший вільний ID
+        cursor.execute('''
+            SELECT COALESCE(
+                (SELECT MIN(id + 1) FROM issues WHERE id + 1 NOT IN (SELECT id FROM issues)),
+                (SELECT MAX(id) + 1 FROM issues),
+                1
+            )
+        ''')
+        next_id = cursor.fetchone()[0]
+
         cursor.execute('''
             INSERT INTO issues
-                (cv_id, cv_slug, name, cv_img, cv_vol_id,
+                (id, cv_id, cv_slug, name, cv_img, cv_vol_id,
                  issue_number, cover_date, release_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
+            next_id,
             issue['cv_id'],
             issue['cv_slug'],
             issue.get('name'),
@@ -268,7 +280,6 @@ def save_issue(db_path, issue):
     except Exception as e:
         print(f"  ✗ Помилка запису в БД: {e}")
         return None
-
 
 def volume_exists(db_path, cv_id):
     conn = sqlite3.connect(db_path)

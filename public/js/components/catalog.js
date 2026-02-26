@@ -3,6 +3,7 @@
 
 import { fetchItems } from '../api/api.js';
 import { showEmpty, showError, showLoading } from '../utils/helpers.js';
+import { cv_img_path_original } from '../utils/helpers.js';
 
 // ── Стан модуля (один активний список за раз) ─────────────────────────────
 let viewMode = 'grid';
@@ -242,7 +243,7 @@ function buildGrid(items) {
           ${meta.map(m => {
             const v = item[m.key];
             return v != null && v !== ''
-              ? `<div class="card-meta">${m.prefix || ''}${v}</div>`
+              ? `<div class="card-meta">${m.prefix || ''}${m.type === 'date' ? new Date(v).toLocaleDateString('uk-UA') : v}</div>`
               : '';
           }).join('')}
           ${_config.showActions !== false ? `
@@ -277,6 +278,9 @@ function buildTable(items) {
           : `<div style="font-size:2rem">${icon}</div>`}</td>`;
       }
       const v = item[c.key];
+      if (c.type === 'date') {
+        return `<td>${v ? new Date(v).toLocaleDateString('uk-UA') : '—'}</td>`;
+      }
       return `<td>${v != null && v !== '' ? v : '—'}</td>`;
     }).join('');
 
@@ -349,12 +353,21 @@ function updatePagination(total) {
 // ── Утиліти ───────────────────────────────────────────────────────────────
 
 function resolveImageUrl(item) {
-  const val = item[_config.imageKey];
-  if (!val) return null;
-  if (_config.imagePrefix) {
-    return _config.imagePrefix + (val.startsWith('/') ? val : '/' + val);
+  const filename = item[_config.imageKey];
+  if (!filename) return null;
+
+  // Якщо вже повне посилання — повертаємо як є
+  if (filename.startsWith('http://') || filename.startsWith('https://')) {
+    return filename;
   }
-  return val;
+
+  // Якщо починається з / — додаємо базовий шлях
+  if (filename.startsWith('/')) {
+    return cv_img_path_original + filename;
+  }
+
+  // В інших випадках — вважаємо, що це просто ім'я файлу
+  return cv_img_path_original + '/' + filename;
 }
 
 function escapeAttr(str) {

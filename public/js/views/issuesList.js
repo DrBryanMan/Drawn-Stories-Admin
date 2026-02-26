@@ -87,7 +87,8 @@ export async function renderIssuesList() {
       { key: 'volume_name',  prefix: ''         },
       { key: 'cv_vol_id',    prefix: 'Vol ID: ' },
       { key: 'issue_number', prefix: '#'        },
-      { key: 'cover_date',   prefix: 'Дата: '   }
+      { key: 'cover_date',   prefix: 'Дата: '   },
+      { key: 'created_at',   prefix: '➕ ', type: 'date'}
     ],
     tableColumns: [
       { key: 'cv_img',       label: 'Обкладинка',   type: 'image' },
@@ -96,7 +97,8 @@ export async function renderIssuesList() {
       { key: 'cv_vol_id',    label: 'Vol ID'       },
       { key: 'issue_number', label: '№'            },
       { key: 'cover_date',   label: 'Дата обкл.'   },
-      { key: 'release_date', label: 'Дата випуску' }
+      { key: 'release_date', label: 'Дата випуску' },
+      { key: 'created_at',   label: 'Додано', type: 'date'}
     ],
     onAdd:      handleAdd,
     onEdit:     handleEdit,

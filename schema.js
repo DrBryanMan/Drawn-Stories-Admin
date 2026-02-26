@@ -24,9 +24,12 @@ function applySchema(db) {
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS themes (
-    id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    cv_id INTEGER NOT NULL UNIQUE,
-    name  TEXT    NOT NULL
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    cv_id       INTEGER NOT NULL UNIQUE,
+    name        TEXT    NOT NULL
+	  ua_name	    INTEGER,
+	  type	      TEXT,
+    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS issues (

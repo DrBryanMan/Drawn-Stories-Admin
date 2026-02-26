@@ -111,6 +111,7 @@ function renderItems(items) {
                     ${item.issue_number ? `<div class="card-meta">#${item.issue_number}</div>` : ''}
                     ${isCollection && item.issue_count ? `<div class="card-meta">📖 ${item.issue_count} вип.</div>` : ''}
                     ${item.publisher_name ? `<div class="card-meta">${item.publisher_name}</div>` : ''}
+                    <div class="card-meta">➕ ${item.created_at ? new Date(item.created_at).toLocaleDateString('uk-UA') : '—'}</div>
                 </div>
             </div>
         `;

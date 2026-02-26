@@ -1,8 +1,9 @@
 import { fetchItem } from '../api/api.js';
-import { cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
+import { cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
+import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList, buildThemeChipsViewHTML } from '../utils/themeChips.js';
 
 const API_BASE = 'http://localhost:7000/api';
 
@@ -75,16 +76,13 @@ function renderPage(collection, seriesList = []) {
                         ` : ''}
                         ${collection.issue_number ? `<div><strong>Номер:</strong> #${collection.issue_number}</div>` : ''}
                         ${collection.isbn ? `<div><strong>ISBN:</strong> ${collection.isbn}</div>` : ''}
-                        ${collection.cover_date ? `<div><strong>Дата обкладинки:</strong> ${collection.cover_date}</div>` : ''}
-                        ${collection.release_date ? `<div><strong>Дата релізу:</strong> ${formatDate(collection.release_date)}</div>` : ''}
+                        ${collection.cover_date ? `<div><strong>Дата обкладинки:</strong> ${formatCoverDate(collection.cover_date)}</div>` : ''}
+                        ${collection.release_date ? `<div><strong>Дата релізу:</strong> ${formatReleaseDate(collection.release_date)}</div>` : ''}
                         ${collection.publisher_name ? `<div><strong>Видавець:</strong> ${collection.publisher_name}</div>` : ''}
                         ${collection.description ? `<div><strong>Опис:</strong> ${collection.description}</div>` : ''}
-                        ${collection.themes && collection.themes.length > 0 ? `
-                            <div>
-                                <strong>Теми:</strong>
-                                ${collection.themes.map(t => `<span class="theme-badge">${t.name}</span>`).join(' ')}
-                            </div>
-                        ` : ''}
+                        <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
+                            ${buildThemeChipsViewHTML(collection.themes)}
+                        </div>
                         ${seriesList.length > 0 ? `
                             <div>
                                 <strong>Серії:</strong>
@@ -321,6 +319,13 @@ window.openEditCollectionModal = async (collectionId) => {
         const currentThemeIds = new Set((collectionThemesRes.data || []).map(t => t.id));
         const allThemes = allThemesRes.data || [];
         let publisherName = collection?.publisher_name || '';
+        let safeReleaseDate = '';
+        if (collection.cover_date) {
+            const [y, m, d] = collection.cover_date.split('-');
+            if (d === '00') {
+                safeReleaseDate = `${y}-${m}-01`
+            }
+        }
 
         formBody.innerHTML = `
             <div class="form-group">
@@ -362,7 +367,7 @@ window.openEditCollectionModal = async (collectionId) => {
             <div class="form-row">
                 <div class="form-group">
                     <label>Дата обкладинки</label>
-                    <input type="date" id="edit-col-cover_date" value="${collection.cover_date || ''}">
+                    <input type="date" id="edit-col-cover_date" value="${safeReleaseDate || collection.cover_date || ''}">
                 </div>
                 <div class="form-group">
                     <label>Дата релізу</label>
@@ -376,33 +381,16 @@ window.openEditCollectionModal = async (collectionId) => {
 
             <!-- Теми -->
             <div class="form-group">
-                <label>Теми</label>
-                <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0;">
-                    ${allThemes.filter(t => currentThemeIds.has(t.id)).map(t => `
-                        <span class="edit-chip edit-chip-theme" data-id="${t.id}">
-                            ${t.name}
-                            <button type="button" onclick="removeThemeChipCol(${t.id})" title="Видалити">×</button>
-                        </span>
-                    `).join('')}
+                <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
+                    ${buildThemeChipsHTML(
+                      allThemes.filter(t => currentThemeIds.has(t.id)),
+                      'removeThemeChipCol'
+                    )}
                 </div>
                 <input type="text" placeholder="Пошук тем..." style="margin-bottom:0.5rem; width:100%;"
                        oninput="filterThemesCol(this.value)">
                 <div id="edit-themes-list" class="themes-checkbox-list">
-                    ${allThemes.length
-                        ? allThemes.map(theme => `
-                            <label class="theme-checkbox-item"
-                                onmouseenter="this.style.background='var(--bg-secondary)'"
-                                onmouseleave="this.style.background=''">
-                                <input type="checkbox" value="${theme.id}"
-                                       ${currentThemeIds.has(theme.id) ? 'checked' : ''}
-                                       style="width:auto; margin:0; flex-shrink:0; accent-color:var(--accent);"
-                                       onchange="onColThemeChange(${theme.id}, '${theme.name.replace(/'/g, "\\'")}', this.checked)">
-                                <span>${theme.name}</span>
-                                <span style="color:var(--text-secondary); font-size:0.75rem; margin-left:auto;">(cv_id: ${theme.cv_id})</span>
-                            </label>
-                        `).join('')
-                        : '<div style="color:var(--text-secondary); padding:0.5rem;">Теми не знайдено</div>'
-                    }
+                    ${buildThemeCheckboxListHTML(allThemes, currentThemeIds, 'onColThemeChange')}
                 </div>
             </div>
         `;
@@ -488,16 +476,15 @@ window.saveCollectionEdit = async () => {
 function rebuildColThemeChips() {
     const container = document.getElementById('col-theme-chips');
     if (!container) return;
+
     const checked = document.querySelectorAll('#edit-themes-list input[type="checkbox"]:checked');
-    container.innerHTML = Array.from(checked).map(cb => {
-        const name = cb.closest('label')?.querySelector('span')?.textContent || '';
-        return `
-            <span class="edit-chip edit-chip-theme" data-id="${cb.value}">
-                ${name}
-                <button type="button" onclick="removeThemeChipCol(${cb.value})" title="Видалити">×</button>
-            </span>
-        `;
-    }).join('');
+    const selectedThemes = Array.from(checked).map(cb => ({
+        id: parseInt(cb.value),
+        name: cb.closest('label')?.querySelector('span')?.textContent?.trim() || '',
+        type: cb.dataset.type || 'theme',
+    }));
+
+    container.innerHTML = buildThemeChipsHTML(selectedThemes, 'removeThemeChipCol');
 }
 
 window.removeThemeChipCol = (themeId) => {
@@ -511,11 +498,7 @@ window.onColThemeChange = () => {
 };
 
 window.filterThemesCol = (q) => {
-    const lower = q.toLowerCase();
-    document.querySelectorAll('#edit-themes-list .theme-checkbox-item').forEach(item => {
-        const name = item.querySelector('span')?.textContent?.toLowerCase() || '';
-        item.style.display = name.includes(lower) ? '' : 'none';
-    });
+    filterThemeCheckboxList(q, 'edit-themes-list');
 };
 
 // ===== КОНВЕРТАЦІЯ =====

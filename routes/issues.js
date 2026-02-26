@@ -14,6 +14,17 @@ function getCollectionIdForIssue(issueId) {
   } catch (e) { return null; }
 }
 
+function getNextFreeId() {
+  const row = getOne(`
+    SELECT COALESCE(
+      (SELECT MIN(id + 1) FROM issues WHERE id + 1 NOT IN (SELECT id FROM issues)),
+      (SELECT MAX(id) + 1 FROM issues),
+      1
+    ) as next_id
+  `);
+  return row?.next_id || 1;
+}
+
 router.get('/', (req, res) => {
   const { search, exact, cv_id, volume_id, name, volume_name, issue_number, limit = 50, offset = 0 } = req.query;
   const isExact = exact === 'true';
@@ -83,9 +94,10 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   const { cv_id, cv_slug, name, cv_img, cv_vol_id, issue_number, cover_date, release_date } = req.body;
   try {
+    const nextId = getNextFreeId(); // ← додай це
     runQuery(
-      'INSERT INTO issues (cv_id, cv_slug, name, cv_img, cv_vol_id, issue_number, cover_date, release_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [cv_id, cv_slug, name, cv_img, cv_vol_id, issue_number, cover_date, release_date]
+      'INSERT INTO issues (id, cv_id, cv_slug, name, cv_img, cv_vol_id, issue_number, cover_date, release_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [nextId, cv_id, cv_slug, name, cv_img, cv_vol_id, issue_number, cover_date, release_date] // ← і nextId тут
     );
     res.json({ message: 'Випуск створено' });
   } catch (error) { res.status(400).json({ error: error.message }); }

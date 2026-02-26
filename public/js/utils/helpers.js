@@ -82,7 +82,8 @@ export function formatReleaseDate(dateString) {
     const date = new Date(y, m - 1, d);
     return isNaN(date.getTime())
         ? dateString
-        : date.toLocaleDateString('uk-UA');
+        : date.toLocaleDateString('uk-UA', { day: 'numeric', month: 'long', year: 'numeric' })
+            .replace(' р.', '');
 }
 
 export function showError(message) {

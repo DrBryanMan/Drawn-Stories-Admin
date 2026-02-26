@@ -45,13 +45,14 @@ router.get('/', (req, res) => {
 
     issueItems = getAll(`
       SELECT DISTINCT i.id, i.name, i.cv_img, i.issue_number, i.release_date,
-                      v.name as volume_name, 'issue' as _type
+                      i.created_at,
+                      v.name as volume_name, 'issue' as _type, i.created_at
       FROM issues i
       JOIN volumes v ON i.cv_vol_id = v.cv_id
       JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
       ${issueWhere}
-      ORDER BY v.name ASC, CAST(i.issue_number AS REAL) ASC
-    `, issueParams);
+      ORDER BY i.created_at DESC
+      `, issueParams);
   }
 
   let colItems = [];
@@ -61,6 +62,7 @@ router.get('/', (req, res) => {
 
     colItems = getAll(`
       SELECT c.id, c.name, c.cv_img, c.issue_number, c.created_at as release_date,
+             c.created_at,
              v.name as volume_name, 'collection' as _type,
              p.name as publisher_name,
              (SELECT COUNT(*) FROM collection_issues ci WHERE ci.collection_id = c.id) as issue_count
@@ -68,11 +70,16 @@ router.get('/', (req, res) => {
       LEFT JOIN volumes v ON c.cv_vol_id = v.cv_id
       LEFT JOIN publishers p ON c.publisher = p.id
       ${colWhere}
-      ORDER BY c.name ASC
+      ORDER BY c.created_at DESC
     `, colParams);
   }
 
-  const allItems = [...issueItems, ...colItems];
+  const allItems = [...issueItems, ...colItems]
+    // .sort((a, b) => {
+    //   const da = a.created_at ? new Date(a.created_at).getTime() : 0;
+    //   const db = b.created_at ? new Date(b.created_at).getTime() : 0;
+    //   return db - da;
+    // })
   res.json({
     data: allItems.slice(parseInt(offset), parseInt(offset) + parseInt(limit)),
     total: allItems.length,

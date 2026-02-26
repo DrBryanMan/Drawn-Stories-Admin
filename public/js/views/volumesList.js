@@ -78,6 +78,7 @@ export async function renderVolumesList() {
       },
       { key: 'publisher_name', prefix: ''        },
       { key: 'cv_id',        prefix: 'CV ID: '  },
+      { key: 'created_at',     prefix: '➕ ',  type: 'date' }
     ],
     tableColumns: [
       { key: 'cv_img',         label: 'Обкладинка',  type: 'image' },
@@ -87,7 +88,7 @@ export async function renderVolumesList() {
       { key: 'publisher_name', label: 'Видавець'     },
       { key: 'cv_id',          label: 'CV ID'        },
       { key: 'cv_slug',        label: 'Slug'         },
-      { key: 'created_at',     label: 'Дата'         }
+      { key: 'created_at',     label: 'Додано', type: 'date' }
     ],
     onAdd:      handleAdd,
     onEdit:     handleEdit,

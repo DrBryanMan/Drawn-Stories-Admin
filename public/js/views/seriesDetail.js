@@ -1,5 +1,5 @@
 import { fetchItem } from '../api/api.js';
-import { cv_img_path_small, formatDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
+import { cv_img_path_small, cv_img_path_original, formatDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 
 const API_BASE = 'http://localhost:7000/api';
@@ -32,7 +32,7 @@ function renderPage(series) {
             <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                 <div style="flex-shrink: 0;">
                     ${series.cv_img
-                        ? `<img src="${series.cv_img}" alt="${series.name}" style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
+                        ? `<img src="${series.cv_img.startsWith('https') ? series.cv_img : series.cv_img.startsWith('/') ? cv_img_path_original + series.cv_img : cv_img_path_original + '/' + series.cv_img}"  style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);" alt="${series.name}">`
                         : '<div style="width: 300px; height: 300px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 5rem;">📚</div>'}
                 </div>
                 <div style="flex: 1;">

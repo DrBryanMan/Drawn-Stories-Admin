@@ -3,6 +3,7 @@ import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../u
 import { locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openModal } from '../components/modal.js';
+import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList } from '../utils/themeChips.js';
 
 const API_BASE = 'http://localhost:7000/api';
 
@@ -64,7 +65,7 @@ export async function renderVolumeDetail(params) {
                             ${volumeThemes.length > 0 ? `
                                 <div>
                                     <strong>Теми:</strong>
-                                    ${volumeThemes.map(t => `<span class="theme-badge">${t.name}</span>`).join(' ')}
+                                    ${volumeThemes.map(t => `<span class="theme-badge">${t.ua_name}</span>`).join(' ')}
                                 </div>
                             ` : ''}
                             ${volumeSeries.length > 0 ? `
@@ -325,29 +326,21 @@ async function getVolumeFormHTML(volume = null) {
         chipId: 'vol-pub-chip'
       })}
 
-      <!-- Теми: чіпи + пошук + чекбокси -->
-      <div class="form-group">
-        <label>Теми</label>
-        <div id="vol-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0;">
-          ${allThemes.filter(t => currentThemeIds.has(t.id)).map(t => `
-            <span class="edit-chip edit-chip-theme" data-id="${t.id}">
-              ${t.name}
-              <button type="button" onclick="removeThemeChipVolume(${t.id})" title="Видалити">×</button>
-            </span>
-          `).join('')}
+        <!-- Теми: чіпи + пошук + чекбокси -->
+        <div class="form-group">
+            <label>Теми</label>
+            <div id="vol-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
+            ${buildThemeChipsHTML(
+                allThemes.filter(t => currentThemeIds.has(t.id)),
+                'removeThemeChipVolume'
+            )}
+            </div>
+            <input type="text" id="theme-search" placeholder="Пошук тем..." style="margin-bottom:0.5rem; width:100%;"
+                oninput="filterThemesVol(this.value)">
+            <div id="themes-list" class="themes-checkbox-list">
+            ${buildThemeCheckboxListHTML(allThemes, currentThemeIds, 'onThemeCheckboxChangeVol')}
+            </div>
         </div>
-        <input type="text" id="theme-search" placeholder="Пошук тем..." style="margin-bottom:0.5rem; width:100%;"
-               oninput="filterThemesVol(this.value)">
-        <div id="themes-list" class="themes-checkbox-list">
-          ${allThemes.map(t => `
-            <label class="theme-checkbox-item" onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
-              <input type="checkbox" name="theme_ids" value="${t.id}" ${currentThemeIds.has(t.id) ? 'checked' : ''}
-                     onchange="onThemeCheckboxChangeVol(${t.id}, '${t.name.replace(/'/g, "\\'")}', this.checked)">
-              <span>${t.name}</span>
-            </label>
-          `).join('')}
-        </div>
-      </div>
     </form>
   `;
 }
@@ -423,16 +416,15 @@ function initVolThemeChips() {
 function rebuildVolThemeChips() {
   const container = document.getElementById('vol-theme-chips');
   if (!container) return;
+
   const checked = document.querySelectorAll('#themes-list input[type="checkbox"]:checked');
-  container.innerHTML = Array.from(checked).map(cb => {
-    const name = cb.closest('label')?.querySelector('span')?.textContent || '';
-    return `
-      <span class="edit-chip edit-chip-theme" data-id="${cb.value}">
-        ${name}
-        <button type="button" onclick="removeThemeChipVolume(${cb.value})" title="Видалити">×</button>
-      </span>
-    `;
-  }).join('');
+  const selectedThemes = Array.from(checked).map(cb => ({
+    id: parseInt(cb.value),
+    name: cb.closest('label')?.querySelector('span')?.textContent?.trim() || '',
+    type: cb.dataset.type || 'theme',
+  }));
+
+  container.innerHTML = buildThemeChipsHTML(selectedThemes, 'removeThemeChipVolume');
 }
 
 window.removeThemeChipVolume = (themeId) => {
@@ -448,11 +440,7 @@ window.onThemeCheckboxChangeVol = (themeId, themeName, checked) => {
 };
 
 window.filterThemesVol = (q) => {
-  const lower = q.toLowerCase();
-  document.querySelectorAll('#themes-list .theme-checkbox-item').forEach(item => {
-    const name = item.querySelector('span')?.textContent?.toLowerCase() || '';
-    item.style.display = name.includes(lower) ? '' : 'none';
-  });
+  filterThemeCheckboxList(q, 'themes-list');
 };
 
 window.editIssueFromVolume = async (id) => {

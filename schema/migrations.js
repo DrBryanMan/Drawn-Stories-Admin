@@ -180,7 +180,15 @@ const MIGRATIONS = [
       // Індекс для швидкого пошуку
       db.run(`CREATE INDEX IF NOT EXISTS idx_roi_issue_cv_id ON reading_order_issues(issue_cv_id)`);
     },
-  }
+  },
+  {
+    id: 'M011_themes_type',
+    up(db) {
+      // Додаємо колонку type зі значенням за замовчуванням 'theme'
+      db.run(`ALTER TABLE themes ADD COLUMN type TEXT NOT NULL DEFAULT 'theme' CHECK(type IN ('genre', 'theme'))`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_themes_type ON themes(type)`);
+    },
+  },
 
 ];
 
