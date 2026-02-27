@@ -93,6 +93,6 @@ export async function renderVolumesList() {
     onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
-    onNavigate: (id, cv_id) => navigate('volume-detail', { id, cv_id })
+    onNavigate: (id, cv_id, cv_slug) => navigate('volume-detail', { id, cv_id, cv_slug })
   });
 }

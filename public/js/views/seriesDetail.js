@@ -133,7 +133,9 @@ function renderVolumeCards(volumes, seriesId) {
             </div>
             <div class="card-body">
                 <div class="card-title" title="${vol.name}">${vol.name}</div>
-                ${vol.issue_count ? `<div class="card-meta">📖 ${vol.issue_count}</div>` : ''}
+                ${vol.has_collection_theme
+                    ? (vol.collection_count ? `<div class="card-meta">📗 ${vol.collection_count}</div>` : '')
+                    : (vol.issue_count      ? `<div class="card-meta">📖 ${vol.issue_count}</div>`      : '')}
                 <button class="btn btn-danger btn-small" style="margin-top:0.5rem; width:100%;"
                     onclick="event.stopPropagation(); removeVolumeFromSeries(${seriesId}, ${vol.id})">
                     Видалити
@@ -156,6 +158,7 @@ function renderCollectionCards(collections, seriesId) {
             <div class="card-body">
                 <div class="card-title" title="${col.name}">${col.name}</div>
                 ${col.volume_name ? `<div class="card-meta">${col.volume_name}</div>` : ''}
+                ${col.issue_count ? `<div class="card-meta">📖 ${col.issue_count}</div>` : ''}
                 <button class="btn btn-danger btn-small" style="margin-top:0.5rem; width:100%;"
                     onclick="event.stopPropagation(); removeCollectionFromSeries(${seriesId}, ${col.id})">
                     Видалити

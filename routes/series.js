@@ -30,12 +30,15 @@ router.get('/:id', (req, res) => {
 
   const volumes = getAll(`
     SELECT v.*,
-           COUNT(DISTINCT i.id) as issue_count,
-           MIN(CASE WHEN i.cover_date != '' AND i.cover_date IS NOT NULL THEN SUBSTR(i.cover_date, 1, 4) ELSE NULL END) as start_year,
-           CASE WHEN vt44.cv_vol_id IS NOT NULL THEN 1 ELSE 0 END as has_collection_theme
+          COUNT(DISTINCT i.id) as issue_count,
+          COUNT(DISTINCT col.id) as collection_count,       -- ← НОВЕ
+          MIN(CASE WHEN i.cover_date != '' AND i.cover_date IS NOT NULL 
+              THEN SUBSTR(i.cover_date, 1, 4) ELSE NULL END) as start_year,
+          CASE WHEN vt44.cv_vol_id IS NOT NULL THEN 1 ELSE 0 END as has_collection_theme
     FROM volumes v
     JOIN series_volumes sv ON v.id = sv.volume_id
     LEFT JOIN issues i ON i.cv_vol_id = v.cv_id
+    LEFT JOIN collections col ON col.cv_vol_id = v.cv_id    -- ← НОВЕ
     LEFT JOIN (
       SELECT cv_vol_id FROM volume_themes WHERE theme_id = ?
     ) vt44 ON v.cv_id = vt44.cv_vol_id
@@ -47,7 +50,9 @@ router.get('/:id', (req, res) => {
   const collections = (() => {
     try {
       return getAll(`
-        SELECT c.*, v.name as volume_name
+        SELECT c.*,
+              v.name as volume_name,
+              (SELECT COUNT(*) FROM collection_issues ci WHERE ci.collection_id = c.id) as issue_count  -- ← НОВЕ
         FROM collections c
         JOIN series_collections sc ON c.id = sc.collection_id
         LEFT JOIN volumes v ON c.cv_vol_id = v.cv_id

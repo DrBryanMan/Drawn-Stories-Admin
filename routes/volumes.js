@@ -122,9 +122,8 @@ router.post('/:id/convert-all-to-collections', (req, res) => {
       const existing = getOne('SELECT id FROM collections WHERE cv_id = ?', [issue.cv_id]);
       if (existing) { skipped++; return; }
       rawRun(
-        'INSERT INTO collections (cv_vol_id, name, cv_img, cv_id, cv_slug, issue_number, cover_date, release_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-        [issue.cv_vol_id || null, issue.name || 'Без назви', issue.cv_img || null, issue.cv_id, issue.cv_slug,
-         issue.issue_number || null, issue.cover_date || null, issue.release_date || null]
+        `INSERT INTO collections (cv_vol_id, name, cv_img, cv_id, cv_slug, issue_number, cover_date, release_date, publisher) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [issue.cv_vol_id || null, issue.name || 'Без назви', issue.cv_img || null, issue.cv_id, issue.cv_slug, issue.issue_number || null, issue.cover_date || null, issue.release_date || null, volume.publisher || null,  ]
       );
       rawRun('DELETE FROM issues WHERE id = ?', [issue.id]);
       converted++;

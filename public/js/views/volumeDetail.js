@@ -1,4 +1,4 @@
-import { fetchItem, fetchItems, updateItem } from '../api/api.js';
+import { fetchItem, fetchItems } from '../api/api.js';
 import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../utils/publisherSearch.js';
 import { locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';

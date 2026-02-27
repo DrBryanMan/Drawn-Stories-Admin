@@ -43,6 +43,12 @@ export function navigate(path, params = {}) {
         url.searchParams.delete('cv_id');
     }
 
+    if (params.slug !== undefined && params.slug !== null) {
+        url.searchParams.set('slug', params.slug);
+    } else {
+        url.searchParams.delete('slug');
+    }
+
     if (prevPage !== path) {
         url.searchParams.delete('p');
     }
@@ -58,11 +64,6 @@ export function navigate(path, params = {}) {
     }
 }
 
-/**
- * Переходить до батьківського каталогу поточної сторінки деталей.
- * Визначає батька через PARENT_PAGE_MAP по currentRoute.
- * Кнопка «←» скрізь однакова: onclick="navigateToParent()"
- */
 export function navigateToParent() {
     const path = currentRoute?.path;
     const parent = PARENT_PAGE_MAP[path];
@@ -77,18 +78,37 @@ export function getCurrentRoute() {
     return currentRoute;
 }
 
+export function updateUrlMeta({ cv_id, slug } = {}) {
+    const url = new URL(window.location);
+    if (cv_id !== undefined && cv_id !== null) {
+        url.searchParams.set('cv_id', cv_id);
+    }
+    if (slug !== undefined && slug !== null) {
+        url.searchParams.set('slug', slug);
+    }
+    window.history.replaceState({}, '', url);
+}
+
+// ── Допоміжна функція: читає params з URL ────────────────────────────────
+
+function readParamsFromUrl(url) {
+    const params = {};
+    const id    = url.searchParams.get('id');
+    const cv_id = url.searchParams.get('cv_id');
+    const slug  = url.searchParams.get('slug');
+    const p     = url.searchParams.get('p');
+    if (id)    params.id    = id;
+    if (cv_id) params.cv_id = cv_id;
+    if (slug)  params.slug  = slug;
+    if (p)     params.p     = p;
+    return params;
+}
+
 export function initRouter() {
     window.addEventListener('popstate', () => {
         const url = new URL(window.location);
-        const page  = url.searchParams.get('page') || 'volumes';
-        const id    = url.searchParams.get('id');
-        const cv_id = url.searchParams.get('cv_id');
-        const p     = url.searchParams.get('p');
-
-        const params = {};
-        if (id)    params.id    = id;
-        if (cv_id) params.cv_id = cv_id;
-        if (p)     params.p     = p;
+        const page = url.searchParams.get('page') || 'volumes';
+        const params = readParamsFromUrl(url);
 
         currentRoute = { path: page, params };
         updateActiveNav(page);
@@ -98,15 +118,8 @@ export function initRouter() {
     });
 
     const url = new URL(window.location);
-    const page  = url.searchParams.get('page') || 'volumes';
-    const id    = url.searchParams.get('id');
-    const cv_id = url.searchParams.get('cv_id');
-    const p     = url.searchParams.get('p');
-
-    const params = {};
-    if (id)    params.id    = id;
-    if (cv_id) params.cv_id = cv_id;
-    if (p)     params.p     = p;
+    const page = url.searchParams.get('page') || 'volumes';
+    const params = readParamsFromUrl(url);
 
     navigate(page, params);
 }
