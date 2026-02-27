@@ -1,7 +1,7 @@
 // public/js/views/readingOrderDetail.js
 
 import { fetchItem } from '../api/api.js';
-import { cv_img_path_small, formatDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
+import { cv_img_path_small, formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
 import { buildVolumesMap, renderVolumeSummary, attachVolumeChipsHandlers, injectVolumeChipsStyles } from '../components/volumeChips.js';
@@ -17,7 +17,7 @@ let handlersAbortController = null;
 export async function renderReadingOrderDetail(params) {
     const orderId = params.id;
     if (!orderId) { navigate('reading-orders'); return; }
-    cleanupCatalogUI();
+    initDetailPage();
     showLoading();
     try {
         const order = await fetchItem('reading-orders', orderId);
@@ -163,7 +163,7 @@ function attachHandlers(order) {
     // Посилання "← Порядок читання"
     document.getElementById('btn-back-to-orders').addEventListener('click', (e) => {
         e.preventDefault();
-        navigate('reading-orders');
+        navigateToParent();
     }, { signal });
 
     // Кнопка редагувати

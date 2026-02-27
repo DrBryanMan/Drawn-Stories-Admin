@@ -1,7 +1,7 @@
 // personnelDetail.js — public/js/views/personnelDetail.js
 
 import { fetchItem } from '../api/api.js';
-import { formatDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
+import { formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openModal } from '../components/modal.js';
 
@@ -11,14 +11,14 @@ export async function renderPersonnelDetail(params) {
   const id = params.id;
   if (!id) { navigate('personnel'); return; }
 
-  cleanupCatalogUI();
+  initDetailPage();
   showLoading();
 
   try {
     const person = await fetchItem('personnel', id);
 
     document.getElementById('page-title').innerHTML = `
-      <a href="#" onclick="event.preventDefault(); navigateBack()" style="color:var(--text-secondary); text-decoration:none;">
+      <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color:var(--text-secondary); text-decoration:none;">
         ← Персонал
       </a> / ${person.name}
     `;
@@ -56,8 +56,6 @@ export async function renderPersonnelDetail(params) {
     showError('Помилка завантаження даних');
   }
 }
-
-window.navigateBack = () => window.history.back();
 
 window.editPersonnel = async (id) => {
   const person = await fetch(`${API_BASE}/personnel/${id}`).then(r => r.json());

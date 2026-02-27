@@ -1,5 +1,5 @@
 import { fetchItem } from '../api/api.js';
-import { cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
+import { cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
@@ -21,7 +21,7 @@ export async function renderCollectionDetail(params) {
         return;
     }
 
-    cleanupCatalogUI();
+    initDetailPage();
     showLoading();
 
     try {
@@ -43,7 +43,7 @@ function renderPage(collection, seriesList = []) {
     currentCollectionId = collection.id;
 
     document.getElementById('page-title').innerHTML = `
-        <a href="#" onclick="event.preventDefault(); window.navigateBack()" style="color: var(--text-secondary); text-decoration: none;">
+        <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
             &larr; Збірники
         </a> / ${collection.name || 'Збірник'}
     `;
@@ -61,6 +61,15 @@ function renderPage(collection, seriesList = []) {
                 <div style="flex: 1;">
                     <h1 style="font-size: 2rem; margin-bottom: 1rem;">${collection.name}</h1>
                     <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                        ${seriesList.length > 0 ? `
+                            <div>
+                                <strong>Серія:</strong>
+                                ${seriesList.map(s => `
+                                    <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
+                                          onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
+                                `).join(' ')}
+                            </div>
+                        ` : ''}
                         ${collection.cv_slug ? `<div><strong>CV Slug:</strong> ${collection.cv_slug}</div>` : ''}
                         ${collection.volume_name ? `
                             <div>
@@ -83,15 +92,6 @@ function renderPage(collection, seriesList = []) {
                         <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
                             ${buildThemeChipsViewHTML(collection.themes)}
                         </div>
-                        ${seriesList.length > 0 ? `
-                            <div>
-                                <strong>Серії:</strong>
-                                ${seriesList.map(s => `
-                                    <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
-                                          onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
-                                `).join(' ')}
-                            </div>
-                        ` : ''}
                         <div><strong>Дата додавання:</strong> ${formatDate(collection.created_at)}</div>
                         <div>
                             <a href="https://comicvine.gamespot.com/${collection.cv_slug}/4000-${collection.cv_id}" target="_blank">${cv_logo_svg}</a>
@@ -576,6 +576,5 @@ window.addCollectionToSeriesFromDetail = async (seriesId) => {
 
 // ===== НАВІГАЦІЯ =====
 
-window.navigateBack = () => navigate('collections');
 window.navigateToIssue = (id) => navigate('issue-detail', { id });
 window.navigateToVolume = (id) => navigate('volume-detail', { id });

@@ -1,5 +1,5 @@
 import { fetchItem, updateItem } from '../api/api.js';
-import { formatDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
+import { formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openModal } from '../components/modal.js';
 
@@ -11,14 +11,14 @@ export async function renderCharacterDetail(params) {
         return;
     }
     
-    cleanupCatalogUI();
+    initDetailPage();
     showLoading();
     
     try {
         const character = await fetchItem('characters', characterId);
         
         document.getElementById('page-title').innerHTML = `
-            <a href="#" onclick="event.preventDefault(); navigateBack()" style="color: var(--text-secondary); text-decoration: none;">
+            <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
                 ← Персонажі
             </a> / ${character.name || 'Персонаж'}
         `;
@@ -96,8 +96,6 @@ function getCharacterFormHTML(character = null) {
         </form>
     `;
 }
-
-window.navigateBack = () => window.history.back()
 
 window.editCharacterDetail = async (id) => {
     try {

@@ -1,5 +1,5 @@
 import { fetchItem } from '../api/api.js';
-import { cv_img_path_small, formatDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
+import { cv_img_path_small, formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openModal } from '../components/modal.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
@@ -37,7 +37,7 @@ export async function renderEventDetail(params) {
   if (!id) { navigate('events'); return; }
   currentEventId = id;
 
-  cleanupCatalogUI();
+  initDetailPage();
   showLoading();
 
   try {
@@ -61,7 +61,7 @@ async function renderPage(event) {
   currentEventIssueIds = new Set(issues.map(i => i.id));
 
   document.getElementById('page-title').innerHTML = `
-    <a href="#" onclick="event.preventDefault(); navigateBack()" style="color:var(--text-secondary); text-decoration:none;">
+    <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color:var(--text-secondary); text-decoration:none;">
       ← Події
     </a> / ${event.name}
   `;
@@ -499,7 +499,3 @@ window.confirmAddCollectionToEvent = async () => {
   const event = await fetchItem('events', evColAddEventId);
   await renderPage(event);
 };
-
-// ===== ДОПОМІЖНЕ =====
-
-window.navigateBack = () => navigate('events');

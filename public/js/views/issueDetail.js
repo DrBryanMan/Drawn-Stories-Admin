@@ -1,5 +1,5 @@
 import { fetchItem, updateItem } from '../api/api.js';
-import { cv_logo_svg, cv_img_path_original, cv_img_path_small, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
+import { cv_logo_svg, cv_img_path_original, cv_img_path_small, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openModal } from '../components/modal.js';
 
@@ -15,7 +15,7 @@ export async function renderIssueDetail(params) {
 
     if (!issueId) { navigate('issues'); return; }
 
-    cleanupCatalogUI();
+    initDetailPage();
     showLoading();
 
     try {
@@ -30,7 +30,7 @@ export async function renderIssueDetail(params) {
         const collectionMemberships = colMemberData.data || [];
 
         document.getElementById('page-title').innerHTML = `
-            <a href="#" onclick="event.preventDefault(); window.history.back()" style="color: var(--text-secondary); text-decoration: none;">
+            <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
                 ← Випуски
             </a> / ${issue.name || 'Випуск'}
         `;
@@ -195,8 +195,6 @@ function getIssueFormHTML(issue = null) {
         </form>
     `;
 }
-
-window.navigateBack = () => window.history.back();
 
 window.editIssueDetail = async (id) => {
     const issue = await fetch(`${API_BASE}/issues/${id}`).then(r => r.json());

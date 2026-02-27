@@ -4,6 +4,7 @@
 import { fetchItems } from '../api/api.js';
 import { showEmpty, showError, showLoading } from '../utils/helpers.js';
 import { cv_img_path_original } from '../utils/helpers.js';
+import { mountHeaderActions } from './headerActions.js';
 
 // ── Стан модуля (один активний список за раз) ─────────────────────────────
 let viewMode = 'grid';
@@ -30,6 +31,7 @@ export async function initListPage(config) {
   _config = config;
   _lastData = null;
 
+  mountHeaderActions();
   document.getElementById('page-title').textContent = config.title;
   setupAddBtn(config.onAdd);
   setupSearchArea();

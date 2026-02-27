@@ -1,6 +1,7 @@
 import { cv_img_path_small, showError, showLoading, showEmpty } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { createPagination, getInitialPage } from '../utils/pagination.js';
+import { mountHeaderActions } from '../components/headerActions.js';
 
 const LIMIT = 50;
 let currentOffset = 0;
@@ -13,10 +14,8 @@ export async function renderCollectionsList(params) {
     currentSearch = '';
     currentType = '';
 
-    // document.getElementById('exact-match-wrapper')?.remove();
-    // document.getElementById('view-toggle')?.remove();
+    mountHeaderActions()
     document.getElementById('badge-filter')?.remove();
-
     const searchInput = document.getElementById('search-input');
     searchInput.style.display = 'block';
     searchInput.value = '';

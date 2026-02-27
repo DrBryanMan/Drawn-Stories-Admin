@@ -1,16 +1,19 @@
 import { fetchItem } from '../api/api.js';
-import { cv_img_path_small, cv_img_path_original, formatDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
+import { cv_img_path_small, cv_img_path_original, formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
+import { openAddVolumeModal } from '../components/addVolumeModal.js';
 
 const API_BASE = 'http://localhost:7000/api';
 
 export async function renderSeriesDetail(params) {
-    const seriesId = params.id;
-    if (!seriesId) { navigate('series'); return; }
-    cleanupCatalogUI();
+    const id = params.id;
+    if (!id) { navigate('series'); return; }
+
+    initDetailPage();
     showLoading();
+
     try {
-        const series = await fetchItem('series', seriesId);
+        const series = await fetchItem('series', id);
         renderPage(series);
     } catch (error) {
         console.error('Помилка завантаження серії:', error);
@@ -18,21 +21,31 @@ export async function renderSeriesDetail(params) {
     }
 }
 
-function renderPage(series) {
-    document.getElementById('page-title').innerHTML = `
-        <a href="#" onclick="event.preventDefault(); navigate('series')" style="color: var(--text-secondary); text-decoration: none;">
-            &larr; Серії
-        </a> / ${series.name || 'Серія'}
-    `;
+async function renderPage(series) {
     const volumes = series.volumes || [];
     const collections = series.collections || [];
+
+    // Розділяємо томи на два типи
+    const collectionVolumes = volumes.filter(v => v.has_collection_theme);
+    const regularVolumes    = volumes.filter(v => !v.has_collection_theme);
+
+    // Зберігаємо для використання у модалці
+    window._seriesVolumes = volumes;
+
+    document.getElementById('page-title').innerHTML = `
+        <a href="#" onclick="event.preventDefault(); navigateBack()" style="color: var(--text-secondary); text-decoration: none;">
+            ← Серії
+        </a> / ${series.name}
+    `;
+
     const content = document.getElementById('content');
     content.innerHTML = `
         <div style="max-width: 1200px;">
-            <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
+            <!-- Шапка серії -->
+            <div style="display: flex; gap: 2rem; margin-bottom: 2rem; align-items: flex-start;">
                 <div style="flex-shrink: 0;">
                     ${series.cv_img
-                        ? `<img src="${series.cv_img.startsWith('https') ? series.cv_img : series.cv_img.startsWith('/') ? cv_img_path_original + series.cv_img : cv_img_path_original + '/' + series.cv_img}"  style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);" alt="${series.name}">`
+                        ? `<img src="${series.cv_img.startsWith('http') ? series.cv_img : cv_img_path_original + (series.cv_img.startsWith('/') ? '' : '/') + series.cv_img}" style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);" alt="${series.name}">`
                         : '<div style="width: 300px; height: 300px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 5rem;">📚</div>'}
                 </div>
                 <div style="flex: 1;">
@@ -47,15 +60,25 @@ function renderPage(series) {
                 </div>
             </div>
 
-            <!-- Томи -->
+            <!-- Томи: звичайні -->
             <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
-                    <h2 style="font-size: 1.5rem; margin: 0;">Томи (${volumes.length})</h2>
-                    <button class="btn btn-primary" onclick="openAddVolumeModal(${series.id})">+ Додати том</button>
+                    <h2 style="font-size: 1.5rem; margin: 0;">Томи (${regularVolumes.length})</h2>
+                    <button class="btn btn-primary" onclick="openAddVolumeToSeriesModal(${series.id})">+ Додати том</button>
                 </div>
-                ${volumes.length > 0
-                    ? `<div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">${renderVolumeCards(volumes, series.id)}</div>`
-                    : '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Немає томів. Додайте перший!</p>'}
+                ${regularVolumes.length > 0
+                    ? `<div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">${renderVolumeCards(regularVolumes, series.id)}</div>`
+                    : '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Немає звичайних томів. Додайте перший!</p>'}
+            </div>
+
+            <!-- Томи збірників -->
+            <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
+                    <h2 style="font-size: 1.5rem; margin: 0;">Томи збірників (${collectionVolumes.length})</h2>
+                </div>
+                ${collectionVolumes.length > 0
+                    ? `<div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">${renderVolumeCards(collectionVolumes, series.id)}</div>`
+                    : '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Немає томів збірників.</p>'}
             </div>
 
             <!-- Збірники -->
@@ -82,20 +105,6 @@ function renderPage(series) {
             </div>
         </div>
 
-        <!-- Модалка додавання тому -->
-        <div id="add-volume-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-            <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:500px; max-width:90vw;">
-                <h3 style="margin-bottom:1rem;">Додати том до серії</h3>
-                <div class="form-group">
-                    <input type="text" id="volume-search-input" placeholder="Введіть назву тому..." style="width:100%;">
-                </div>
-                <div id="volume-search-results" style="max-height:320px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; margin-bottom:1rem; min-height:48px;"></div>
-                <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-                    <button class="btn btn-secondary" onclick="closeAddVolumeModal()">Скасувати</button>
-                </div>
-            </div>
-        </div>
-
         <!-- Модалка додавання збірника -->
         <div id="add-collection-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
             <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:500px; max-width:90vw;">
@@ -112,18 +121,19 @@ function renderPage(series) {
     `;
 }
 
+// ── Картки томів ─────────────────────────────────────────────────────────
+
 function renderVolumeCards(volumes, seriesId) {
     return volumes.map(vol => `
-        <div class="card">
-            <div class="card-img" onclick="navigateTo('volume-detail', ${vol.id})" style="cursor:pointer;">
+        <div class="card" onclick="navigate('volume-detail', { id: ${vol.id} })" style="cursor:pointer;">
+            <div class="card-img">
                 ${vol.cv_img
                     ? `<img src="${cv_img_path_small}${vol.cv_img.startsWith('/') ? '' : '/'}${vol.cv_img}" alt="${vol.name}">`
                     : '<div style="font-size:2.5rem;">📚</div>'}
             </div>
             <div class="card-body">
                 <div class="card-title" title="${vol.name}">${vol.name}</div>
-                ${vol.start_year ? `<div class="card-meta" style="color:var(--accent); font-weight:600;">${vol.start_year}</div>` : ''}
-                <div class="card-meta">📖 ${vol.issue_count || 0} випусків</div>
+                ${vol.issue_count ? `<div class="card-meta">📖 ${vol.issue_count}</div>` : ''}
                 <button class="btn btn-danger btn-small" style="margin-top:0.5rem; width:100%;"
                     onclick="event.stopPropagation(); removeVolumeFromSeries(${seriesId}, ${vol.id})">
                     Видалити
@@ -133,10 +143,12 @@ function renderVolumeCards(volumes, seriesId) {
     `).join('');
 }
 
+// ── Картки збірників ─────────────────────────────────────────────────────
+
 function renderCollectionCards(collections, seriesId) {
     return collections.map(col => `
-        <div class="card">
-            <div class="card-img" onclick="navigateTo('collection-detail', ${col.id})" style="cursor:pointer;">
+        <div class="card" onclick="navigate('collection-detail', { id: ${col.id} })" style="cursor:pointer;">
+            <div class="card-img">
                 ${col.cv_img
                     ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" alt="${col.name}">`
                     : '<div style="font-size:2.5rem;">📗</div>'}
@@ -153,7 +165,8 @@ function renderCollectionCards(collections, seriesId) {
     `).join('');
 }
 
-// ===== РЕДАГУВАННЯ СЕРІЇ =====
+// ===== РЕДАГУВАННЯ СЕРІЇ ================================================
+
 let currentEditSeriesId = null;
 
 window.openEditSeriesModal = async (seriesId) => {
@@ -193,58 +206,29 @@ window.saveSeriesEdit = async () => {
     renderPage(series);
 };
 
-// ===== ТОМИ =====
-let addVolumeSeriesId = null;
-let volumeSearchTimeout = null;
+// ===== ТОМИ =============================================================
 
-window.openAddVolumeModal = (seriesId) => {
-    addVolumeSeriesId = seriesId;
-    document.getElementById('add-volume-modal').style.display = 'flex';
-    const input = document.getElementById('volume-search-input');
-    input.value = '';
-    document.getElementById('volume-search-results').innerHTML = '';
-    input.oninput = (e) => {
-        clearTimeout(volumeSearchTimeout);
-        volumeSearchTimeout = setTimeout(() => searchVolumesForSeries(e.target.value, seriesId), 300);
-    };
-    input.focus();
-};
-
-window.closeAddVolumeModal = () => {
-    document.getElementById('add-volume-modal').style.display = 'none';
-    addVolumeSeriesId = null;
-};
-
-async function searchVolumesForSeries(query, seriesId) {
-    if (!query.trim()) { document.getElementById('volume-search-results').innerHTML = ''; return; }
-    const res = await fetch(`${API_BASE}/volumes?search=${encodeURIComponent(query)}&limit=20`);
-    const result = await res.json();
-    const el = document.getElementById('volume-search-results');
-    if (!result.data?.length) { el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary);">Нічого не знайдено</div>'; return; }
-    el.innerHTML = result.data.map(vol => `
-        <div onclick="addVolumeToSeries(${seriesId}, ${vol.id})"
-             style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
-             onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
-            ${vol.cv_img
-                ? `<img src="${cv_img_path_small}${vol.cv_img.startsWith('/') ? '' : '/'}${vol.cv_img}" style="width:40px; height:60px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
-                : '<div style="width:40px; height:60px; background:var(--bg-secondary); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">📚</div>'}
-            <div>
-                <div style="font-weight:500;">${vol.name}</div>
-                <div style="font-size:0.8rem; color:var(--text-secondary);">CV ID: ${vol.cv_id}</div>
-            </div>
-        </div>
-    `).join('');
-}
-
-window.addVolumeToSeries = async (seriesId, volumeId) => {
-    const res = await fetch(`${API_BASE}/series/${seriesId}/volumes`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ volume_id: volumeId })
+window.openAddVolumeToSeriesModal = (seriesId) => {
+    openAddVolumeModal({
+        title: 'Додати том до серії',
+        alreadyIds: new Set((window._seriesVolumes || []).map(v => v.id)),
+        apiBase: API_BASE,
+        cvImgPathSmall: cv_img_path_small,
+        onAdd: async (volumeIds) => {
+            let lastError = null;
+            for (const volId of volumeIds) {
+                const res = await fetch(`${API_BASE}/series/${seriesId}/volumes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ volume_id: volId })
+                });
+                if (!res.ok) { const err = await res.json(); lastError = err.error; }
+            }
+            if (lastError) alert(lastError);
+            const updatedSeries = await fetchItem('series', seriesId);
+            renderPage(updatedSeries);
+        }
     });
-    if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
-    window.closeAddVolumeModal();
-    const series = await fetchItem('series', seriesId);
-    renderPage(series);
 };
 
 window.removeVolumeFromSeries = async (seriesId, volumeId) => {
@@ -254,7 +238,8 @@ window.removeVolumeFromSeries = async (seriesId, volumeId) => {
     renderPage(series);
 };
 
-// ===== ЗБІРНИКИ =====
+// ===== ЗБІРНИКИ =========================================================
+
 let addCollectionSeriesId = null;
 let collectionSearchTimeout = null;
 
@@ -314,6 +299,3 @@ window.removeCollectionFromSeries = async (seriesId, collectionId) => {
     const series = await fetchItem('series', seriesId);
     renderPage(series);
 };
-
-window.navigateBack = () => navigate('series');
-window.navigateTo = (type, id) => navigate(type, { id: id });

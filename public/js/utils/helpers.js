@@ -1,3 +1,5 @@
+import { unmountHeaderActions } from '../components/headerActions.js';
+
 export const cv_img_path_small = 'https://comicvine.gamespot.com/a/uploads/scale_small'
 export const cv_img_path_original = 'https://comicvine.gamespot.com/a/uploads/original'
 export const locg_img = 'https://leagueofcomicgeeks.com/assets/images/user-menu-logo-icon.png'
@@ -7,17 +9,12 @@ export const cv_logo_svg = `
     <path d="m207.15 86.26-1-.58-2.25-1.3s4.59-3.26 5.49-3.88c-3.74-4.29-9.16-5.9-16.63-4.42a38 38 0 0 0-22.27 12.71A39.82 39.82 0 0 0 164 99.27a45.6 45.6 0 0 0-3.22 12.73l-.28 5.11c.28 6.43 2.41 11.25 6.49 14.7 4.24 3.6 9.36 4.52 15.69 2.92 7.86-2 14.21-6.37 19.45-13.36a49 49 0 0 0 9.11-21.74l.46-4.24c-.12-4.45-1.61-7.39-4.55-9.13Z" style="fill:#09e150"></path>
 </svg>`
 
-export function cleanupCatalogUI() {
-    document.getElementById('exact-match-wrapper')?.remove();
-    document.getElementById('view-toggle')?.remove();
-    const searchInput = document.getElementById('search-input');
-    if (searchInput) { searchInput.style.display = 'none'; searchInput.oninput = null; }
-    const addBtn = document.getElementById('add-btn');
-    if (addBtn) addBtn.style.display = 'none';
+export function initDetailPage() {
+    unmountHeaderActions();
+
     const pagination = document.getElementById('pagination');
     if (pagination) pagination.style.display = 'none';
 }
-
 
 // Загальна функція (ISO формат, для created_at тощо)
 export function formatDate(dateString) {

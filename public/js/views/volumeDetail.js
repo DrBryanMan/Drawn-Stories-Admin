@@ -1,6 +1,6 @@
 import { fetchItem, fetchItems, updateItem } from '../api/api.js';
 import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../utils/publisherSearch.js';
-import { locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, cleanupCatalogUI } from '../utils/helpers.js';
+import { locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openModal } from '../components/modal.js';
 import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList } from '../utils/themeChips.js';
@@ -11,7 +11,7 @@ export async function renderVolumeDetail(params) {
     const volumeId = params.id;
     if (!volumeId) { navigate('volumes'); return; }
 
-    cleanupCatalogUI();
+    initDetailPage();
     showLoading();
 
     try {
@@ -31,7 +31,7 @@ export async function renderVolumeDetail(params) {
         const volCollections = volumeCollectionsData.data || [];
 
         document.getElementById('page-title').innerHTML = `
-            <a href="#" onclick="event.preventDefault(); navigateBack()" style="color: var(--text-secondary); text-decoration: none;">
+            <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
                 ← Томи
             </a> / ${volume.name || 'Том'}
         `;
@@ -49,6 +49,15 @@ export async function renderVolumeDetail(params) {
                     <div style="flex: 1;">
                         <h1 style="font-size: 2rem; margin-bottom: 1rem;">${volume.name || 'Без назви'}</h1>
                         <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            ${volumeSeries.length > 0 ? `
+                                <div>
+                                    <strong>Серія:</strong>
+                                    ${volumeSeries.map(s => `
+                                        <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
+                                              onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
+                                    `).join(' ')}
+                                </div>
+                            ` : ''}
                             <div><strong>CV ID:</strong> ${volume.cv_id}</div>
                             <div><strong>CV Slug:</strong> ${volume.cv_slug}</div>
                             ${volume.start_year ? `<div><strong>Рік початку:</strong> ${volume.start_year}</div>` : ''}
@@ -66,15 +75,6 @@ export async function renderVolumeDetail(params) {
                                 <div>
                                     <strong>Теми:</strong>
                                     ${volumeThemes.map(t => `<span class="theme-badge">${t.ua_name}</span>`).join(' ')}
-                                </div>
-                            ` : ''}
-                            ${volumeSeries.length > 0 ? `
-                                <div>
-                                    <strong>Серії:</strong>
-                                    ${volumeSeries.map(s => `
-                                        <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
-                                              onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
-                                    `).join(' ')}
                                 </div>
                             ` : ''}
                             <div style="display: flex; align-items: center; gap: 0.5rem; height:30px;">
@@ -112,46 +112,8 @@ export async function renderVolumeDetail(params) {
                 </div>
 
                 ${isCollectionVolume && volCollections.length > 0 ? `
-                <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                    <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Збірники (${volCollections.length})</h2>
-                    <div class="table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Обкладинка</th>
-                                    <th>Номер</th>
-                                    <th>Назва</th>
-                                    <th>Дата обкладинки</th>
-                                    <th>Реліз</th>
-                                    <th>Дії</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${volCollections.map(col => `
-                                    <tr onclick="navigateToCollection(${col.id})" style="cursor: pointer;">
-                                        <td>
-                                            ${col.cv_img
-                                                ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" alt="${col.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
-                                                : '📗'}
-                                        </td>
-                                        <td><strong>#${col.issue_number || '?'}</strong></td>
-                                        <td>${col.name || 'Без назви'}</td>
-                                        <td>${formatCoverDate(col.cover_date)}</td>
-                                        <td>${formatReleaseDate(col.release_date)}</td>
-                                        <td onclick="event.stopPropagation()">
-                                            <button class="btn btn-primary btn-small" onclick="navigateToCollection(${col.id})">Переглянути</button>
-                                        </td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                ` : ''}
-
-                <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
-                    <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Випуски (${issuesResult.data.length})</h2>
-                    ${issuesResult.data.length > 0 ? `
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                        <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Збірники (${volCollections.length})</h2>
                         <div class="table">
                             <table>
                                 <thead>
@@ -159,34 +121,74 @@ export async function renderVolumeDetail(params) {
                                         <th>Обкладинка</th>
                                         <th>Номер</th>
                                         <th>Назва</th>
-                                        <th>Обкладинка</th>
+                                        <th>Дата обкладинки</th>
                                         <th>Реліз</th>
                                         <th>Дії</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${issuesResult.data.map(issue => `
-                                        <tr onclick="navigateToIssue(${issue.id})" style="cursor: pointer;">
+                                    ${volCollections.map(col => `
+                                        <tr onclick="navigateToCollection(${col.id})" style="cursor: pointer;">
                                             <td>
-                                                ${issue.cv_img
-                                                    ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
-                                                    : '📖'}
+                                                ${col.cv_img
+                                                    ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" alt="${col.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
+                                                    : '📗'}
                                             </td>
-                                            <td><strong>#${issue.issue_number || '?'}</strong></td>
-                                            <td>${issue.name || 'Без назви'}</td>
-                                            <td>${formatCoverDate(issue.cover_date)}</td>
-                                            <td>${formatReleaseDate(issue.release_date)}</td>
+                                            <td><strong>#${col.issue_number || '?'}</strong></td>
+                                            <td>${col.name || 'Без назви'}</td>
+                                            <td>${formatCoverDate(col.cover_date)}</td>
+                                            <td>${formatReleaseDate(col.release_date)}</td>
                                             <td onclick="event.stopPropagation()">
-                                                <button class="btn btn-secondary btn-small" onclick="editIssueFromVolume(${issue.id})">Редагувати</button>
-                                                <button class="btn btn-primary btn-small" onclick="navigateToIssue(${issue.id})">Переглянути</button>
+                                                <button class="btn btn-primary btn-small" onclick="navigateToCollection(${col.id})">Переглянути</button>
                                             </td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
                             </table>
                         </div>
-                    ` : '<p style="text-align:center; color:var(--text-secondary); padding:2rem;">Немає випусків</p>'}
-                </div>
+                    </div>
+                ` : ''}
+
+                ${issuesResult && issuesResult.length > 0 ? `
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Випуски (${issuesResult.data.length})</h2>
+                        ${issuesResult.data.length > 0 ? `
+                            <div class="table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Обкладинка</th>
+                                            <th>Номер</th>
+                                            <th>Назва</th>
+                                            <th>Обкладинка</th>
+                                            <th>Реліз</th>
+                                            <th>Дії</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${issuesResult.data.map(issue => `
+                                            <tr onclick="navigateToIssue(${issue.id})" style="cursor: pointer;">
+                                                <td>
+                                                    ${issue.cv_img
+                                                        ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
+                                                        : '📖'}
+                                                </td>
+                                                <td><strong>#${issue.issue_number || '?'}</strong></td>
+                                                <td>${issue.name || 'Без назви'}</td>
+                                                <td>${formatCoverDate(issue.cover_date)}</td>
+                                                <td>${formatReleaseDate(issue.release_date)}</td>
+                                                <td onclick="event.stopPropagation()">
+                                                    <button class="btn btn-secondary btn-small" onclick="editIssueFromVolume(${issue.id})">Редагувати</button>
+                                                    <button class="btn btn-primary btn-small" onclick="navigateToIssue(${issue.id})">Переглянути</button>
+                                                </td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ` : '<p style="text-align:center; color:var(--text-secondary); padding:2rem;">Немає випусків</p>'}
+                    </div>
+                ` : ''}
             </div>
 
             ${renderAddToSeriesModal()}
@@ -366,7 +368,6 @@ function getIssueFormHTML(issue = null) {
     `;
 }
 
-window.navigateBack = () => window.history.back();
 window.navigateToIssue = (id) => navigate('issue-detail', { id });
 
 window.editVolumeDetail = async (id) => {

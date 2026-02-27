@@ -1,5 +1,3 @@
-// SeriesList.js — Розташування: public/js/views/SeriesList.js
-
 import { initListPage, reloadCatalog } from '../components/catalog.js';
 import { navigate } from '../utils/router.js';
 import { createItem, updateItem, deleteItem } from '../api/api.js';

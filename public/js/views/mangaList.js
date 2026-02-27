@@ -1,6 +1,7 @@
 import { cv_img_path_small, showError, showLoading, showEmpty } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { createPagination, getInitialPage } from '../utils/pagination.js';
+import { mountHeaderActions } from '../components/headerActions.js';
 
 const API_BASE = 'http://localhost:7000/api';
 const LIMIT = 50;
@@ -14,6 +15,7 @@ export async function renderMangaList(params) {
     currentSearch = '';
     currentType = '';
 
+    mountHeaderActions()
     const searchInput = document.getElementById('search-input');
     searchInput.style.display = 'block';
     searchInput.value = '';

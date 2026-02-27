@@ -48,7 +48,7 @@ app.get('/wanted', (req, res) => {
 });
 
 initDatabase().then(() => {
-  app.listen(PORT, () => console.log(`🚀 Сервер запущено на http://localhost:${PORT}`));
+  app.listen(PORT, '0.0.0.0', () => console.log(`🚀 Сервер запущено на http://localhost:${PORT}`));
 });
 
 process.on('SIGINT', () => {

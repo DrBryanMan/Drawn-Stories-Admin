@@ -4,6 +4,7 @@ import { initListPage, reloadCatalog } from '../components/catalog.js';
 import { navigate } from '../utils/router.js';
 import { createItem, updateItem, deleteItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
+import { mountHeaderActions } from '../components/headerActions.js';
 
 function getFormHTML(event = null) {
   return `
@@ -59,6 +60,7 @@ async function handleDelete(id) {
 }
 
 export async function renderEventsList() {
+  mountHeaderActions()
   await initListPage({
     title:       'Події',
     endpoint:    'events',
