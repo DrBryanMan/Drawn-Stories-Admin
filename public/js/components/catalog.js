@@ -64,7 +64,6 @@ function setupAddBtn(onAdd) {
 }
 
 function setupSearchArea() {
-  // Прибираємо старі елементи, якщо є (при навігації між сторінками)
   document.getElementById('exact-match-wrapper')?.remove();
   document.getElementById('cv-id-search-wrapper')?.remove();
 
@@ -83,98 +82,75 @@ function setupSearchArea() {
   exactWrapper.id = 'exact-match-wrapper';
   exactWrapper.style.display = 'inline-flex';
   exactWrapper.style.alignItems = 'center';
-  exactWrapper.style.gap = '0.4rem';
-  exactWrapper.style.marginRight = '1.5rem';
-  exactWrapper.innerHTML = `
-    <input type="checkbox" id="exact-match-cb">
-    <span>Точне</span>
-  `;
-  searchInput.insertAdjacentElement('afterend', exactWrapper);
+  exactWrapper.style.gap = '0.3rem';
+  exactWrapper.style.marginRight = '0.75rem';
+  exactWrapper.style.fontSize = '0.875rem';
+  exactWrapper.style.cursor = 'pointer';
+  exactWrapper.innerHTML = `<input type="checkbox" id="exact-match-cb" ${exactMatch ? 'checked' : ''}> Точне`;
+  searchInput.parentElement?.insertBefore(exactWrapper, searchInput.nextSibling);
 
-  document.getElementById('exact-match-cb').onchange = (e) => {
+  document.getElementById('exact-match-cb')?.addEventListener('change', (e) => {
     exactMatch = e.target.checked;
     currentOffset = 0;
     loadAndRender();
-  };
+  });
 
-  // ── Пошук по cv_id ──
-  const cvWrapper = document.createElement('div');
-  cvWrapper.id = 'cv-id-search-wrapper';
-  cvWrapper.style.display = 'inline-flex';
-  cvWrapper.style.alignItems = 'center';
-  cvWrapper.style.gap = '0.5rem';
+  // ── Пошук по CV ID ──
+  const cvIdWrapper = document.createElement('span');
+  cvIdWrapper.id = 'cv-id-search-wrapper';
+  cvIdWrapper.style.display = 'inline-flex';
+  cvIdWrapper.style.alignItems = 'center';
+  cvIdWrapper.style.gap = '0.3rem';
+  cvIdWrapper.style.marginRight = '0.75rem';
 
-  const cvLabel = document.createElement('span');
-  cvLabel.textContent = 'cv_id:';
-  cvLabel.style.fontSize = '0.95rem';
-  cvLabel.style.color = '#555';
+  const cvIdInput = document.createElement('input');
+  cvIdInput.type = 'number';
+  cvIdInput.placeholder = 'CV ID';
+  cvIdInput.style.width = '90px';
+  cvIdInput.style.padding = '0.45rem 0.5rem';
+  cvIdInput.style.border = '1px solid #ccc';
+  cvIdInput.style.borderRadius = '4px';
+  cvIdInput.style.fontSize = '0.875rem';
+  cvIdInput.value = currentCvId;
+  cvIdWrapper.appendChild(cvIdInput);
+  exactWrapper.parentElement?.insertBefore(cvIdWrapper, exactWrapper.nextSibling);
 
-  const cvInput = document.createElement('input');
-  cvInput.type = 'text';
-  cvInput.id = 'cv-id-input';
-  cvInput.placeholder = 'наприклад 42513';
-  cvInput.value = currentCvId;
-  cvInput.style.width = '140px';
-  cvInput.style.padding = '0.5rem';
-  cvInput.style.border = '1px solid #ccc';
-  cvInput.style.borderRadius = '4px';
-  cvInput.style.fontSize = '1rem';
-
-  cvWrapper.appendChild(cvLabel);
-  cvWrapper.appendChild(cvInput);
-
-  exactWrapper.insertAdjacentElement('afterend', cvWrapper);
-
-  // Debounce для основного пошуку
-  let debounceMain;
-  searchInput.oninput = (e) => {
-    clearTimeout(debounceMain);
-    debounceMain = setTimeout(() => {
-      currentSearch = e.target.value.trim();
-      currentOffset = 0;
-      loadAndRender();
-    }, 350);
-  };
-
-  // Debounce для cv_id
-  let debounceCv;
-  cvInput.oninput = (e) => {
-    clearTimeout(debounceCv);
-    debounceCv = setTimeout(() => {
+  let cvDebounce;
+  cvIdInput.addEventListener('input', (e) => {
+    clearTimeout(cvDebounce);
+    cvDebounce = setTimeout(() => {
       currentCvId = e.target.value.trim();
       currentOffset = 0;
       loadAndRender();
-    }, 350);
-  };
+    }, 400);
+  });
+
+  // ── Пошук по назві ──
+  let searchDebounce;
+  searchInput.addEventListener('input', (e) => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => {
+      currentSearch = e.target.value;
+      currentOffset = 0;
+      loadAndRender();
+    }, 300);
+  });
 }
 
 function setupViewToggle() {
-  const headerActions = document.querySelector('.header-actions');
-  let toggle = document.getElementById('view-toggle');
-
-  if (!toggle) {
-    toggle = document.createElement('div');
-    toggle.id = 'view-toggle';
-    toggle.className = 'view-toggle';
-    headerActions.appendChild(toggle);
-  }
-
-  updateToggleButtons(toggle);
-
-  toggle.onclick = (e) => {
-    const btn = e.target.closest('[data-view]');
-    if (!btn) return;
-    viewMode = btn.dataset.view;
-    updateToggleButtons(toggle);
-    if (_lastData) renderItems(_lastData);
-  };
-}
-
-function updateToggleButtons(toggle) {
+  const toggle = document.getElementById('view-toggle');
+  if (!toggle) return;
   toggle.innerHTML = `
     <button class="btn-view ${viewMode === 'grid' ? 'active' : ''}" data-view="grid" title="Сітка">⊞</button>
     <button class="btn-view ${viewMode === 'table' ? 'active' : ''}" data-view="table" title="Таблиця">≡</button>
   `;
+  toggle.onclick = (e) => {
+    const btn = e.target.closest('.btn-view');
+    if (!btn) return;
+    viewMode = btn.dataset.view;
+    toggle.querySelectorAll('.btn-view').forEach(b => b.classList.toggle('active', b.dataset.view === viewMode));
+    if (_lastData) renderItems(_lastData);
+  };
 }
 
 // ── Завантаження та рендер ─────────────────────────────────────────────────
@@ -183,11 +159,11 @@ async function loadAndRender() {
   showLoading();
 
   const params = { limit: LIMIT, offset: currentOffset };
-  if (currentSearch)  params.search = currentSearch;
-  if (exactMatch)     params.exact  = 'true';
-  if (currentCvId)    params.cv_id  = currentCvId;
-                      params.publisher_ids = currentPublisherIds.join(',');
-  if (currentThemeIds.length) params.theme_ids = currentThemeIds.join(',');
+  if (currentSearch)         params.search        = currentSearch;
+  if (exactMatch)            params.exact         = 'true';
+  if (currentCvId)           params.cv_id         = currentCvId;
+                             params.publisher_ids = currentPublisherIds.join(',');
+  if (currentThemeIds.length) params.theme_ids    = currentThemeIds.join(',');
 
   try {
     const result = await fetchItems(_config.endpoint, params);
@@ -228,10 +204,10 @@ function buildGrid(items) {
       <div class="card" data-item-id="${item.id}" data-item-cv-id="${item.cv_id || ''}" style="cursor:pointer; position:relative">
         ${badges.map(m => {
           const v = item[m.key];
-          
+
           if ((m.key === 'themes') && Array.isArray(v) && v.length > 0) {
             return v.slice(0, 4).map((theme, idx) => `
-              <span class="badge badge-theme" 
+              <span class="badge badge-theme"
                     style="position:absolute; bottom:0.5rem; left: calc(0.5rem + ${idx * 5}rem); z-index:1; font-size:0.7rem; padding:0.2rem 0.5rem;">
                 ${theme.trim()}
               </span>
@@ -251,88 +227,45 @@ function buildGrid(items) {
           ${meta.map(m => {
             const v = item[m.key];
             return v != null && v !== ''
-              ? `<div class="card-meta ${m.class || ''}">${m.prefix || ''}${m.type === 'date' ? new Date(v).toLocaleDateString('uk-UA') : v}</div>`
+              ? `<div class="card-meta ${m.class || ''}">${m.prefix || ''}${m.type === 'date' ? new Date(v).toLocaleDateString('uk') : v}</div>`
               : '';
           }).join('')}
-          ${_config.showActions !== false ? `
-            <div class="card-actions">
-              <button class="btn btn-secondary btn-small" data-action="edit" data-item-id="${item.id}">Редагувати</button>
-              <button class="btn btn-danger btn-small"    data-action="delete" data-item-id="${item.id}">Видалити</button>
-            </div>
-          ` : ''}
         </div>
       </div>
     `;
   });
-
   return `<div class="grid">${cards.join('')}</div>`;
 }
 
 // ── Побудова Table ─────────────────────────────────────────────────────────
 
 function buildTable(items) {
-  const cols = _config.tableColumns;
-  const icon = _config.defaultIcon || '📄';
-
-  const header = cols.map(c => `<th>${c.label}</th>`).join('');
-  const actionsHeader = _config.showActions !== false ? '<th>Дії</th>' : '';
-
+  const cols = _config.tableColumns || [];
+  const headers = cols.map(c => `<th>${c.label}</th>`).join('');
   const rows = items.map(item => {
     const cells = cols.map(c => {
+      let v = item[c.key];
       if (c.type === 'image') {
-        const img = resolveImageUrl(item);
-        return `<td>${img
-          ? `<img src="${img}" alt="">`
-          : `<div style="font-size:2rem">${icon}</div>`}</td>`;
+        const url = resolveImageUrl(item);
+        return `<td>${url ? `<img src="${url}" style="width:40px; height:60px; object-fit:cover; border-radius:3px;">` : ''}</td>`;
       }
-      const v = item[c.key];
-      if (c.type === 'date') {
-        return `<td>${v ? new Date(v).toLocaleDateString('uk-UA') : '—'}</td>`;
-      }
-      return `<td>${v != null && v !== '' ? v : '—'}</td>`;
+      if (c.type === 'date' && v) v = new Date(v).toLocaleDateString('uk');
+      return `<td>${v ?? ''}</td>`;
     }).join('');
-
-    const actionsCell = _config.showActions !== false ? `
-      <td>
-        <button class="btn btn-secondary btn-small" data-action="edit"   data-item-id="${item.id}">Редагувати</button>
-        <button class="btn btn-danger btn-small"    data-action="delete" data-item-id="${item.id}">Видалити</button>
-      </td>
-    ` : '';
-
-    return `<tr data-item-id="${item.id}" data-item-cv-id="${item.cv_id || ''}" style="cursor:pointer">${cells}${actionsCell}</tr>`;
-  }).join('');
-
-  return `
-    <div class="table">
-      <table>
-        <thead><tr>${header}${actionsHeader}</tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-    </div>
-  `;
+    return `<tr data-item-id="${item.id}" data-item-cv-id="${item.cv_id || ''}" style="cursor:pointer">${cells}</tr>`;
+  });
+  return `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
 }
 
-// ── Обробка кліків (event delegation) ─────────────────────────────────────
+// ── Обробники кліків ──────────────────────────────────────────────────────
 
 function attachClickHandlers(content) {
   content.onclick = (e) => {
-    // Кнопки дій
-    const actionBtn = e.target.closest('[data-action]');
-    if (actionBtn) {
-      e.stopPropagation();
-      const id = parseInt(actionBtn.dataset.itemId);
-      if (actionBtn.dataset.action === 'edit'   && _config.onEdit)   _config.onEdit(id);
-      if (actionBtn.dataset.action === 'delete' && _config.onDelete) _config.onDelete(id);
-      return;
-    }
-
-    // Клік по картці / рядку
-    const row = e.target.closest('[data-item-id]');
-    if (row && _config.onNavigate) {
-       const id    = parseInt(row.dataset.itemId);
-       const cv_id = row.dataset.itemCvId ? parseInt(row.dataset.itemCvId) : null;
-       _config.onNavigate(id, cv_id);
-     }
+    const card = e.target.closest('[data-item-id]');
+    if (!card) return;
+    const id    = parseInt(card.dataset.itemId);
+    const cv_id = card.dataset.itemCvId ? parseInt(card.dataset.itemCvId) : null;
+    _config.onNavigate(id, cv_id);
   };
 }
 
@@ -363,18 +296,8 @@ function updatePagination(total) {
 function resolveImageUrl(item) {
   const filename = item[_config.imageKey];
   if (!filename) return null;
-
-  // Якщо вже повне посилання — повертаємо як є
-  if (filename.startsWith('http://') || filename.startsWith('https://')) {
-    return filename;
-  }
-
-  // Якщо починається з / — додаємо базовий шлях
-  if (filename.startsWith('/')) {
-    return cv_img_path_original + filename;
-  }
-
-  // В інших випадках — вважаємо, що це просто ім'я файлу
+  if (filename.startsWith('http://') || filename.startsWith('https://')) return filename;
+  if (filename.startsWith('/')) return cv_img_path_original + filename;
   return cv_img_path_original + '/' + filename;
 }
 

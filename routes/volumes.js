@@ -16,6 +16,7 @@ router.get('/', (req, res) => {
     ? publisher_ids.split(',').map(Number).filter(Boolean)
     : [];
 
+  // Фільтр по темах: використовуємо DB id з таблиці themes (НЕ cv_id тому!)
   const themeIds = theme_ids
     ? theme_ids.split(',').map(Number).filter(Boolean)
     : [];
@@ -34,12 +35,11 @@ router.get('/', (req, res) => {
     conditions.push(`v.publisher IN (${pubIds.map(() => '?').join(',')})`);
     searchParams.push(...pubIds);
   }
-  if (themeIds.length) {
-    conditions.push(
-      `v.cv_id IN (SELECT cv_vol_id FROM volume_themes WHERE theme_id IN (${themeIds.map(() => '?').join(',')}))`
-    );
-    searchParams.push(...themeIds);
-  }
+  // Кожна тема — окрема умова AND (том повинен мати ВСІ обрані теми)
+  themeIds.forEach(tid => {
+    conditions.push('EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.cv_vol_id = v.cv_id AND _vt.theme_id = ?)');
+    searchParams.push(tid);
+  });
 
   const whereClause = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
   params = [...searchParams, parseInt(limit), parseInt(offset)];

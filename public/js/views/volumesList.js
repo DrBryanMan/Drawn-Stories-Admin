@@ -95,16 +95,20 @@ export async function renderVolumesList() {
     onNavigate: (id, cv_id, cv_slug) => navigate('volume-detail', { id, cv_id, cv_slug })
   });
 
-  // Монтуємо фільтр видавництва в панель фільтрів
-  getFiltersPanel(); // показує панель
+  // Панель фільтрів
+  getFiltersPanel();
+
+  // Фільтр видавництва
   mountPublisherFilter({
     panelId: 'volumes-publisher-filter',
     selectedPubs: [],
     onChange: (pubs) => { setCatalogPublisherIds(pubs.map(p => p.id)); },
   });
+
+  // Фільтр тем (theme/genre/type — всі три типи)
   mountThemeFilter({
     panelId: 'volumes-theme-filter',
-    selectedThemeIds: [],
-    onChange: (ids) => { setCatalogThemeIds(ids); },
+    selectedThemes: [],
+    onChange: (themes) => { setCatalogThemeIds(themes.map(t => t.id)); },
   });
 }
