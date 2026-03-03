@@ -21,14 +21,16 @@ export async function renderVolumeDetail(params) {
             fetch(`${API_BASE}/volumes/${volumeId}/series`).then(r => r.json())
         ]);
 
-        const [issuesResult, volumeCollectionsData] = await Promise.all([
+        const [issuesResult, volumeCollectionsData, collectionsFromIssuesData] = await Promise.all([
             fetchItems('issues', { volume_id: volume.cv_id, limit: 1000 }),
-            fetch(`${API_BASE}/collections/by-volume/${volume.cv_id}`).then(r => r.ok ? r.json() : { data: [] })
+            fetch(`${API_BASE}/collections/by-volume/${volume.cv_id}`).then(r => r.ok ? r.json() : { data: [] }),
+            fetch(`${API_BASE}/volumes/${volumeId}/collections-from-issues`).then(r => r.ok ? r.json() : { data: [] }),
         ]);
         const volumeThemes = themesData.data || [];
         const volumeSeries = seriesData.data || [];
         const isCollectionVolume = volumeThemes.some(t => t.id === 44);
         const volCollections = volumeCollectionsData.data || [];
+        const volCollectionsFromIssues = collectionsFromIssuesData.data || [];
 
         document.getElementById('page-title').innerHTML = `
             <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
@@ -111,6 +113,50 @@ export async function renderVolumeDetail(params) {
                     </div>
                 </div>
 
+                            </td>
+                            <td><strong>#${col.issue_number || '?'}</strong></td>
+                            <td>${col.name || 'Без назви'}</td>
+                            <td>${formatCoverDate(col.cover_date)}</td>
+                            <td>${formatReleaseDate(col.release_date)}</td>
+                            <td onclick="event.stopPropagation()">
+
+                ${!isCollectionVolume && volCollectionsFromIssues.length > 0 ? `
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                        <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Входить до збірників (${volCollectionsFromIssues.length})</h2>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">
+                            ${volCollectionsFromIssues.map(col => {
+                                const range = formatIssueRanges(col.volume_issue_numbers);
+                                return `
+                                    <div onclick="navigateToCollection(${col.id})"
+                                        style="cursor: pointer; border-radius: 8px; border: 1px solid var(--border-color);
+                                                overflow: hidden; transition: box-shadow 0.2s; background: var(--bg-secondary);"
+                                        onmouseenter="this.style.boxShadow='var(--shadow-lg)'"
+                                        onmouseleave="this.style.boxShadow='none'">
+                                        <div style="width: 100%; aspect-ratio: 2/3; background: var(--bg-secondary); overflow: hidden;">
+                                            ${col.cv_img
+                                                ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}"
+                                                        alt="${col.name}"
+                                                        style="width:100%; height:100%; object-fit:cover; display:block;">`
+                                                : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;">📗</div>'}
+                                        </div>
+                                        <div style="padding: 0.6rem 0.75rem;">
+                                            <div style="font-weight: 600; font-size: 0.85rem; line-height: 1.3; margin-bottom: 0.3rem;
+                                                        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                                                ${col.name || 'Без назви'}
+                                            </div>
+                                            ${range ? `
+                                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
+                                                    📖 ${range}
+                                                </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+
                 ${isCollectionVolume && volCollections.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Збірники (${volCollections.length})</h2>
@@ -138,9 +184,6 @@ export async function renderVolumeDetail(params) {
                                             <td>${col.name || 'Без назви'}</td>
                                             <td>${formatCoverDate(col.cover_date)}</td>
                                             <td>${formatReleaseDate(col.release_date)}</td>
-                                            <td onclick="event.stopPropagation()">
-                                                <button class="btn btn-primary btn-small" onclick="navigateToCollection(${col.id})">Переглянути</button>
-                                            </td>
                                         </tr>
                                     `).join('')}
                                 </tbody>
@@ -149,7 +192,7 @@ export async function renderVolumeDetail(params) {
                     </div>
                 ` : ''}
 
-                ${issuesResult && issuesResult.length > 0 ? `
+                ${issuesResult && issuesResult.data.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
                         <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Випуски (${issuesResult.data.length})</h2>
                         ${issuesResult.data.length > 0 ? `
@@ -179,7 +222,6 @@ export async function renderVolumeDetail(params) {
                                                 <td>${formatReleaseDate(issue.release_date)}</td>
                                                 <td onclick="event.stopPropagation()">
                                                     <button class="btn btn-secondary btn-small" onclick="editIssueFromVolume(${issue.id})">Редагувати</button>
-                                                    <button class="btn btn-primary btn-small" onclick="navigateToIssue(${issue.id})">Переглянути</button>
                                                 </td>
                                             </tr>
                                         `).join('')}
@@ -198,6 +240,32 @@ export async function renderVolumeDetail(params) {
         console.error('Помилка завантаження тому:', error);
         showError('Помилка завантаження даних');
     }
+}
+
+function formatIssueRanges(numbers) {
+  if (!numbers || numbers.length === 0) return null;
+
+  const nums = numbers
+    .map(n => parseFloat(n))
+    .filter(n => !isNaN(n))
+    .sort((a, b) => a - b);
+
+  if (nums.length === 0) return null;
+
+  const ranges = [];
+  let start = nums[0], end = nums[0];
+
+  for (let i = 1; i < nums.length; i++) {
+    if (nums[i] === end + 1) {
+      end = nums[i];
+    } else {
+      ranges.push(start === end ? `#${start}` : `#${start}–#${end}`);
+      start = end = nums[i];
+    }
+  }
+  ranges.push(start === end ? `#${start}` : `#${start}–#${end}`);
+
+  return ranges.join(', ');
 }
 
 // ===== МОДАЛКА "ДОДАТИ ДО СЕРІЇ" (shared з collectionDetail) =====

@@ -107,6 +107,38 @@ router.put('/:id', (req, res) => {
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
+// Збірники, до яких входять випуски цього тому
+router.get('/:id/collections-from-issues', (req, res) => {
+  try {
+    const volume = getOne('SELECT * FROM volumes WHERE id = ?', [parseInt(req.params.id)]);
+    if (!volume) return res.status(404).json({ error: 'Том не знайдено' });
+
+    const collections = getAll(`
+      SELECT DISTINCT c.*
+      FROM collections c
+      JOIN collection_issues ci ON c.id = ci.collection_id
+      JOIN issues i ON ci.issue_id = i.id
+      WHERE i.cv_vol_id = ?
+      ORDER BY CAST(c.issue_number AS REAL) ASC, c.name ASC
+    `, [volume.cv_id]);
+
+    // Для кожного збірника визначаємо номери випусків з цього тому
+    const result = collections.map(col => {
+      const issueNumbers = getAll(`
+        SELECT i.issue_number
+        FROM collection_issues ci
+        JOIN issues i ON ci.issue_id = i.id
+        WHERE ci.collection_id = ? AND i.cv_vol_id = ? AND i.issue_number IS NOT NULL
+        ORDER BY CAST(i.issue_number AS REAL) ASC
+      `, [col.id, volume.cv_id]).map(r => r.issue_number);
+
+      return { ...col, volume_issue_numbers: issueNumbers };
+    });
+
+    res.json({ data: result });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
 // Конвертація всіх випусків тома у збірники + додає тему Collection
 router.post('/:id/convert-all-to-collections', (req, res) => {
   try {
@@ -120,7 +152,11 @@ router.post('/:id/convert-all-to-collections', (req, res) => {
     let converted = 0, skipped = 0;
     issues.forEach(issue => {
       const existing = getOne('SELECT id FROM collections WHERE cv_id = ?', [issue.cv_id]);
-      if (existing) { skipped++; return; }
+      if (existing) {
+        rawRun('DELETE FROM issues WHERE id = ?', [issue.id]);
+        skipped++;
+        return;
+      }
       rawRun(
         `INSERT INTO collections (cv_vol_id, name, cv_img, cv_id, cv_slug, issue_number, cover_date, release_date, publisher) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [issue.cv_vol_id || null, issue.name || 'Без назви', issue.cv_img || null, issue.cv_id, issue.cv_slug, issue.issue_number || null, issue.cover_date || null, issue.release_date || null, volume.publisher || null,  ]
@@ -136,7 +172,11 @@ router.post('/:id/convert-all-to-collections', (req, res) => {
     }
 
     saveDatabase();
-    res.json({ message: `Конвертовано: ${converted}, пропущено (вже існують): ${skipped}`, converted, skipped });
+    res.json({ 
+				message: `Конвертовано: ${converted}, видалено дублікатів (збірник вже існував): ${skipped}`, 
+				converted, 
+				skipped 
+		});
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 

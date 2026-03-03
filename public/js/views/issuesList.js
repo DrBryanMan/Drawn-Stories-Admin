@@ -84,11 +84,11 @@ export async function renderIssuesList() {
     titleKey:   'name',
     defaultIcon: '📖',
     gridMeta: [
-      { key: 'volume_name',  prefix: ''         },
-      { key: 'cv_vol_id',    prefix: 'Vol ID: ' },
-      { key: 'issue_number', prefix: '#'        },
-      { key: 'cover_date',   prefix: 'Дата: '   },
-      { key: 'created_at',   prefix: '➕ ', type: 'date'}
+      { key: 'volume_name',  prefix: '', class: 'vol-name' },
+      { key: 'cv_vol_id',    prefix: 'Vol: ', class: 'cv-vol-id' },
+      { key: 'issue_number', prefix: '#', class: 'issue-number'},
+      // { key: 'cover_date',   prefix: 'Дата: '   },
+      // { key: 'created_at',   prefix: '➕ ', type: 'date'}
     ],
     tableColumns: [
       { key: 'cv_img',       label: 'Обкладинка',   type: 'image' },

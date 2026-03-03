@@ -245,7 +245,7 @@ function buildGrid(items) {
           ${meta.map(m => {
             const v = item[m.key];
             return v != null && v !== ''
-              ? `<div class="card-meta">${m.prefix || ''}${m.type === 'date' ? new Date(v).toLocaleDateString('uk-UA') : v}</div>`
+              ? `<div class="card-meta ${m.class || ''}">${m.prefix || ''}${m.type === 'date' ? new Date(v).toLocaleDateString('uk-UA') : v}</div>`
               : '';
           }).join('')}
           ${_config.showActions !== false ? `

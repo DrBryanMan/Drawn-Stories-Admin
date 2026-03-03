@@ -330,6 +330,37 @@ text-decoration: none;
     margin-top: 0.75rem;
 }
 
+.card .issue-number,
+.card .cv-vol-id {
+	position: absolute;
+	top: 0;
+	background: #0008;
+	backdrop-filter: blur(3px);
+	color: white;
+/* 	transform: translate(-50%, -50%); */
+	border-radius: 8px;
+	margin: .35em;
+	padding: .2em .5em;
+}
+
+.card .cv-vol-id {
+	right: 0;
+}
+.card .issue-number {
+	left: 0;
+}
+
+.card .vol-name {
+	font-size: 80%;
+	color: skyblue;
+}
+.card .card-body {
+	padding: .5em;
+}
+.card .card-title {
+	margin: 0;
+}
+
 .table {
     width: 100%;
     background: var(--bg-primary);
