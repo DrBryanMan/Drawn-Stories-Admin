@@ -10,8 +10,9 @@ import { mountHeaderActions } from './headerActions.js';
 let viewMode = 'grid';
 let currentOffset = 0;
 let currentSearch = '';
-let currentCvId = '';           // ← нове поле для cv_id
+let currentCvId = '';
 let exactMatch = false;
+let currentPublisherIds = [];
 const LIMIT = 100;
 
 let _config = null;       // поточна конфігурація сторінки
@@ -28,6 +29,7 @@ export async function initListPage(config) {
   currentSearch = '';
   currentCvId = '';
   exactMatch = false;
+  currentPublisherIds = [];
   _config = config;
   _lastData = null;
 
@@ -179,9 +181,10 @@ async function loadAndRender() {
   showLoading();
 
   const params = { limit: LIMIT, offset: currentOffset };
-  if (currentSearch)   params.search = currentSearch;
-  if (exactMatch)      params.exact  = 'true';
-  if (currentCvId)     params.cv_id  = currentCvId;     // ← передаємо cv_id в API
+  if (currentSearch)  params.search = currentSearch;
+  if (exactMatch)     params.exact  = 'true';
+  if (currentCvId)    params.cv_id  = currentCvId;
+                      params.publisher_ids = currentPublisherIds.join(',');
 
   try {
     const result = await fetchItems(_config.endpoint, params);
@@ -374,4 +377,10 @@ function resolveImageUrl(item) {
 
 function escapeAttr(str) {
   return String(str).replace(/"/g, '&quot;');
+}
+
+export function setCatalogPublisherIds(ids) {
+  currentPublisherIds = ids;
+  currentOffset = 0;
+  if (_config) loadAndRender();
 }

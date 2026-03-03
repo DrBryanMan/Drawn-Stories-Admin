@@ -35,30 +35,55 @@ router.get('/search', (req, res) => {
 
 // Комбінований список: випуски з томів теми collection + таблиця collections
 router.get('/', (req, res) => {
-  const { search, limit = 50, offset = 0, type } = req.query;
+  const { search, limit = 50, offset = 0, type, publisher_ids } = req.query;
 
+  // Розбираємо publisher_ids: "1,2,3" → [1, 2, 3]
+  const pubIds = publisher_ids
+    ? publisher_ids.split(',').map(Number).filter(Boolean)
+    : [];
+
+  // ── Випуски (issues) з томів теми Collection ─────────────────────────────
   let issueItems = [];
   if (!type || type === 'issue') {
     let issueWhere = 'WHERE vt.theme_id = ?';
     let issueParams = [COLLECTION_THEME_ID];
-    if (search) { issueWhere += ' AND (i.name LIKE ? OR v.name LIKE ?)'; issueParams.push(`%${search}%`, `%${search}%`); }
+
+    if (search) {
+      issueWhere += ' AND (i.name LIKE ? OR v.name LIKE ?)';
+      issueParams.push(`%${search}%`, `%${search}%`);
+    }
+    if (pubIds.length) {
+      issueWhere += ` AND v.publisher IN (${pubIds.map(() => '?').join(',')})`;
+      issueParams.push(...pubIds);
+    }
 
     issueItems = getAll(`
       SELECT DISTINCT i.id, i.name, i.cv_img, i.issue_number, i.release_date,
                       i.created_at,
-                      v.name as volume_name, 'issue' as _type, i.created_at
+                      v.name as volume_name, 'issue' as _type
       FROM issues i
       JOIN volumes v ON i.cv_vol_id = v.cv_id
       JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
       ${issueWhere}
       ORDER BY i.created_at DESC
-      `, issueParams);
+    `, issueParams);
   }
 
+  // ── Збірники (collections) ────────────────────────────────────────────────
   let colItems = [];
   if (!type || type === 'collection') {
-    let colWhere = '', colParams = [];
-    if (search) { colWhere = ' WHERE (c.name LIKE ? OR v.name LIKE ?)'; colParams.push(`%${search}%`, `%${search}%`); }
+    const colConds = [];
+    const colParams = [];
+
+    if (search) {
+      colConds.push('(c.name LIKE ? OR v.name LIKE ?)');
+      colParams.push(`%${search}%`, `%${search}%`);
+    }
+    if (pubIds.length) {
+      colConds.push(`c.publisher IN (${pubIds.map(() => '?').join(',')})`);
+      colParams.push(...pubIds);
+    }
+    const colWhere = colConds.length ? 'WHERE ' + colConds.join(' AND ') : '';
 
     colItems = getAll(`
       SELECT c.id, c.name, c.cv_img, c.issue_number, c.created_at as release_date,
@@ -74,17 +99,13 @@ router.get('/', (req, res) => {
     `, colParams);
   }
 
-  const allItems = [...issueItems, ...colItems]
-    // .sort((a, b) => {
-    //   const da = a.created_at ? new Date(a.created_at).getTime() : 0;
-    //   const db = b.created_at ? new Date(b.created_at).getTime() : 0;
-    //   return db - da;
-    // })
+  const allItems = [...issueItems, ...colItems];
   res.json({
     data: allItems.slice(parseInt(offset), parseInt(offset) + parseInt(limit)),
     total: allItems.length,
   });
 });
+
 
 router.get('/:id/themes', (req, res) => {
   const data = getAll(
@@ -220,13 +241,26 @@ const MANGA_THEME_ID = 36;
 const mangaRouter = Router();
 
 mangaRouter.get('/', (req, res) => {
-  const { search, limit = 50, offset = 0, type } = req.query;
+  const { search, limit = 50, offset = 0, type, publisher_ids } = req.query;
 
+  const pubIds = publisher_ids
+    ? publisher_ids.split(',').map(Number).filter(Boolean)
+    : [];
+
+  // ── Випуски манґи ─────────────────────────────────────────────────────────
   let issueItems = [];
   if (!type || type === 'issue') {
-    let where = 'WHERE vt.theme_id = ?';
-    let params = [MANGA_THEME_ID];
-    if (search) { where += ' AND (i.name LIKE ? OR v.name LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+    let issueWhere = 'WHERE vt.theme_id = ?';
+    let issueParams = [MANGA_THEME_ID];
+
+    if (search) {
+      issueWhere += ' AND (i.name LIKE ? OR v.name LIKE ?)';
+      issueParams.push(`%${search}%`, `%${search}%`);
+    }
+    if (pubIds.length) {
+      issueWhere += ` AND v.publisher IN (${pubIds.map(() => '?').join(',')})`;
+      issueParams.push(...pubIds);
+    }
 
     issueItems = getAll(`
       SELECT DISTINCT i.id, i.name, i.cv_img, i.issue_number, i.release_date,
@@ -234,15 +268,30 @@ mangaRouter.get('/', (req, res) => {
       FROM issues i
       JOIN volumes v ON i.cv_vol_id = v.cv_id
       JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
-      ${where}
+      ${issueWhere}
       ORDER BY v.name ASC, CAST(i.issue_number AS REAL) ASC
-    `, params);
+    `, issueParams);
   }
 
+  // ── Збірники манґи ────────────────────────────────────────────────────────
   let colItems = [];
   if (!type || type === 'collection') {
-    let where = '', params = [];
-    if (search) { where = ' WHERE (c.name LIKE ? OR v.name LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+    // Для збірників манґи: тема на томі (vt.theme_id = MANGA_THEME_ID),
+    // видавництво — на томі (v.publisher), бо collections.publisher = том-видавництво при конвертації.
+    // Додаткову впевненість дає фільтр по v.publisher (том вже джойниться).
+    const extraConds = [];
+    const extraParams = [];
+
+    if (search) {
+      extraConds.push('(c.name LIKE ? OR v.name LIKE ?)');
+      extraParams.push(`%${search}%`, `%${search}%`);
+    }
+    if (pubIds.length) {
+      // Фільтруємо по publisher тому (v.publisher) — найнадійніше джерело
+      extraConds.push(`v.publisher IN (${pubIds.map(() => '?').join(',')})`);
+      extraParams.push(...pubIds);
+    }
+    const extraWhere = extraConds.length ? 'AND ' + extraConds.join(' AND ') : '';
 
     colItems = getAll(`
       SELECT DISTINCT c.id, c.name, c.cv_img, c.issue_number, c.release_date,
@@ -251,9 +300,9 @@ mangaRouter.get('/', (req, res) => {
       JOIN volumes v ON c.cv_vol_id = v.cv_id
       JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
       WHERE vt.theme_id = ?
-      ${where ? 'AND ' + where.replace(' WHERE ', '') : ''}
+      ${extraWhere}
       ORDER BY v.name ASC, CAST(c.issue_number AS REAL) ASC
-    `, [MANGA_THEME_ID, ...params]);
+    `, [MANGA_THEME_ID, ...extraParams]);
   }
 
   const allItems = [...issueItems, ...colItems];

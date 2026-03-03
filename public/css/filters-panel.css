@@ -1,0 +1,120 @@
+/* ── Панель фільтрів ─────────────────────────────────────────────────────── */
+
+.filters-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.25rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 0.75rem;
+    flex-shrink: 0;
+}
+
+/* Один блок фільтру (наприклад "Тип:" або "Видавництво:") */
+.filter-block {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.filter-block__label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+    margin-right: 0.1rem;
+}
+
+/* Чіп обраного видавництва */
+.filter-chip--publisher {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.5rem 0.2rem 0.65rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: #dbeafe;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+}
+
+.filter-chip__remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    font-size: 1rem;
+    opacity: 0.6;
+    color: inherit;
+}
+.filter-chip__remove:hover { opacity: 1; }
+
+/* Кнопка "Скинути" */
+.filter-clear-btn {
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.75rem;
+}
+.filter-clear-btn:hover {
+    border-color: var(--danger);
+    color: var(--danger);
+}
+
+/* Інпут пошуку видавництва */
+.filter-search-input {
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    width: 170px;
+    outline: none;
+}
+.filter-search-input:focus {
+    border-color: var(--accent);
+    background: var(--bg-primary);
+}
+
+/* Дропдаун */
+.filter-dropdown {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: calc(100% + 4px);
+    z-index: 300;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    min-width: 230px;
+    max-height: 200px;
+    overflow-y: auto;
+    box-shadow: var(--shadow-lg);
+}
+
+.filter-dropdown__item {
+    padding: 0.45rem 0.75rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    border-bottom: 1px solid var(--border-color);
+}
+.filter-dropdown__item:last-child { border-bottom: none; }
+.filter-dropdown__item:hover { background: var(--bg-secondary); }
+.filter-dropdown__item--selected {
+    opacity: 0.45;
+    pointer-events: none;
+}
+
+.filter-dropdown__empty {
+    padding: 0.6rem 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}

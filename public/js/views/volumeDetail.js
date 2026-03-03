@@ -38,6 +38,13 @@ export async function renderVolumeDetail(params) {
             </a> / ${volume.name || 'Том'}
         `;
 
+
+                            // </td>
+                            // <td><strong>#${col.issue_number || '?'}</strong></td>
+                            // <td>${col.name || 'Без назви'}</td>
+                            // <td>${formatCoverDate(col.cover_date)}</td>
+                            // <td>${formatReleaseDate(col.release_date)}</td>
+                            // <td onclick="event.stopPropagation()">
         const content = document.getElementById('content');
         content.innerHTML = `
             <div style="max-width: 1200px;">
@@ -112,13 +119,6 @@ export async function renderVolumeDetail(params) {
                         </div>
                     </div>
                 </div>
-
-                            </td>
-                            <td><strong>#${col.issue_number || '?'}</strong></td>
-                            <td>${col.name || 'Без назви'}</td>
-                            <td>${formatCoverDate(col.cover_date)}</td>
-                            <td>${formatReleaseDate(col.release_date)}</td>
-                            <td onclick="event.stopPropagation()">
 
                 ${!isCollectionVolume && volCollectionsFromIssues.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">

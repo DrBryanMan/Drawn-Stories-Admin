@@ -7,8 +7,13 @@ const COLLECTION_THEME_ID = 44;
 const router = Router();
 
 router.get('/', (req, res) => {
-  const { search, exact, cv_id, limit = 50, offset = 0 } = req.query;
+  const { search, exact, cv_id, limit = 50, offset = 0, publisher_ids } = req.query;
   const isExact = exact === 'true';
+
+  const pubIds = publisher_ids
+    ? publisher_ids.split(',').map(Number).filter(Boolean)
+    : [];
+
   let conditions = [], searchParams = [], params = [];
 
   if (search) {
@@ -18,6 +23,10 @@ router.get('/', (req, res) => {
   if (cv_id) {
     conditions.push('v.cv_id = ?');
     searchParams.push(parseInt(cv_id));
+  }
+  if (pubIds.length) {
+    conditions.push(`v.publisher IN (${pubIds.map(() => '?').join(',')})`);
+    searchParams.push(...pubIds);
   }
 
   const whereClause = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';
@@ -34,7 +43,7 @@ router.get('/', (req, res) => {
     LIMIT ? OFFSET ?
   `, params);
 
-  let countQuery = `SELECT COUNT(*) as count FROM volumes v${whereClause}`;
+  let countQuery = `SELECT COUNT(*) as count FROM volumes v LEFT JOIN publishers p ON v.publisher = p.id${whereClause}`;
   const total = getOne(countQuery, searchParams);
   res.json({ data: volumes, total: total?.count || 0 });
 });

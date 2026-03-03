@@ -1,10 +1,12 @@
-// volumesList.js — Розташування: public/js/views/volumesList.js
+// public/js/views/volumesList.js
 
-import { initListPage, reloadCatalog } from '../components/catalog.js';
+import { initListPage, reloadCatalog, setCatalogPublisherIds } from '../components/catalog.js';
 import { cv_img_path_small } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { createItem, updateItem, deleteItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
+import { clearFiltersPanel, getFiltersPanel } from '../components/filtersPanel.js';
+import { mountPublisherFilter } from '../components/publisherFilterPanel.js';
 
 function getFormHTML(volume = null) {
   return `
@@ -59,40 +61,44 @@ async function handleDelete(id) {
 }
 
 export async function renderVolumesList() {
+  clearFiltersPanel();
+
   await initListPage({
-    title:      'Томи',
-    endpoint:   'volumes',
-    imageKey:   'cv_img',
+    title:       'Томи',
+    endpoint:    'volumes',
+    imageKey:    'cv_img',
     imagePrefix: cv_img_path_small,
-    titleKey:   'name',
+    titleKey:    'name',
     defaultIcon: '📚',
     gridMeta: [
-      { key: 'lang',         prefix: '',     badge: true, badgeClass: 'badge-lang',         badgePosition: 'left:0.5rem' },
-      { key: 'issue_count',  prefix: '📖 ',  badge: true, badgeClass: 'badge-issue-count',  badgePosition: 'right:0.5rem' },
-      { 
-        key: 'themes', 
-        prefix: '', 
-        badge: true, 
-        badgeClass: 'badge-theme', 
-        badgePosition: 'bottom:0.5rem; left:0.5rem;' 
-      },
-      { key: 'publisher_name', prefix: ''        },
-      { key: 'cv_id',        prefix: 'CV ID: '  },
-      { key: 'created_at',     prefix: '➕ ',  type: 'date' }
+      { key: 'lang',           prefix: '',      badge: true, badgeClass: 'badge-lang',        badgePosition: 'left:0.5rem' },
+      { key: 'issue_count',    prefix: '📖 ',   badge: true, badgeClass: 'badge-issue-count', badgePosition: 'right:0.5rem' },
+      { key: 'themes',         prefix: '',      badge: true, badgeClass: 'badge-theme',        badgePosition: 'bottom:0.5rem; left:0.5rem;' },
+      { key: 'publisher_name', prefix: ''       },
+      { key: 'cv_id',          prefix: 'CV ID: '},
+      { key: 'created_at',     prefix: '➕ ',   type: 'date' }
     ],
     tableColumns: [
-      { key: 'cv_img',         label: 'Обкладинка',  type: 'image' },
-      { key: 'name',           label: 'Назва'        },
-      { key: 'lang',           label: 'Мова'         },
-      { key: 'issue_count',    label: '📖'           },
-      { key: 'publisher_name', label: 'Видавець'     },
-      { key: 'cv_id',          label: 'CV ID'        },
-      { key: 'cv_slug',        label: 'Slug'         },
+      { key: 'cv_img',         label: 'Обкладинка', type: 'image' },
+      { key: 'name',           label: 'Назва'       },
+      { key: 'lang',           label: 'Мова'        },
+      { key: 'issue_count',    label: '📖'          },
+      { key: 'publisher_name', label: 'Видавець'    },
+      { key: 'cv_id',          label: 'CV ID'       },
+      { key: 'cv_slug',        label: 'Slug'        },
       { key: 'created_at',     label: 'Додано', type: 'date' }
     ],
     onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
     onNavigate: (id, cv_id, cv_slug) => navigate('volume-detail', { id, cv_id, cv_slug })
+  });
+
+  // Монтуємо фільтр видавництва в панель фільтрів
+  getFiltersPanel(); // показує панель
+  mountPublisherFilter({
+    panelId: 'volumes-publisher-filter',
+    selectedPubs: [],
+    onChange: (pubs) => { setCatalogPublisherIds(pubs.map(p => p.id)); },
   });
 }

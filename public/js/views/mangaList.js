@@ -2,28 +2,64 @@ import { cv_img_path_small, showError, showLoading, showEmpty } from '../utils/h
 import { navigate } from '../utils/router.js';
 import { createPagination, getInitialPage } from '../utils/pagination.js';
 import { mountHeaderActions } from '../components/headerActions.js';
+import { clearFiltersPanel, getFiltersPanel } from '../components/filtersPanel.js';
+import { mountPublisherFilter } from '../components/publisherFilterPanel.js';
 
 const API_BASE = 'http://localhost:7000/api';
 const LIMIT = 50;
 let currentOffset = 0;
 let currentSearch = '';
-let currentType = ''; // '' | 'issue' | 'collection'
+let currentType = '';
+let currentPublishers = [];
 
 export async function renderMangaList(params) {
     const { currentOffset: initialOffset } = getInitialPage(LIMIT, params);
     currentOffset = initialOffset;
     currentSearch = '';
     currentType = '';
+    currentPublishers = [];
 
-    mountHeaderActions()
+    mountHeaderActions();
+    clearFiltersPanel();
+
     const searchInput = document.getElementById('search-input');
     searchInput.style.display = 'block';
     searchInput.value = '';
     document.getElementById('add-btn').style.display = 'none';
     document.getElementById('page-title').textContent = 'Манґа';
 
-    renderTypeFilter();
+    // ── Панель фільтрів ───────────────────────────────────────────────────────
+    const fp = getFiltersPanel();
 
+    // Фільтр типу
+    const typeBlock = document.createElement('div');
+    typeBlock.id = 'manga-type-filter';
+    typeBlock.className = 'filter-block';
+    typeBlock.innerHTML = `
+        <span class="filter-block__label">Тип:</span>
+        <button class="badge-filter-btn active" data-type="">Всі</button>
+        <button class="badge-filter-btn" data-type="issue">Випуски</button>
+        <button class="badge-filter-btn" data-type="collection">Збірники</button>
+    `;
+    typeBlock.addEventListener('click', (e) => {
+        const btn = e.target.closest('.badge-filter-btn');
+        if (!btn) return;
+        typeBlock.querySelectorAll('.badge-filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentType = btn.dataset.type;
+        currentOffset = 0;
+        loadAndRender();
+    });
+    fp.appendChild(typeBlock);
+
+    // Фільтр видавництва
+    mountPublisherFilter({
+        panelId: 'manga-publisher-filter',
+        selectedPubs: currentPublishers,
+        onChange: (pubs) => { currentPublishers = pubs; currentOffset = 0; loadAndRender(); },
+    });
+
+    // ── Пошук ─────────────────────────────────────────────────────────────────
     let debounce;
     searchInput.oninput = (e) => {
         clearTimeout(debounce);
@@ -37,53 +73,14 @@ export async function renderMangaList(params) {
     await loadAndRender();
 }
 
-function renderTypeFilter() {
-    // Видаляємо старий фільтр, якщо є
-    document.getElementById('manga-type-filter')?.remove();
-
-    const searchInput = document.getElementById('search-input');
-    const wrapper = document.createElement('div');
-    wrapper.id = 'manga-type-filter';
-    wrapper.style.cssText = 'display:flex; gap:0.4rem; margin-bottom:0.75rem; flex-wrap:wrap;';
-
-    const badges = [
-        { label: 'Всі', value: '' },
-        { label: 'Випуски', value: 'issue' },
-        { label: 'Збірники', value: 'collection' },
-    ];
-
-    badges.forEach(({ label, value }) => {
-        const btn = document.createElement('button');
-        btn.textContent = label;
-        btn.dataset.type = value;
-        btn.className = 'badge-filter' + (currentType === value ? ' active' : '');
-        btn.style.cssText = `
-            padding: 0.25rem 0.75rem;
-            border-radius: 999px;
-            border: 1px solid var(--border-color);
-            background: ${currentType === value ? 'var(--accent-color)' : 'var(--bg-secondary)'};
-            color: ${currentType === value ? '#fff' : 'var(--text-primary)'};
-            cursor: pointer;
-            font-size: 0.85rem;
-        `;
-        btn.onclick = () => {
-            currentType = value;
-            currentOffset = 0;
-            renderTypeFilter();
-            loadAndRender();
-        };
-        wrapper.appendChild(btn);
-    });
-
-    searchInput.insertAdjacentElement('afterend', wrapper);
-}
-
 async function loadAndRender() {
     showLoading();
     try {
         const params = new URLSearchParams({ limit: LIMIT, offset: currentOffset });
         if (currentSearch) params.set('search', currentSearch);
-        if (currentType) params.set('type', currentType);
+        if (currentType)   params.set('type', currentType);
+        if (currentPublishers.length)
+            params.set('publisher_ids', currentPublishers.map(p => p.id).join(','));
 
         const resp = await fetch(`${API_BASE}/manga?${params}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
@@ -104,18 +101,14 @@ async function loadAndRender() {
 
 function renderItems(items) {
     const content = document.getElementById('content');
-
     const cards = items.map(item => {
         const imgUrl = item.cv_img ? cv_img_path_small + item.cv_img : null;
         const title = item.name || 'Без назви';
         const isCollection = item._type === 'collection';
-
         return `
-            <div class="card" data-item-id="${item.id}" data-item-type="${item._type}" style="cursor: pointer;">
+            <div class="card" data-item-id="${item.id}" data-item-type="${item._type}" style="cursor:pointer;">
                 <div class="card-img">
-                    ${imgUrl
-                        ? `<img src="${imgUrl}" alt="${escapeAttr(title)}">`
-                        : `<div style="font-size: 3rem;">📖</div>`}
+                    ${imgUrl ? `<img src="${imgUrl}" alt="${escapeAttr(title)}">` : `<div style="font-size:3rem;">📖</div>`}
                 </div>
                 <div class="card-body">
                     <div class="card-title">${title}</div>
@@ -126,9 +119,7 @@ function renderItems(items) {
             </div>
         `;
     });
-
     content.innerHTML = `<div class="grid">${cards.join('')}</div>`;
-
     content.onclick = (e) => {
         const card = e.target.closest('[data-item-id]');
         if (!card) return;
@@ -140,13 +131,9 @@ function renderItems(items) {
 
 function updatePagination(total) {
     createPagination({
-        total,
-        limit: LIMIT,
-        offset: currentOffset,
+        total, limit: LIMIT, offset: currentOffset,
         onPageChange: (newOffset) => { currentOffset = newOffset; loadAndRender(); }
     });
 }
 
-function escapeAttr(str) {
-    return String(str).replace(/"/g, '&quot;');
-}
+function escapeAttr(str) { return String(str).replace(/"/g, '&quot;'); }

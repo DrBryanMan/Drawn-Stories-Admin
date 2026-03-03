@@ -1,3 +1,4 @@
+// public/js/components/headerActions.js
 const CONTAINER_ID = 'catalog-header-actions';
 
 export function mountHeaderActions() {
@@ -18,9 +19,16 @@ export function mountHeaderActions() {
 
 export function unmountHeaderActions() {
     document.getElementById(CONTAINER_ID)?.remove();
+
+    // Елементи які catalog.js вставляє в header-actions
     document.getElementById('exact-match-wrapper')?.remove();
     document.getElementById('cv-id-search-wrapper')?.remove();
     document.getElementById('view-toggle')?.remove();
-    document.getElementById('badge-filter')?.remove();
-    document.getElementById('manga-type-filter')?.remove();
+
+    // Очищаємо панель фільтрів
+    const filtersPanel = document.getElementById('filters-panel');
+    if (filtersPanel) {
+        filtersPanel.innerHTML = '';
+        filtersPanel.style.display = 'none';
+    }
 }
