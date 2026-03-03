@@ -167,6 +167,20 @@ function applyInitialSchema(db) {
     UNIQUE(event_id, item_id, item_type),
     FOREIGN KEY (event_id) REFERENCES events(id)
   )`);
+  // Переклади: parent = оригінальний том, child = перекладений том
+  db.run(`CREATE TABLE IF NOT EXISTS volume_translations (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    parent_id INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+    child_id  INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+    UNIQUE(parent_id, child_id)
+  )`);
+  // Журнали: magazine_id = батьківський том-журнал, child_id = том що входить у журнал
+  db.run(`CREATE TABLE IF NOT EXISTS volume_magazines (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    magazine_id INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+    child_id    INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+    UNIQUE(magazine_id, child_id)
+  )`);
 
   // ── Індекси ──────────────────────────────────────────────────────────────
 
@@ -229,6 +243,14 @@ function applyInitialSchema(db) {
 
   // event_items
   db.run(`CREATE INDEX IF NOT EXISTS idx_event_items_event ON event_items(event_id)`);
+
+  // volume_translations
+  db.run(`CREATE INDEX IF NOT EXISTS idx_vtrans_parent ON volume_translations(parent_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_vtrans_child  ON volume_translations(child_id)`);
+
+  // volume_magazines
+  db.run(`CREATE INDEX IF NOT EXISTS idx_vmag_magazine ON volume_magazines(magazine_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_vmag_child    ON volume_magazines(child_id)`);
 }
 
 module.exports = { applyInitialSchema };

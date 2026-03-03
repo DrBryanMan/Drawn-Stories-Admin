@@ -2,7 +2,9 @@
 const { Router } = require('express');
 const { runQuery, getAll, getOne, rawRun, saveDatabase } = require('../db');
 
-const COLLECTION_THEME_ID = 44;
+const COLLECTION_THEME_ID = 44; // Collection
+const TRANSLATED_THEME_ID = 51; // Translated
+const MAGAZINE_THEME_ID   = 35; // Magazine
 
 const router = Router();
 
@@ -243,6 +245,157 @@ router.delete('/:id', (req, res) => {
   try {
     runQuery('DELETE FROM volumes WHERE id = ?', [req.params.id]);
     res.json({ message: 'Том видалено' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+function ensureVolumeTheme(volumeDbId, themeId) {
+  const vol = getOne('SELECT cv_id FROM volumes WHERE id = ?', [volumeDbId]);
+  if (!vol) return;
+  const has = getOne(
+    'SELECT id FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?',
+    [vol.cv_id, themeId]
+  );
+  if (!has) {
+    rawRun(
+      'INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)',
+      [vol.cv_id, themeId]
+    );
+  }
+}
+
+// ── Переклади ─────────────────────────────────────────────────────────────
+
+// GET список перекладів (дочірні томи) даного тому-оригіналу
+router.get('/:id/translations', (req, res) => {
+  const data = getAll(`
+    SELECT v.*, p.name as publisher_name
+    FROM volume_translations vt
+    JOIN volumes v ON v.id = vt.child_id
+    LEFT JOIN publishers p ON p.id = v.publisher
+    WHERE vt.parent_id = ?
+    ORDER BY v.lang, v.name
+  `, [req.params.id]);
+  res.json({ data });
+});
+
+// GET батьківський том-оригінал для цього перекладу
+router.get('/:id/translation-parent', (req, res) => {
+  const row = getOne(`
+    SELECT v.*, p.name as publisher_name
+    FROM volume_translations vt
+    JOIN volumes v ON v.id = vt.parent_id
+    LEFT JOIN publishers p ON p.id = v.publisher
+    WHERE vt.child_id = ?
+  `, [req.params.id]);
+  res.json({ data: row || null });
+});
+
+// POST додати переклад: цей том (id) є оригіналом, child_id — переклад
+router.post('/:id/translations', (req, res) => {
+  const parentId = parseInt(req.params.id);
+  const { child_id } = req.body;
+  if (!child_id) return res.status(400).json({ error: 'child_id обов\'язковий' });
+  if (parseInt(child_id) === parentId) return res.status(400).json({ error: 'Том не може бути перекладом самого себе' });
+  try {
+    const existing = getOne(
+      'SELECT id FROM volume_translations WHERE parent_id = ? AND child_id = ?',
+      [parentId, child_id]
+    );
+    if (existing) return res.status(400).json({ error: 'Цей зв\'язок вже існує' });
+
+    // Перевіряємо чи child вже не є батьком (уникаємо циклів)
+    const reverse = getOne(
+      'SELECT id FROM volume_translations WHERE parent_id = ? AND child_id = ?',
+      [child_id, parentId]
+    );
+    if (reverse) return res.status(400).json({ error: 'Цей том вже є батьком зазначеного' });
+
+    runQuery('INSERT INTO volume_translations (parent_id, child_id) VALUES (?, ?)', [parentId, child_id]);
+
+    // Автоматично додаємо тему Translated (51) до дочірнього тому
+    ensureVolumeTheme(parseInt(child_id), TRANSLATED_THEME_ID);
+
+    saveDatabase();
+    res.json({ message: 'Переклад додано' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+// DELETE прибрати переклад
+router.delete('/:id/translations/:childId', (req, res) => {
+  try {
+    runQuery(
+      'DELETE FROM volume_translations WHERE parent_id = ? AND child_id = ?',
+      [req.params.id, req.params.childId]
+    );
+    res.json({ message: 'Переклад видалено' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+// ── Журнали ───────────────────────────────────────────────────────────────
+
+// GET список томів що входять у цей журнал
+router.get('/:id/magazine-children', (req, res) => {
+  const data = getAll(`
+    SELECT v.*, p.name as publisher_name
+    FROM volume_magazines vm
+    JOIN volumes v ON v.id = vm.child_id
+    LEFT JOIN publishers p ON p.id = v.publisher
+    WHERE vm.magazine_id = ?
+    ORDER BY v.start_year, v.name
+  `, [req.params.id]);
+  res.json({ data });
+});
+
+// GET батьківський журнал для цього тому
+router.get('/:id/magazine-parent', (req, res) => {
+  const row = getOne(`
+    SELECT v.*, p.name as publisher_name
+    FROM volume_magazines vm
+    JOIN volumes v ON v.id = vm.magazine_id
+    LEFT JOIN publishers p ON p.id = v.publisher
+    WHERE vm.child_id = ?
+  `, [req.params.id]);
+  res.json({ data: row || null });
+});
+
+// POST додати том до журналу: цей том (id) є журналом, child_id — дочірній том
+router.post('/:id/magazine-children', (req, res) => {
+  const magazineId = parseInt(req.params.id);
+  const { child_id } = req.body;
+  if (!child_id) return res.status(400).json({ error: 'child_id обов\'язковий' });
+  if (parseInt(child_id) === magazineId) return res.status(400).json({ error: 'Том не може бути своїм власним журналом' });
+  try {
+    const existing = getOne(
+      'SELECT id FROM volume_magazines WHERE magazine_id = ? AND child_id = ?',
+      [magazineId, child_id]
+    );
+    if (existing) return res.status(400).json({ error: 'Цей зв\'язок вже існує' });
+
+    // Перевіряємо чи child не є вже журналом для цього тому
+    const alreadyParent = getOne(
+      'SELECT id FROM volume_magazines WHERE magazine_id = ? AND child_id = ?',
+      [child_id, magazineId]
+    );
+    if (alreadyParent) return res.status(400).json({ error: 'Цей том вже є дочірнім для зазначеного' });
+
+    runQuery('INSERT INTO volume_magazines (magazine_id, child_id) VALUES (?, ?)', [magazineId, child_id]);
+
+    // Автоматично додаємо тему Magazine (35) до батьківського тому-журналу
+    ensureVolumeTheme(magazineId, MAGAZINE_THEME_ID);
+
+    saveDatabase();
+    res.json({ message: 'Том додано до журналу' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+// DELETE прибрати том з журналу
+router.delete('/:id/magazine-children/:childId', (req, res) => {
+  try {
+    runQuery(
+      'DELETE FROM volume_magazines WHERE magazine_id = ? AND child_id = ?',
+      [req.params.id, req.params.childId]
+    );
+    res.json({ message: 'Том видалено з журналу' });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 

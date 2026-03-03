@@ -21,16 +21,34 @@ export async function renderVolumeDetail(params) {
             fetch(`${API_BASE}/volumes/${volumeId}/series`).then(r => r.json())
         ]);
 
-        const [issuesResult, volumeCollectionsData, collectionsFromIssuesData] = await Promise.all([
+        const [
+            issuesResult,
+            volumeCollectionsData,
+            collectionsFromIssuesData,
+            translationsData,
+            translationParentData,
+            magazineChildrenData,
+            magazineParentData,
+        ] = await Promise.all([
             fetchItems('issues', { volume_id: volume.cv_id, limit: 1000 }),
             fetch(`${API_BASE}/collections/by-volume/${volume.cv_id}`).then(r => r.ok ? r.json() : { data: [] }),
             fetch(`${API_BASE}/volumes/${volumeId}/collections-from-issues`).then(r => r.ok ? r.json() : { data: [] }),
+            fetch(`${API_BASE}/volumes/${volumeId}/translations`).then(r => r.ok ? r.json() : { data: [] }),
+            fetch(`${API_BASE}/volumes/${volumeId}/translation-parent`).then(r => r.ok ? r.json() : { data: null }),
+            fetch(`${API_BASE}/volumes/${volumeId}/magazine-children`).then(r => r.ok ? r.json() : { data: [] }),
+            fetch(`${API_BASE}/volumes/${volumeId}/magazine-parent`).then(r => r.ok ? r.json() : { data: null }),
         ]);
+
         const volumeThemes = themesData.data || [];
         const volumeSeries = seriesData.data || [];
         const isCollectionVolume = volumeThemes.some(t => t.id === 44);
+        const isMagazineVolume   = volumeThemes.some(t => t.id === 35);
         const volCollections = volumeCollectionsData.data || [];
         const volCollectionsFromIssues = collectionsFromIssuesData.data || [];
+        const translations = translationsData.data || [];
+        const translationParent = translationParentData.data || null;
+        const magazineChildren = magazineChildrenData.data || [];
+        const magazineParent = magazineParentData.data || null;
 
         document.getElementById('page-title').innerHTML = `
             <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
@@ -38,16 +56,10 @@ export async function renderVolumeDetail(params) {
             </a> / ${volume.name || 'Том'}
         `;
 
-
-                            // </td>
-                            // <td><strong>#${col.issue_number || '?'}</strong></td>
-                            // <td>${col.name || 'Без назви'}</td>
-                            // <td>${formatCoverDate(col.cover_date)}</td>
-                            // <td>${formatReleaseDate(col.release_date)}</td>
-                            // <td onclick="event.stopPropagation()">
         const content = document.getElementById('content');
         content.innerHTML = `
             <div style="max-width: 1200px;">
+                <!-- ── Шапка тому ────────────────────────────────────────── -->
                 <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                     <div style="flex-shrink: 0;">
                         ${volume.cv_img
@@ -83,7 +95,7 @@ export async function renderVolumeDetail(params) {
                             ${volumeThemes.length > 0 ? `
                                 <div>
                                     <strong>Теми:</strong>
-                                    ${volumeThemes.map(t => `<span class="theme-badge">${t.ua_name}</span>`).join(' ')}
+                                    ${volumeThemes.map(t => `<span class="theme-badge">${t.ua_name || t.name}</span>`).join(' ')}
                                 </div>
                             ` : ''}
                             <div style="display: flex; align-items: center; gap: 0.5rem; height:30px;">
@@ -98,6 +110,12 @@ export async function renderVolumeDetail(params) {
                         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                             <button class="btn btn-secondary" onclick="editVolumeDetail(${volume.id})">Редагувати том</button>
                             <button class="btn btn-primary" onclick="openAddToSeriesModal(${volume.id}, 'volume')">+ Додати до серії</button>
+                            ${!translationParent ? `
+                                <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id})">🌐 Додати до першоджерела</button>
+                            ` : ''}
+                            ${!magazineParent ? `
+                                <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
+                            ` : ''}
                             ${isCollectionVolume ? `
                                 ${issuesResult.data.length > 0 ? `
                                     <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
@@ -120,30 +138,115 @@ export async function renderVolumeDetail(params) {
                     </div>
                 </div>
 
+                <!-- ── Переклади: список дочірніх (цей том — оригінал) ───── -->
+                <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                        <h2 style="font-size:1.25rem; margin:0;">🌐 Переклади (${translations.length})</h2>
+                        <button class="btn btn-primary btn-small"
+                            onclick="openVolumePickerModal('translation-add', ${volume.id})">
+                            + Додати переклад
+                        </button>
+                    </div>
+                    ${translations.length > 0 ? `
+                        <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                            ${translations.map(t => `
+                                <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;"
+                                     onclick="navigate('volume-detail', { id: ${t.id} })">
+                                    ${t.cv_img ? `<img src="${cv_img_path_small}${t.cv_img.startsWith('/') ? '' : '/'}${t.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
+                                    <span style="font-size:0.9rem;">${t.lang ? `<strong>[${t.lang}]</strong> ` : ''}${t.name}</span>
+                                    <button class="btn btn-danger btn-small" style="padding:0.15rem 0.4rem; font-size:0.75rem; margin-left:0.25rem;"
+                                        onclick="event.stopPropagation(); removeTranslation(${volume.id}, ${t.id})">✕</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : `<p style="color:var(--text-secondary); margin:0; font-size:0.9rem;">Немає прив'язаних перекладів.</p>`}
+                </div>
+
+                <!-- ── Оригінал (цей том — переклад) ────────────────────── -->
+                ${translationParent ? `
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--accent); margin-bottom: 1.5rem;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+                            <h2 style="font-size:1.25rem; margin:0;">📖 Оригінал</h2>
+                            <button class="btn btn-danger btn-small"
+                                onclick="removeTranslation(${translationParent.id}, ${volume.id})">
+                                Від'єднати
+                            </button>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
+                             onclick="navigate('volume-detail', { id: ${translationParent.id} })">
+                            ${translationParent.cv_img
+                                ? `<img src="${cv_img_path_small}${translationParent.cv_img.startsWith('/') ? '' : '/'}${translationParent.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
+                                : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📚</div>'}
+                            <div>
+                                <div style="font-weight:600;">${translationParent.lang ? `[${translationParent.lang}] ` : ''}${translationParent.name}</div>
+                                ${translationParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationParent.publisher_name}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- ── Журнал: список підтомів (цей том — журнал) ─────────── -->
+                ${isMagazineVolume || magazineChildren.length > 0 ? `
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                            <h2 style="font-size:1.25rem; margin:0;">📰 Томи журналу (${magazineChildren.length})</h2>
+                            <button class="btn btn-primary btn-small"
+                                onclick="openVolumePickerModal('magazine-add', ${volume.id})">
+                                + Додати том
+                            </button>
+                        </div>
+                        ${magazineChildren.length > 0 ? `
+                            <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                                ${magazineChildren.map(t => `
+                                    <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;"
+                                         onclick="navigate('volume-detail', { id: ${t.id} })">
+                                        ${t.cv_img ? `<img src="${cv_img_path_small}${t.cv_img.startsWith('/') ? '' : '/'}${t.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
+                                        <span style="font-size:0.9rem;">${t.lang ? `<strong>[${t.lang}]</strong> ` : ''}${t.name}${t.start_year ? ` <span style="color:var(--text-secondary)">(${t.start_year})</span>` : ''}</span>
+                                        <button class="btn btn-danger btn-small" style="padding:0.15rem 0.4rem; font-size:0.75rem; margin-left:0.25rem;"
+                                            onclick="event.stopPropagation(); removeMagazineChild(${volume.id}, ${t.id})">✕</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `<p style="color:var(--text-secondary); margin:0; font-size:0.9rem;">Немає підтомів. Натисніть "+ Додати том" щоб прив'язати том до цього журналу.</p>`}
+                    </div>
+                ` : ''}
+
+                <!-- ── Батьківський журнал (цей том входить у журнал) ─────── -->
+                ${magazineParent ? `
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--accent); margin-bottom: 1.5rem;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+                            <h2 style="font-size:1.25rem; margin:0;">📰 Журнал</h2>
+                            <button class="btn btn-danger btn-small"
+                                onclick="removeMagazineChild(${magazineParent.id}, ${volume.id})">
+                                Від'єднати
+                            </button>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
+                             onclick="navigate('volume-detail', { id: ${magazineParent.id} })">
+                            ${magazineParent.cv_img
+                                ? `<img src="${cv_img_path_small}${magazineParent.cv_img.startsWith('/') ? '' : '/'}${magazineParent.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
+                                : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📰</div>'}
+                            <div>
+                                <div style="font-weight:600;">${magazineParent.name}</div>
+                                ${magazineParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${magazineParent.publisher_name}</div>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+
+                <!-- ── Збірники (collections-from-issues) ────────────────── -->
                 ${!isCollectionVolume && volCollectionsFromIssues.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                        <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Входить до збірників (${volCollectionsFromIssues.length})</h2>
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">
+                        <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Входить у збірники (${volCollectionsFromIssues.length})</h2>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                             ${volCollectionsFromIssues.map(col => {
-                                const range = formatIssueRanges(col.volume_issue_numbers);
+                                const range = col.issue_numbers ? formatIssueRanges(col.issue_numbers.split(',')) : null;
                                 return `
                                     <div onclick="navigateToCollection(${col.id})"
-                                        style="cursor: pointer; border-radius: 8px; border: 1px solid var(--border-color);
-                                                overflow: hidden; transition: box-shadow 0.2s; background: var(--bg-secondary);"
-                                        onmouseenter="this.style.boxShadow='var(--shadow-lg)'"
-                                        onmouseleave="this.style.boxShadow='none'">
-                                        <div style="width: 100%; aspect-ratio: 2/3; background: var(--bg-secondary); overflow: hidden;">
-                                            ${col.cv_img
-                                                ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}"
-                                                        alt="${col.name}"
-                                                        style="width:100%; height:100%; object-fit:cover; display:block;">`
-                                                : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;">📗</div>'}
-                                        </div>
-                                        <div style="padding: 0.6rem 0.75rem;">
-                                            <div style="font-weight: 600; font-size: 0.85rem; line-height: 1.3; margin-bottom: 0.3rem;
-                                                        display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
-                                                ${col.name || 'Без назви'}
-                                            </div>
+                                         style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;">
+                                        ${col.cv_img ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
+                                        <div>
+                                            <div style="font-size:0.9rem; font-weight:500;">${col.name || 'Без назви'}</div>
                                             ${range ? `
                                                 <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
                                                     📖 ${range}
@@ -157,6 +260,7 @@ export async function renderVolumeDetail(params) {
                     </div>
                 ` : ''}
 
+                <!-- ── Збірники тому (якщо Collection-том) ───────────────── -->
                 ${isCollectionVolume && volCollections.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Збірники (${volCollections.length})</h2>
@@ -169,7 +273,6 @@ export async function renderVolumeDetail(params) {
                                         <th>Назва</th>
                                         <th>Дата обкладинки</th>
                                         <th>Реліз</th>
-                                        <th>Дії</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -192,48 +295,66 @@ export async function renderVolumeDetail(params) {
                     </div>
                 ` : ''}
 
+                <!-- ── Випуски ────────────────────────────────────────────── -->
                 ${issuesResult && issuesResult.data.length > 0 ? `
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Випуски (${issuesResult.data.length})</h2>
-                        ${issuesResult.data.length > 0 ? `
-                            <div class="table">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Обкладинка</th>
-                                            <th>Номер</th>
-                                            <th>Назва</th>
-                                            <th>Обкладинка</th>
-                                            <th>Реліз</th>
-                                            <th>Дії</th>
+                        <div class="table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Обкладинка</th>
+                                        <th>Номер</th>
+                                        <th>Назва</th>
+                                        <th>Обкладинка</th>
+                                        <th>Реліз</th>
+                                        <th>Дії</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${issuesResult.data.map(issue => `
+                                        <tr onclick="navigateToIssue(${issue.id})" style="cursor: pointer;">
+                                            <td>
+                                                ${issue.cv_img
+                                                    ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
+                                                    : '📖'}
+                                            </td>
+                                            <td><strong>#${issue.issue_number || '?'}</strong></td>
+                                            <td>${issue.name || 'Без назви'}</td>
+                                            <td>${formatCoverDate(issue.cover_date)}</td>
+                                            <td>${formatReleaseDate(issue.release_date)}</td>
+                                            <td onclick="event.stopPropagation()">
+                                                <button class="btn btn-secondary btn-small" onclick="editIssueFromVolume(${issue.id})">Редагувати</button>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        ${issuesResult.data.map(issue => `
-                                            <tr onclick="navigateToIssue(${issue.id})" style="cursor: pointer;">
-                                                <td>
-                                                    ${issue.cv_img
-                                                        ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
-                                                        : '📖'}
-                                                </td>
-                                                <td><strong>#${issue.issue_number || '?'}</strong></td>
-                                                <td>${issue.name || 'Без назви'}</td>
-                                                <td>${formatCoverDate(issue.cover_date)}</td>
-                                                <td>${formatReleaseDate(issue.release_date)}</td>
-                                                <td onclick="event.stopPropagation()">
-                                                    <button class="btn btn-secondary btn-small" onclick="editIssueFromVolume(${issue.id})">Редагувати</button>
-                                                </td>
-                                            </tr>
-                                        `).join('')}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ` : '<p style="text-align:center; color:var(--text-secondary); padding:2rem;">Немає випусків</p>'}
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 ` : ''}
-            </div>
 
-            ${renderAddToSeriesModal()}
+                ${renderAddToSeriesModal()}
+
+                <!-- ── Модалка вибору тому (переклади + журнали) ─────────── -->
+                <div id="volume-picker-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+                    <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:520px; max-width:90vw;">
+                        <h3 id="volume-picker-title" style="margin-bottom:1rem;">Вибрати том</h3>
+                        <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
+                            <div class="form-group" style="flex:1; margin:0;">
+                                <input type="text" id="volume-picker-search" placeholder="Пошук за назвою..." style="width:100%;">
+                            </div>
+                            <div class="form-group" style="width:130px; margin:0;">
+                                <input type="number" id="volume-picker-cvid" placeholder="CV ID" style="width:100%;">
+                            </div>
+                        </div>
+                        <div id="volume-picker-results" style="max-height:320px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; margin-bottom:1rem; min-height:48px;"></div>
+                        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                            <button class="btn btn-secondary" onclick="closeVolumePickerModal()">Скасувати</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         `;
 
     } catch (error) {
@@ -242,33 +363,35 @@ export async function renderVolumeDetail(params) {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 function formatIssueRanges(numbers) {
-  if (!numbers || numbers.length === 0) return null;
+    if (!numbers || numbers.length === 0) return null;
 
-  const nums = numbers
-    .map(n => parseFloat(n))
-    .filter(n => !isNaN(n))
-    .sort((a, b) => a - b);
+    const nums = numbers
+        .map(n => parseFloat(n))
+        .filter(n => !isNaN(n))
+        .sort((a, b) => a - b);
 
-  if (nums.length === 0) return null;
+    if (nums.length === 0) return null;
 
-  const ranges = [];
-  let start = nums[0], end = nums[0];
+    const ranges = [];
+    let start = nums[0], end = nums[0];
 
-  for (let i = 1; i < nums.length; i++) {
-    if (nums[i] === end + 1) {
-      end = nums[i];
-    } else {
-      ranges.push(start === end ? `#${start}` : `#${start}–#${end}`);
-      start = end = nums[i];
+    for (let i = 1; i < nums.length; i++) {
+        if (nums[i] === end + 1) {
+            end = nums[i];
+        } else {
+            ranges.push(start === end ? `#${start}` : `#${start}–#${end}`);
+            start = end = nums[i];
+        }
     }
-  }
-  ranges.push(start === end ? `#${start}` : `#${start}–#${end}`);
+    ranges.push(start === end ? `#${start}` : `#${start}–#${end}`);
 
-  return ranges.join(', ');
+    return ranges.join(', ');
 }
 
-// ===== МОДАЛКА "ДОДАТИ ДО СЕРІЇ" (shared з collectionDetail) =====
+// ===== МОДАЛКА "ДОДАТИ ДО СЕРІЇ" =========================================
 
 function renderAddToSeriesModal() {
     return `
@@ -288,7 +411,7 @@ function renderAddToSeriesModal() {
 }
 
 let addToSeriesItemId = null;
-let addToSeriesType = null; // 'volume'
+let addToSeriesType = null;
 let seriesSearchTimeout = null;
 
 window.openAddToSeriesModal = (itemId, type) => {
@@ -346,73 +469,68 @@ window.addItemToSeries = async (seriesId) => {
     });
     if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
     window.closeAddToSeriesModal();
-    // Перезавантажуємо поточну сторінку
     const url = new URL(window.location);
     const id = url.searchParams.get('id');
     if (id) renderVolumeDetail({ id });
 };
 
-// ===== ФОРМИ РЕДАГУВАННЯ =====
-
-
+// ===== ФОРМИ РЕДАГУВАННЯ =================================================
 
 async function getVolumeFormHTML(volume = null) {
-  const [themesRes, currentThemesRes] = await Promise.all([
-    fetch(`${API_BASE}/themes`).then(r => r.json()),
-    volume?.id
-      ? fetch(`${API_BASE}/volumes/${volume.id}/themes`).then(r => r.json())
-      : Promise.resolve({ data: [] })
-  ]);
+    const [themesRes, currentThemesRes] = await Promise.all([
+        fetch(`${API_BASE}/themes`).then(r => r.json()),
+        volume?.id
+            ? fetch(`${API_BASE}/volumes/${volume.id}/themes`).then(r => r.json())
+            : Promise.resolve({ data: [] })
+    ]);
 
-  const allThemes = themesRes.data || [];
-  const currentThemeIds = new Set((currentThemesRes.data || []).map(t => t.id));
+    const allThemes = themesRes.data || [];
+    const currentThemeIds = new Set((currentThemesRes.data || []).map(t => t.id));
 
-  // Отримуємо ім'я видавника якщо є ID
-  let publisherName = volume?.publisher_name || '';
+    let publisherName = volume?.publisher_name || '';
 
-  return `
-    <form id="edit-form">
-      <div class="form-row">
-        <div class="form-group"><label>CV ID *</label><input type="number" name="cv_id" value="${volume?.cv_id || ''}" required></div>
-        <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${volume?.cv_slug || ''}" required></div>
-      </div>
-      <div class="form-group"><label>Назва</label><input type="text" name="name" value="${volume?.name || ''}"></div>
-      <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${volume?.cv_img || ''}"></div>
-      <div class="form-row">
-        <div class="form-group"><label>Мова</label><input type="text" name="lang" value="${volume?.lang || ''}" placeholder="en, uk"></div>
-        <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>LocG ID</label><input type="number" name="locg_id" value="${volume?.locg_id || ''}"></div>
-        <div class="form-group"><label>LocG Slug</label><input type="text" name="locg_slug" value="${volume?.locg_slug || ''}"></div>
-      </div>
-
-      ${publisherSearchHTML({
-        publisherId: volume?.publisher || '',
-        publisherName,
-        inputId: 'vol-pub-input',
-        hiddenId: 'vol-pub-id',
-        resultsId: 'vol-pub-results',
-        chipId: 'vol-pub-chip'
-      })}
-
-        <!-- Теми: чіпи + пошук + чекбокси -->
-        <div class="form-group">
-            <label>Теми</label>
-            <div id="vol-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
-            ${buildThemeChipsHTML(
-                allThemes.filter(t => currentThemeIds.has(t.id)),
-                'removeThemeChipVolume'
-            )}
+    return `
+        <form id="edit-form">
+            <div class="form-row">
+                <div class="form-group"><label>CV ID *</label><input type="number" name="cv_id" value="${volume?.cv_id || ''}" required></div>
+                <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${volume?.cv_slug || ''}" required></div>
             </div>
-            <input type="text" id="theme-search" placeholder="Пошук тем..." style="margin-bottom:0.5rem; width:100%;"
-                oninput="filterThemesVol(this.value)">
-            <div id="themes-list" class="themes-checkbox-list">
-            ${buildThemeCheckboxListHTML(allThemes, currentThemeIds, 'onThemeCheckboxChangeVol')}
+            <div class="form-group"><label>Назва</label><input type="text" name="name" value="${volume?.name || ''}"></div>
+            <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${volume?.cv_img || ''}"></div>
+            <div class="form-row">
+                <div class="form-group"><label>Мова</label><input type="text" name="lang" value="${volume?.lang || ''}" placeholder="en, uk"></div>
+                <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}"></div>
             </div>
-        </div>
-    </form>
-  `;
+            <div class="form-row">
+                <div class="form-group"><label>LocG ID</label><input type="number" name="locg_id" value="${volume?.locg_id || ''}"></div>
+                <div class="form-group"><label>LocG Slug</label><input type="text" name="locg_slug" value="${volume?.locg_slug || ''}"></div>
+            </div>
+
+            ${publisherSearchHTML({
+                publisherId: volume?.publisher || '',
+                publisherName,
+                inputId: 'vol-pub-input',
+                hiddenId: 'vol-pub-id',
+                resultsId: 'vol-pub-results',
+                chipId: 'vol-pub-chip'
+            })}
+
+            <div class="form-group">
+                <label>Теми</label>
+                <div id="vol-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
+                    ${buildThemeChipsHTML(
+                        allThemes.filter(t => currentThemeIds.has(t.id)),
+                        'removeThemeChipVolume'
+                    )}
+                </div>
+                <input type="text" id="theme-search" placeholder="Пошук тем..." style="margin-bottom:0.5rem; width:100%;"
+                    oninput="filterThemesVol(this.value)">
+                <div id="themes-list" class="themes-checkbox-list">
+                    ${buildThemeCheckboxListHTML(allThemes, currentThemeIds, 'onThemeCheckboxChangeVol')}
+                </div>
+            </div>
+        </form>
+    `;
 }
 
 function getIssueFormHTML(issue = null) {
@@ -436,81 +554,75 @@ function getIssueFormHTML(issue = null) {
     `;
 }
 
+// ===== НАВІГАЦІЯ =========================================================
+
 window.navigateToIssue = (id) => navigate('issue-detail', { id });
+window.navigateToCollection = (id) => navigate('collection-detail', { id });
+
+// ===== РЕДАГУВАННЯ ТОМУ ==================================================
 
 window.editVolumeDetail = async (id) => {
-  const volume = await fetch(`${API_BASE}/volumes/${id}`).then(r => r.json());
-  const formHTML = await getVolumeFormHTML(volume);
+    const volume = await fetch(`${API_BASE}/volumes/${id}`).then(r => r.json());
+    const formHTML = await getVolumeFormHTML(volume);
 
-  openModal('Редагувати том', formHTML, async (data) => { // wide модалка → додай , { wide: true } як 4й параметр
-    const themeCheckboxes = document.querySelectorAll('#edit-form input[name="theme_ids"]:checked');
-    const theme_ids = Array.from(themeCheckboxes).map(cb => parseInt(cb.value));
-    const publisherId = document.getElementById('vol-pub-id')?.value;
+    openModal('Редагувати том', formHTML, async (data) => {
+        const themeCheckboxes = document.querySelectorAll('#edit-form input[name="theme_ids"]:checked');
+        const theme_ids = Array.from(themeCheckboxes).map(cb => parseInt(cb.value));
+        const publisherId = document.getElementById('vol-pub-id')?.value;
 
-    await fetch(`${API_BASE}/volumes/${id}`, {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...data,
-        theme_ids,
-        publisher: publisherId ? parseInt(publisherId) : null,
-        locg_id: data.locg_id ? parseInt(data.locg_id) : null,
-        start_year: data.start_year ? parseInt(data.start_year) : null,
-      })
+        await fetch(`${API_BASE}/volumes/${id}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ...data,
+                theme_ids,
+                publisher: publisherId ? parseInt(publisherId) : null,
+                locg_id: data.locg_id ? parseInt(data.locg_id) : null,
+                start_year: data.start_year ? parseInt(data.start_year) : null,
+            })
+        });
+        await renderVolumeDetail({ id });
+        await window.updateStats();
     });
-    await renderVolumeDetail({ id });
-    await window.updateStats();
-  });
 
-  // Ініціалізуємо пошук видавництва після рендеру
-  requestAnimationFrame(() => {
-    initPublisherSearch({
-      inputId: 'vol-pub-input',
-      hiddenId: 'vol-pub-id',
-      resultsId: 'vol-pub-results',
-      chipId: 'vol-pub-chip'
+    requestAnimationFrame(() => {
+        initPublisherSearch({
+            inputId: 'vol-pub-input',
+            hiddenId: 'vol-pub-id',
+            resultsId: 'vol-pub-results',
+            chipId: 'vol-pub-chip'
+        });
+        initVolThemeChips();
     });
-    initVolThemeChips();
-  });
 };
 
 function initVolThemeChips() {
-  // Встановлюємо обробники на всі чекбокси
-  document.querySelectorAll('#themes-list input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', () => {
-      rebuildVolThemeChips();
+    document.querySelectorAll('#themes-list input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', () => { rebuildVolThemeChips(); });
     });
-  });
 }
 
 function rebuildVolThemeChips() {
-  const container = document.getElementById('vol-theme-chips');
-  if (!container) return;
-
-  const checked = document.querySelectorAll('#themes-list input[type="checkbox"]:checked');
-  const selectedThemes = Array.from(checked).map(cb => ({
-    id: parseInt(cb.value),
-    name: cb.closest('label')?.querySelector('span')?.textContent?.trim() || '',
-    type: cb.dataset.type || 'theme',
-  }));
-
-  container.innerHTML = buildThemeChipsHTML(selectedThemes, 'removeThemeChipVolume');
+    const container = document.getElementById('vol-theme-chips');
+    if (!container) return;
+    const checked = document.querySelectorAll('#themes-list input[type="checkbox"]:checked');
+    const selectedThemes = Array.from(checked).map(cb => ({
+        id: parseInt(cb.value),
+        name: cb.closest('label')?.querySelector('span')?.textContent?.trim() || '',
+        type: cb.dataset.type || 'theme',
+    }));
+    container.innerHTML = buildThemeChipsHTML(selectedThemes, 'removeThemeChipVolume');
 }
 
 window.removeThemeChipVolume = (themeId) => {
-  const cb = document.querySelector(`#themes-list input[value="${themeId}"]`);
-  if (cb) {
-    cb.checked = false;
-  }
-  rebuildVolThemeChips();
+    const cb = document.querySelector(`#themes-list input[value="${themeId}"]`);
+    if (cb) cb.checked = false;
+    rebuildVolThemeChips();
 };
 
-window.onThemeCheckboxChangeVol = (themeId, themeName, checked) => {
-  rebuildVolThemeChips();
-};
+window.onThemeCheckboxChangeVol = () => { rebuildVolThemeChips(); };
+window.filterThemesVol = (q) => { filterThemeCheckboxList(q, 'themes-list'); };
 
-window.filterThemesVol = (q) => {
-  filterThemeCheckboxList(q, 'themes-list');
-};
+// ===== РЕДАГУВАННЯ ВИПУСКУ ===============================================
 
 window.editIssueFromVolume = async (id) => {
     const issue = await fetch(`${API_BASE}/issues/${id}`).then(r => r.json());
@@ -525,8 +637,10 @@ window.editIssueFromVolume = async (id) => {
     });
 };
 
+// ===== КОНВЕРТАЦІЯ =======================================================
+
 window.convertAllIssuesToCollections = async (volumeId, count) => {
-    if (!confirm(`Конвертувати всі ${count} випусків цього тома у збірники? Цю дію не можна скасувати.`)) return;
+    if (!confirm(`Конвертувати всі ${count} випусків цього тома у збірники?\nЦю дію не можна скасувати.`)) return;
     try {
         const res = await fetch(`${API_BASE}/volumes/${volumeId}/convert-all-to-collections`, { method: 'POST' });
         const data = await res.json();
@@ -553,18 +667,179 @@ window.convertAllCollectionsToIssues = async (volumeId, count) => {
     }
 };
 
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    ['edit-order-modal', 'add-issue-ro-modal'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el && el.style.display === 'flex') el.style.display = 'none';
-    });
-    // Також стандартна модалка
-    const mainModal = document.getElementById('modal');
-    if (mainModal?.classList.contains('active')) {
-      mainModal.classList.remove('active');
-    }
-  }
-});
+// ===== ПЕРЕКЛАДИ =========================================================
 
-window.navigateToCollection = (id) => navigate('collection-detail', { id });
+window.removeTranslation = async (parentId, childId) => {
+    if (!confirm('Від\'єднати цей переклад від оригіналу?')) return;
+    const res = await fetch(`${API_BASE}/volumes/${parentId}/translations/${childId}`, { method: 'DELETE' });
+    if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+    const id = new URL(window.location).searchParams.get('id');
+    if (id) renderVolumeDetail({ id });
+};
+
+// ===== ЖУРНАЛИ ===========================================================
+
+window.removeMagazineChild = async (magazineId, childId) => {
+    if (!confirm('Від\'єднати цей том від журналу?')) return;
+    const res = await fetch(`${API_BASE}/volumes/${magazineId}/magazine-children/${childId}`, { method: 'DELETE' });
+    if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+    const id = new URL(window.location).searchParams.get('id');
+    if (id) renderVolumeDetail({ id });
+};
+
+// ===== СПІЛЬНА МОДАЛКА ВИБОРУ ТОМУ =======================================
+//
+// Режими:
+//   'translation-add'        — поточний том є оригіналом, шукаємо дочірній (переклад)
+//   'translation-set-parent' — поточний том є перекладом, шукаємо батьківський (оригінал)
+//   'magazine-add'           — поточний том є журналом, шукаємо дочірній
+//   'magazine-set-parent'    — поточний том є дочірнім, шукаємо батьківський журнал
+
+let _volumePickerMode   = null;
+let _volumePickerRefId  = null;   // ID тому з якого відкрита модалка
+let _volumePickerTimeout = null;
+
+window.openVolumePickerModal = (mode, refId) => {
+    _volumePickerMode  = mode;
+    _volumePickerRefId = refId;
+
+    const titles = {
+        'translation-add':        'Додати перекладений том',
+        'translation-set-parent': 'Вибрати першоджерело (оригінал)',
+        'magazine-add':           'Додати том до журналу',
+        'magazine-set-parent':    'Вибрати батьківський журнал',
+    };
+    document.getElementById('volume-picker-title').textContent = titles[mode] || 'Вибрати том';
+    document.getElementById('volume-picker-results').innerHTML = '';
+
+    const searchInput = document.getElementById('volume-picker-search');
+    const cvidInput   = document.getElementById('volume-picker-cvid');
+    searchInput.value = '';
+    cvidInput.value   = '';
+
+    document.getElementById('volume-picker-modal').style.display = 'flex';
+
+    searchInput.oninput = (e) => {
+        cvidInput.value = '';
+        clearTimeout(_volumePickerTimeout);
+        _volumePickerTimeout = setTimeout(() => _searchVolumePicker({ name: e.target.value }), 300);
+    };
+
+    cvidInput.oninput = (e) => {
+        searchInput.value = '';
+        clearTimeout(_volumePickerTimeout);
+        _volumePickerTimeout = setTimeout(() => _searchVolumePicker({ cv_id: e.target.value }), 300);
+    };
+
+    searchInput.focus();
+};
+
+window.closeVolumePickerModal = () => {
+    document.getElementById('volume-picker-modal').style.display = 'none';
+    _volumePickerMode  = null;
+    _volumePickerRefId = null;
+};
+
+async function _searchVolumePicker({ name, cv_id } = {}) {
+    const el = document.getElementById('volume-picker-results');
+
+    if (!name?.trim() && !cv_id?.toString().trim()) {
+        el.innerHTML = '';
+        return;
+    }
+
+    let url;
+    if (cv_id?.toString().trim()) {
+        url = `${API_BASE}/volumes?cv_id=${encodeURIComponent(cv_id.toString().trim())}&limit=5`;
+    } else {
+        url = `${API_BASE}/volumes?search=${encodeURIComponent(name.trim())}&limit=20`;
+    }
+
+    const res = await fetch(url);
+    const result = await res.json();
+
+    if (!result.data?.length) {
+        el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary);">Нічого не знайдено</div>';
+        return;
+    }
+    el.innerHTML = result.data.map(vol => `
+        <div onclick="_confirmVolumePickerSelection(${vol.id})"
+             style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
+             onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
+            ${vol.cv_img
+                ? `<img src="${cv_img_path_small}${vol.cv_img.startsWith('/') ? '' : '/'}${vol.cv_img}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;">`
+                : '<div style="width:36px;height:36px;background:var(--bg-secondary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1rem;">📚</div>'}
+            <div>
+                <div style="font-weight:500;">${vol.lang ? `<span style="color:var(--accent)">[${vol.lang}]</span> ` : ''}${vol.name}</div>
+                <div style="font-size:0.8rem; color:var(--text-secondary);">CV ID: ${vol.cv_id}${vol.publisher_name ? ` · ${vol.publisher_name}` : ''}</div>
+            </div>
+        </div>
+    `).join('');
+}
+
+window._confirmVolumePickerSelection = async (selectedId) => {
+    if (!_volumePickerMode || !_volumePickerRefId) return;
+
+    // Визначаємо хто parent, хто child залежно від режиму
+    let url, body;
+    switch (_volumePickerMode) {
+        case 'translation-add':
+            // refId = оригінал, selectedId = переклад
+            url  = `${API_BASE}/volumes/${_volumePickerRefId}/translations`;
+            body = { child_id: selectedId };
+            break;
+        case 'translation-set-parent':
+            // refId = переклад, selectedId = оригінал
+            url  = `${API_BASE}/volumes/${selectedId}/translations`;
+            body = { child_id: _volumePickerRefId };
+            break;
+        case 'magazine-add':
+            // refId = журнал, selectedId = дочірній том
+            url  = `${API_BASE}/volumes/${_volumePickerRefId}/magazine-children`;
+            body = { child_id: selectedId };
+            break;
+        case 'magazine-set-parent':
+            // refId = дочірній том, selectedId = журнал
+            url  = `${API_BASE}/volumes/${selectedId}/magazine-children`;
+            body = { child_id: _volumePickerRefId };
+            break;
+        default:
+            return;
+    }
+
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || 'Помилка');
+        return;
+    }
+
+    window.closeVolumePickerModal();
+    const id = new URL(window.location).searchParams.get('id');
+    if (id) renderVolumeDetail({ id });
+};
+
+// ===== KEYBOARD SHORTCUTS ================================================
+
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        const pickerModal = document.getElementById('volume-picker-modal');
+        if (pickerModal && pickerModal.style.display === 'flex') {
+            window.closeVolumePickerModal();
+            return;
+        }
+        const seriesModal = document.getElementById('add-to-series-modal');
+        if (seriesModal && seriesModal.style.display === 'flex') {
+            window.closeAddToSeriesModal();
+            return;
+        }
+        const mainModal = document.getElementById('modal');
+        if (mainModal?.classList.contains('active')) {
+            mainModal.classList.remove('active');
+        }
+    }
+});

@@ -181,12 +181,40 @@ const MIGRATIONS = [
       db.run(`CREATE INDEX IF NOT EXISTS idx_roi_issue_cv_id ON reading_order_issues(issue_cv_id)`);
     },
   },
+   // ── M011: themes — додаємо поле type для жанрів та тем ─────────────────────────────
   {
     id: 'M011_themes_type',
     up(db) {
       // Додаємо колонку type зі значенням за замовчуванням 'theme'
       db.run(`ALTER TABLE themes ADD COLUMN type TEXT NOT NULL DEFAULT 'theme' CHECK(type IN ('genre', 'theme'))`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_themes_type ON themes(type)`);
+    },
+  },
+   // ── M012: volume_translations + volume_magazines ──────────────────────────
+  //   • volume_translations — зв'язок оригінал → переклад                    
+  //   • volume_magazines    — зв'язок журнал → том                           
+  {
+    id: 'M012_volume_relations',
+    up(db) {
+      // Переклади: parent = оригінальний том, child = перекладений том
+      db.run(`CREATE TABLE IF NOT EXISTS volume_translations (
+        id        INTEGER PRIMARY KEY AUTOINCREMENT,
+        parent_id INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+        child_id  INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+        UNIQUE(parent_id, child_id)
+      )`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_vtrans_parent ON volume_translations(parent_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_vtrans_child  ON volume_translations(child_id)`);
+
+      // Журнали: magazine_id = батьківський том-журнал, child_id = том що входить у журнал
+      db.run(`CREATE TABLE IF NOT EXISTS volume_magazines (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        magazine_id INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+        child_id    INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+        UNIQUE(magazine_id, child_id)
+      )`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_vmag_magazine ON volume_magazines(magazine_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_vmag_child    ON volume_magazines(child_id)`);
     },
   },
 
