@@ -9,11 +9,15 @@ const MAGAZINE_THEME_ID   = 35; // Magazine
 const router = Router();
 
 router.get('/', (req, res) => {
-  const { search, exact, cv_id, limit = 50, offset = 0, publisher_ids } = req.query;
+  const { search, exact, cv_id, limit = 50, offset = 0, publisher_ids, theme_ids } = req.query;
   const isExact = exact === 'true';
 
   const pubIds = publisher_ids
     ? publisher_ids.split(',').map(Number).filter(Boolean)
+    : [];
+
+  const themeIds = theme_ids
+    ? theme_ids.split(',').map(Number).filter(Boolean)
     : [];
 
   let conditions = [], searchParams = [], params = [];
@@ -29,6 +33,12 @@ router.get('/', (req, res) => {
   if (pubIds.length) {
     conditions.push(`v.publisher IN (${pubIds.map(() => '?').join(',')})`);
     searchParams.push(...pubIds);
+  }
+  if (themeIds.length) {
+    conditions.push(
+      `v.cv_id IN (SELECT cv_vol_id FROM volume_themes WHERE theme_id IN (${themeIds.map(() => '?').join(',')}))`
+    );
+    searchParams.push(...themeIds);
   }
 
   const whereClause = conditions.length ? ' WHERE ' + conditions.join(' AND ') : '';

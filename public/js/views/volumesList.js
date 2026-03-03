@@ -1,12 +1,13 @@
 // public/js/views/volumesList.js
 
-import { initListPage, reloadCatalog, setCatalogPublisherIds } from '../components/catalog.js';
+import { initListPage, reloadCatalog, setCatalogPublisherIds, setCatalogThemeIds } from '../components/catalog.js';
 import { cv_img_path_small } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { createItem, updateItem, deleteItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
 import { clearFiltersPanel, getFiltersPanel } from '../components/filtersPanel.js';
 import { mountPublisherFilter } from '../components/publisherFilterPanel.js';
+import { mountThemeFilter } from '../components/themeFilterPanel.js';
 
 function getFormHTML(volume = null) {
   return `
@@ -100,5 +101,10 @@ export async function renderVolumesList() {
     panelId: 'volumes-publisher-filter',
     selectedPubs: [],
     onChange: (pubs) => { setCatalogPublisherIds(pubs.map(p => p.id)); },
+  });
+  mountThemeFilter({
+    panelId: 'volumes-theme-filter',
+    selectedThemeIds: [],
+    onChange: (ids) => { setCatalogThemeIds(ids); },
   });
 }

@@ -13,6 +13,7 @@ let currentSearch = '';
 let currentCvId = '';
 let exactMatch = false;
 let currentPublisherIds = [];
+let currentThemeIds = [];
 const LIMIT = 100;
 
 let _config = null;       // поточна конфігурація сторінки
@@ -30,6 +31,7 @@ export async function initListPage(config) {
   currentCvId = '';
   exactMatch = false;
   currentPublisherIds = [];
+  currentThemeIds = [];
   _config = config;
   _lastData = null;
 
@@ -185,6 +187,7 @@ async function loadAndRender() {
   if (exactMatch)     params.exact  = 'true';
   if (currentCvId)    params.cv_id  = currentCvId;
                       params.publisher_ids = currentPublisherIds.join(',');
+  if (currentThemeIds.length) params.theme_ids = currentThemeIds.join(',');
 
   try {
     const result = await fetchItems(_config.endpoint, params);
@@ -381,6 +384,12 @@ function escapeAttr(str) {
 
 export function setCatalogPublisherIds(ids) {
   currentPublisherIds = ids;
+  currentOffset = 0;
+  if (_config) loadAndRender();
+}
+
+export function setCatalogThemeIds(ids) {
+  currentThemeIds = ids;
   currentOffset = 0;
   if (_config) loadAndRender();
 }
