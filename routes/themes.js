@@ -11,7 +11,7 @@ router.get('/', (req, res) => {
 
   if (search) {
     conditions.push('(ua_name LIKE ? OR name LIKE ?)');
-    params.push(`%${search}%`, `%${search}%`);
+    params.push(`%${search.toLowerCase()}%`, `%${search}%`);
   }
   // Підтримуємо всі три типи: theme, genre, type
   if (type && ['genre', 'theme', 'type'].includes(type)) {

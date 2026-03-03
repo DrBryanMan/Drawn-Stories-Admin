@@ -228,7 +228,9 @@ export function buildThemeCheckboxListHTML(allThemes, selectedIds, onChangeFn) {
   const themes  = allThemes.filter(t => t.type === 'theme' || !t.type);
 
   const renderItem = (t) => {
-    const label = t.ua_name || t.name;
+    const label = t.ua_name
+      ? t.ua_name.charAt(0).toUpperCase() + t.ua_name.slice(1)
+      : t.name;
     return `
       <label class="theme-checkbox-item"
         onmouseenter="this.style.background='var(--bg-secondary)'"

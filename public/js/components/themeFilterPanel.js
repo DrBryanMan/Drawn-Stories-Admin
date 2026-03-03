@@ -108,7 +108,9 @@ export function mountThemeFilter({ panelId, selectedThemes, onChange }) {
             html += `<div class="filter-dropdown__group-header">${groupLabels[grp]}</div>`;
             items.forEach(t => {
               const selected = current.some(c => c.id === t.id);
-              const nameField = t.ua_name || t.name;
+              const nameField = t.ua_name
+                ? t.ua_name.charAt(0).toUpperCase() + t.ua_name.slice(1)
+                : t.name;
               html += `<div class="filter-dropdown__item${selected ? ' filter-dropdown__item--selected' : ''}"
                             data-id="${t.id}" data-name="${nameField}" data-type="${t.type || 'theme'}">
                           ${nameField}
