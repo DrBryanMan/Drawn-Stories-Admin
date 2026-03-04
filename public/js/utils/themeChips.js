@@ -236,9 +236,10 @@ export function buildThemeCheckboxListHTML(allThemes, selectedIds, onChangeFn) {
         onmouseenter="this.style.background='var(--bg-secondary)'"
         onmouseleave="this.style.background=''">
         <input type="checkbox" value="${t.id}"
-               data-type="${t.type || 'theme'}"
-               ${selectedIds.has(t.id) ? 'checked' : ''}
-               onchange="${onChangeFn}()">
+              data-type="${t.type || 'theme'}"
+              data-name="${(t.name || '').toLowerCase()}"
+              ${selectedIds.has(t.id) ? 'checked' : ''}
+              onchange="${onChangeFn}()">
         <span>${label}</span>
       </label>
     `;
@@ -267,8 +268,9 @@ export function filterThemeCheckboxList(query, listId) {
   const list = document.getElementById(listId);
   if (!list) return;
   list.querySelectorAll('.theme-checkbox-item').forEach(item => {
-    const text = item.querySelector('span')?.textContent?.toLowerCase() || '';
-    item.style.display = text.includes(q) ? '' : 'none';
+    const uaText = item.querySelector('span')?.textContent?.toLowerCase() || '';
+    const enText = item.querySelector('input')?.dataset?.name || '';
+    item.style.display = (uaText.includes(q) || enText.includes(q)) ? '' : 'none';
   });
   // Ховаємо порожні заголовки груп
   list.querySelectorAll('.theme-group-header').forEach(header => {

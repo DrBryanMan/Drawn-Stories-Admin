@@ -498,7 +498,30 @@ async function getVolumeFormHTML(volume = null) {
             <div class="form-group"><label>Назва</label><input type="text" name="name" value="${volume?.name || ''}"></div>
             <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${volume?.cv_img || ''}"></div>
             <div class="form-row">
-                <div class="form-group"><label>Мова</label><input type="text" name="lang" value="${volume?.lang || ''}" placeholder="en, uk"></div>
+                <div class="form-group">
+                    <label>Мова</label>
+                    <select name="lang">
+                        <option value="">— не вказано —</option>
+                        <option value="en"  ${volume?.lang === 'en'  ? 'selected' : ''}>🇬🇧 English (en)</option>
+                        <option value="uk"  ${volume?.lang === 'uk'  ? 'selected' : ''}>🇺🇦 Українська (uk)</option>
+                        <option value="fr"  ${volume?.lang === 'fr'  ? 'selected' : ''}>🇫🇷 Français (fr)</option>
+                        <option value="de"  ${volume?.lang === 'de'  ? 'selected' : ''}>🇩🇪 Deutsch (de)</option>
+                        <option value="es"  ${volume?.lang === 'es'  ? 'selected' : ''}>🇪🇸 Español (es)</option>
+                        <option value="it"  ${volume?.lang === 'it'  ? 'selected' : ''}>🇮🇹 Italiano (it)</option>
+                        <option value="pt"  ${volume?.lang === 'pt'  ? 'selected' : ''}>🇵🇹 Português (pt)</option>
+                        <option value="ru"  ${volume?.lang === 'ru'  ? 'selected' : ''}>🇷🇺 Русский (ru)</option>
+                        <option value="pl"  ${volume?.lang === 'pl'  ? 'selected' : ''}>🇵🇱 Polski (pl)</option>
+                        <option value="nl"  ${volume?.lang === 'nl'  ? 'selected' : ''}>🇳🇱 Nederlands (nl)</option>
+                        <option value="ja"  ${volume?.lang === 'ja'  ? 'selected' : ''}>🇯🇵 日本語 (ja)</option>
+                        <option value="zh"  ${volume?.lang === 'zh'  ? 'selected' : ''}>🇨🇳 中文 (zh)</option>
+                        <option value="ko"  ${volume?.lang === 'ko'  ? 'selected' : ''}>🇰🇷 한국어 (ko)</option>
+                        <option value="sv"  ${volume?.lang === 'sv'  ? 'selected' : ''}>🇸🇪 Svenska (sv)</option>
+                        <option value="fi"  ${volume?.lang === 'fi'  ? 'selected' : ''}>🇫🇮 Suomi (fi)</option>
+                        <option value="nb"  ${volume?.lang === 'nb'  ? 'selected' : ''}>🇳🇴 Norsk (nb)</option>
+                        <option value="da"  ${volume?.lang === 'da'  ? 'selected' : ''}>🇩🇰 Dansk (da)</option>
+                        <option value="tr"  ${volume?.lang === 'tr'  ? 'selected' : ''}>🇹🇷 Türkçe (tr)</option>
+                    </select>
+                </div>
                 <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}"></div>
             </div>
             <div class="form-row">
@@ -566,7 +589,7 @@ window.editVolumeDetail = async (id) => {
     const formHTML = await getVolumeFormHTML(volume);
 
     openModal('Редагувати том', formHTML, async (data) => {
-        const themeCheckboxes = document.querySelectorAll('#edit-form input[name="theme_ids"]:checked');
+        const themeCheckboxes = document.querySelectorAll('#themes-list input[type="checkbox"]:checked');
         const theme_ids = Array.from(themeCheckboxes).map(cb => parseInt(cb.value));
         const publisherId = document.getElementById('vol-pub-id')?.value;
 
