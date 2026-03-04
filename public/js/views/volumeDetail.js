@@ -62,7 +62,7 @@ export async function renderVolumeDetail(params) {
                 <!-- ── Шапка тому ────────────────────────────────────────── -->
                 <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                     <div style="flex-shrink: 0;">
-                        ${volume.cv_img
+                    ${volume.cv_img
                             ? `<img src="${cv_img_path_small + volume.cv_img}" alt="${volume.name}"
                                 style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
                             : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📚</div>'}
@@ -70,35 +70,35 @@ export async function renderVolumeDetail(params) {
                     <div style="flex: 1;">
                         <h1 style="font-size: 2rem; margin-bottom: 1rem;">${volume.name || 'Без назви'}</h1>
                         <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            ${volumeSeries.length > 0 ? `
+                        ${volumeSeries.length > 0 ? `
                                 <div>
                                     <strong>Серія:</strong>
-                                    ${volumeSeries.map(s => `
+                                ${volumeSeries.map(s => `
                                         <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
                                               onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
                                     `).join(' ')}
                                 </div>
                             ` : ''}
-                            ${volume.start_year ? `<div><strong>Рік початку:</strong> ${volume.start_year}</div>` : ''}
-                            ${volume.publisher || volume.publisher_name ? `
+                        ${volume.start_year ? `<div><strong>Рік початку:</strong> ${volume.start_year}</div>` : ''}
+                        ${volume.publisher || volume.publisher_name ? `
                                 <div>
                                     <strong>Видавець:</strong>
-                                    ${volume.publisher_name
+                                ${volume.publisher_name
                                         ? `${volume.publisher_name} <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${volume.publisher})</span>`
                                         : `cv_id: ${volume.publisher}`}
                                 </div>
                             ` : ''}
                             <div><strong>Дата створення:</strong> ${formatDate(volume.created_at)}</div>
-                            ${volume.lang ? `<div><strong>Мова:</strong> ${volume.lang}</div>` : ''}
-                            ${volumeThemes.length > 0 ? `
+                        ${volume.lang ? `<div><strong>Мова:</strong> ${volume.lang}</div>` : ''}
+                        ${volumeThemes.length > 0 ? `
                                 <div>
                                     <strong>Теми:</strong>
-                                    ${volumeThemes.map(t => `<span class="theme-badge">${t.ua_name || t.name}</span>`).join(' ')}
+                                ${volumeThemes.map(t => `<span class="theme-badge">${t.ua_name || t.name}</span>`).join(' ')}
                                 </div>
                             ` : ''}
                             <div style="display: flex; align-items: center; gap: 0.5rem; height:30px;">
                                 <a href="https://comicvine.gamespot.com/${volume.cv_slug}/4050-${volume.cv_id}" target="_blank">${cv_logo_svg}</a>
-                                ${volume.locg_slug ? `
+                            ${volume.locg_slug ? `
                                     <a href="https://leagueofcomicgeeks.com/comics/series/${volume.locg_id}/${volume.locg_slug}" target="_blank">
                                         <img src="${locg_img}" alt="League of Comic Geeks" style="height:30px; vertical-align:middle;">
                                     </a>
@@ -114,19 +114,19 @@ export async function renderVolumeDetail(params) {
                             ${!magazineParent ? `
                                 <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
                             ` : ''}
-                            ${isCollectionVolume ? `
-                                ${issuesResult.data.length > 0 ? `
+                        ${isCollectionVolume ? `
+                            ${issuesResult.data.length > 0 ? `
                                     <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
                                         📚 Конвертувати всі випуски (${issuesResult.data.length}) → збірники
                                     </button>
                                 ` : ''}
-                                ${volCollections.length > 0 ? `
+                            ${volCollections.length > 0 ? `
                                     <button class="btn btn-danger" onclick="convertAllCollectionsToIssues(${volume.id}, ${volCollections.length})">
                                         🔄 Повернути всі збірники (${volCollections.length}) → випуски
                                     </button>
                                 ` : ''}
                             ` : `
-                                ${issuesResult.data.length > 0 ? `
+                            ${issuesResult.data.length > 0 ? `
                                     <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
                                         📚 Конвертувати всі (${issuesResult.data.length}) у збірники
                                     </button>
@@ -145,12 +145,12 @@ export async function renderVolumeDetail(params) {
                             + Додати переклад
                         </button>
                     </div>
-                    ${translations.length > 0 ? `
+                ${translations.length > 0 ? `
                         <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-                            ${translations.map(t => `
+                        ${translations.map(t => `
                                 <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;"
                                      onclick="navigate('volume-detail', { id: ${t.id} })">
-                                    ${t.cv_img ? `<img src="${cv_img_path_small}${t.cv_img.startsWith('/') ? '' : '/'}${t.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
+                                ${t.cv_img ? `<img src="${cv_img_path_small}${t.cv_img.startsWith('/') ? '' : '/'}${t.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
                                     <span style="font-size:0.9rem;">${t.lang ? `<strong>[${t.lang}]</strong> ` : ''}${t.name}</span>
                                     <button class="btn btn-danger btn-small" style="padding:0.15rem 0.4rem; font-size:0.75rem; margin-left:0.25rem;"
                                         onclick="event.stopPropagation(); removeTranslation(${volume.id}, ${t.id})">✕</button>
@@ -161,7 +161,7 @@ export async function renderVolumeDetail(params) {
                 </div>
 
                 <!-- ── Оригінал (цей том — переклад) ────────────────────── -->
-                ${translationParent ? `
+            ${translationParent ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--accent); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
                             <h2 style="font-size:1.25rem; margin:0;">📖 Оригінал</h2>
@@ -172,19 +172,19 @@ export async function renderVolumeDetail(params) {
                         </div>
                         <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
                              onclick="navigate('volume-detail', { id: ${translationParent.id} })">
-                            ${translationParent.cv_img
+                        ${translationParent.cv_img
                                 ? `<img src="${cv_img_path_small}${translationParent.cv_img.startsWith('/') ? '' : '/'}${translationParent.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
                                 : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📚</div>'}
                             <div>
                                 <div style="font-weight:600;">${translationParent.lang ? `[${translationParent.lang}] ` : ''}${translationParent.name}</div>
-                                ${translationParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationParent.publisher_name}</div>` : ''}
+                            ${translationParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationParent.publisher_name}</div>` : ''}
                             </div>
                         </div>
                     </div>
                 ` : ''}
 
                 <!-- ── Журнал: список підтомів (цей том — журнал) ─────────── -->
-                ${isMagazineVolume || magazineChildren.length > 0 ? `
+            ${isMagazineVolume || magazineChildren.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
                             <h2 style="font-size:1.25rem; margin:0;">📰 Томи журналу (${magazineChildren.length})</h2>
@@ -193,12 +193,12 @@ export async function renderVolumeDetail(params) {
                                 + Додати том
                             </button>
                         </div>
-                        ${magazineChildren.length > 0 ? `
+                    ${magazineChildren.length > 0 ? `
                             <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-                                ${magazineChildren.map(t => `
+                            ${magazineChildren.map(t => `
                                     <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;"
                                          onclick="navigate('volume-detail', { id: ${t.id} })">
-                                        ${t.cv_img ? `<img src="${cv_img_path_small}${t.cv_img.startsWith('/') ? '' : '/'}${t.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
+                                    ${t.cv_img ? `<img src="${cv_img_path_small}${t.cv_img.startsWith('/') ? '' : '/'}${t.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
                                         <span style="font-size:0.9rem;">${t.lang ? `<strong>[${t.lang}]</strong> ` : ''}${t.name}${t.start_year ? ` <span style="color:var(--text-secondary)">(${t.start_year})</span>` : ''}</span>
                                         <button class="btn btn-danger btn-small" style="padding:0.15rem 0.4rem; font-size:0.75rem; margin-left:0.25rem;"
                                             onclick="event.stopPropagation(); removeMagazineChild(${volume.id}, ${t.id})">✕</button>
@@ -210,7 +210,7 @@ export async function renderVolumeDetail(params) {
                 ` : ''}
 
                 <!-- ── Батьківський журнал (цей том входить у журнал) ─────── -->
-                ${magazineParent ? `
+            ${magazineParent ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--accent); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
                             <h2 style="font-size:1.25rem; margin:0;">📰 Журнал</h2>
@@ -221,12 +221,12 @@ export async function renderVolumeDetail(params) {
                         </div>
                         <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
                              onclick="navigate('volume-detail', { id: ${magazineParent.id} })">
-                            ${magazineParent.cv_img
+                        ${magazineParent.cv_img
                                 ? `<img src="${cv_img_path_small}${magazineParent.cv_img.startsWith('/') ? '' : '/'}${magazineParent.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
                                 : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📰</div>'}
                             <div>
                                 <div style="font-weight:600;">${magazineParent.name}</div>
-                                ${magazineParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${magazineParent.publisher_name}</div>` : ''}
+                            ${magazineParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${magazineParent.publisher_name}</div>` : ''}
                             </div>
                         </div>
                     </div>
@@ -237,15 +237,15 @@ export async function renderVolumeDetail(params) {
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Входить у збірники (${volCollectionsFromIssues.length})</h2>
                         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                            ${volCollectionsFromIssues.map(col => {
+                        ${volCollectionsFromIssues.map(col => {
                                 const range = col.issue_numbers ? formatIssueRanges(col.issue_numbers.split(',')) : null;
                                 return `
                                     <div onclick="navigateToCollection(${col.id})"
                                          style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;">
-                                        ${col.cv_img ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
+                                    ${col.cv_img ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
                                         <div>
                                             <div style="font-size:0.9rem; font-weight:500;">${col.name || 'Без назви'}</div>
-                                            ${range ? `
+                                        ${range ? `
                                                 <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
                                                     📖 ${range}
                                                 </div>
@@ -259,7 +259,7 @@ export async function renderVolumeDetail(params) {
                 ` : ''}
 
                 <!-- ── Збірники тому (якщо Collection-том) ───────────────── -->
-                ${isCollectionVolume && volCollections.length > 0 ? `
+            ${isCollectionVolume && volCollections.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Збірники (${volCollections.length})</h2>
                         <div class="table">
@@ -274,10 +274,10 @@ export async function renderVolumeDetail(params) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${volCollections.map(col => `
+                                ${volCollections.map(col => `
                                         <tr onclick="navigateToCollection(${col.id})" style="cursor: pointer;">
                                             <td>
-                                                ${col.cv_img
+                                            ${col.cv_img
                                                     ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" alt="${col.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
                                                     : '📗'}
                                             </td>
@@ -294,7 +294,7 @@ export async function renderVolumeDetail(params) {
                 ` : ''}
 
                 <!-- ── Випуски ────────────────────────────────────────────── -->
-                ${issuesResult && issuesResult.data.length > 0 ? `
+            ${issuesResult && issuesResult.data.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Випуски (${issuesResult.data.length})</h2>
                         <div class="table">
@@ -310,10 +310,10 @@ export async function renderVolumeDetail(params) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    ${issuesResult.data.map(issue => `
+                                ${issuesResult.data.map(issue => `
                                         <tr onclick="navigateToIssue(${issue.id})" style="cursor: pointer;">
                                             <td>
-                                                ${issue.cv_img
+                                            ${issue.cv_img
                                                     ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
                                                     : '📖'}
                                             </td>
@@ -332,7 +332,7 @@ export async function renderVolumeDetail(params) {
                     </div>
                 ` : ''}
 
-                ${renderAddToSeriesModal()}
+            ${renderAddToSeriesModal()}
 
                 <!-- ── Модалка вибору тому (переклади + журнали) ─────────── -->
                 <div id="volume-picker-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
@@ -445,7 +445,7 @@ async function searchSeriesForAdd(query) {
         <div onclick="addItemToSeries(${s.id})"
              style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
              onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
-            ${s.cv_img
+        ${s.cv_img
                 ? `<img src="${s.cv_img}" style="width:40px; height:40px; object-fit:cover; border-radius:4px; flex-shrink:0;">`
                 : '<div style="width:40px; height:40px; background:var(--bg-secondary); border-radius:4px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:1.2rem;">📚</div>'}
             <span style="font-weight:500;">${s.name}</span>
@@ -500,24 +500,28 @@ async function getVolumeFormHTML(volume = null) {
                     <label>Мова</label>
                     <select name="lang">
                         <option value="">— не вказано —</option>
-                        <option value="en"  ${volume?.lang === 'en'  ? 'selected' : ''}>🇬🇧 English (en)</option>
-                        <option value="uk"  ${volume?.lang === 'uk'  ? 'selected' : ''}>🇺🇦 Українська (uk)</option>
-                        <option value="fr"  ${volume?.lang === 'fr'  ? 'selected' : ''}>🇫🇷 Français (fr)</option>
-                        <option value="de"  ${volume?.lang === 'de'  ? 'selected' : ''}>🇩🇪 Deutsch (de)</option>
-                        <option value="es"  ${volume?.lang === 'es'  ? 'selected' : ''}>🇪🇸 Español (es)</option>
-                        <option value="it"  ${volume?.lang === 'it'  ? 'selected' : ''}>🇮🇹 Italiano (it)</option>
-                        <option value="pt"  ${volume?.lang === 'pt'  ? 'selected' : ''}>🇵🇹 Português (pt)</option>
-                        <option value="ru"  ${volume?.lang === 'ru'  ? 'selected' : ''}>🇷🇺 Русский (ru)</option>
-                        <option value="pl"  ${volume?.lang === 'pl'  ? 'selected' : ''}>🇵🇱 Polski (pl)</option>
-                        <option value="nl"  ${volume?.lang === 'nl'  ? 'selected' : ''}>🇳🇱 Nederlands (nl)</option>
-                        <option value="ja"  ${volume?.lang === 'ja'  ? 'selected' : ''}>🇯🇵 日本語 (ja)</option>
-                        <option value="zh"  ${volume?.lang === 'zh'  ? 'selected' : ''}>🇨🇳 中文 (zh)</option>
-                        <option value="ko"  ${volume?.lang === 'ko'  ? 'selected' : ''}>🇰🇷 한국어 (ko)</option>
-                        <option value="sv"  ${volume?.lang === 'sv'  ? 'selected' : ''}>🇸🇪 Svenska (sv)</option>
-                        <option value="fi"  ${volume?.lang === 'fi'  ? 'selected' : ''}>🇫🇮 Suomi (fi)</option>
-                        <option value="nb"  ${volume?.lang === 'nb'  ? 'selected' : ''}>🇳🇴 Norsk (nb)</option>
-                        <option value="da"  ${volume?.lang === 'da'  ? 'selected' : ''}>🇩🇰 Dansk (da)</option>
-                        <option value="tr"  ${volume?.lang === 'tr'  ? 'selected' : ''}>🇹🇷 Türkçe (tr)</option>
+                        <option value="en" ${volume?.lang === 'en' ? 'selected' : ''}>🇺🇸 American (en)</option>
+                        <option value="gb" ${volume?.lang === 'gb' ? 'selected' : ''}>🇬🇧 English (uk)</option>
+                        <option value="fr" ${volume?.lang === 'fr' ? 'selected' : ''}>🇫🇷 Français (fr)</option>
+                        <option value="de" ${volume?.lang === 'de' ? 'selected' : ''}>🇩🇪 Deutsch (de)</option>
+                        <option value="it" ${volume?.lang === 'it' ? 'selected' : ''}>🇮🇹 Italiano (it)</option>
+                        <option value="es" ${volume?.lang === 'es' ? 'selected' : ''}>🇪🇸 Español (es)</option>
+                        <option value="es-AR" ${volume?.lang === 'es-AR' ? 'selected' : ''}>🇦🇷 Español (es-AR)</option>
+                        <option value="it" ${volume?.lang === 'it' ? 'selected' : ''}>🇮🇹 Italiano (it)</option>
+                        <option value="pl" ${volume?.lang === 'pl' ? 'selected' : ''}>🇵🇱 Polski (pl)</option>
+                        <option value="pt" ${volume?.lang === 'pt' ? 'selected' : ''}>🇵🇹 Português (pt)</option>
+                        <option value="nl" ${volume?.lang === 'nl' ? 'selected' : ''}>🇳🇱 Nederlands (nl)</option>
+                        <option value="sv" ${volume?.lang === 'sv' ? 'selected' : ''}>🇸🇪 Svenska (sv)</option>
+                        <option value="fi" ${volume?.lang === 'fi' ? 'selected' : ''}>🇫🇮 Suomi (fi)</option>
+                        <option value="no" ${volume?.lang === 'no' ? 'selected' : ''}>🇳🇴 Norsk (no)</option>
+                        <option value="nb" ${volume?.lang === 'nb' ? 'selected' : ''}>🇳🇴 Norsk Bokmål (nb)</option>
+                        <option value="da" ${volume?.lang === 'da' ? 'selected' : ''}>🇩🇰 Dansk (da)</option>
+                        <option value="tr" ${volume?.lang === 'tr' ? 'selected' : ''}>🇹🇷 Türkçe (tr)</option>
+                        <option value="uk" ${volume?.lang === 'uk' ? 'selected' : ''}>🇺🇦 Українська (uk)</option>
+                        <option value="ru" ${volume?.lang === 'ru' ? 'selected' : ''}>🇷🇺 Русский (ru)</option>
+                        <option value="ja" ${volume?.lang === 'ja' ? 'selected' : ''}>🇯🇵 日本語 (ja)</option>
+                        <option value="zh" ${volume?.lang === 'zh' ? 'selected' : ''}>🇨🇳 中文 (zh)</option>
+                        <option value="ko" ${volume?.lang === 'ko' ? 'selected' : ''}>🇰🇷 한국어 (ko)</option>
                     </select>
                 </div>
                 <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}"></div>
@@ -527,7 +531,7 @@ async function getVolumeFormHTML(volume = null) {
                 <div class="form-group"><label>LocG Slug</label><input type="text" name="locg_slug" value="${volume?.locg_slug || ''}"></div>
             </div>
 
-            ${publisherSearchHTML({
+        ${publisherSearchHTML({
                 publisherId: volume?.publisher || '',
                 publisherName,
                 inputId: 'vol-pub-input',
@@ -539,7 +543,7 @@ async function getVolumeFormHTML(volume = null) {
             <div class="form-group">
                 <label>Теми</label>
                 <div id="vol-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
-                    ${buildThemeChipsHTML(
+                ${buildThemeChipsHTML(
                         allThemes.filter(t => currentThemeIds.has(t.id)),
                         'removeThemeChipVolume'
                     )}
@@ -547,7 +551,7 @@ async function getVolumeFormHTML(volume = null) {
                 <input type="text" id="theme-search" placeholder="Пошук тем..." style="margin-bottom:0.5rem; width:100%;"
                     oninput="filterThemesVol(this.value)">
                 <div id="themes-list" class="themes-checkbox-list">
-                    ${buildThemeCheckboxListHTML(allThemes, currentThemeIds, 'onThemeCheckboxChangeVol')}
+                ${buildThemeCheckboxListHTML(allThemes, currentThemeIds, 'onThemeCheckboxChangeVol')}
                 </div>
             </div>
         </form>
@@ -787,7 +791,7 @@ async function _searchVolumePicker({ name, cv_id } = {}) {
         <div onclick="_confirmVolumePickerSelection(${vol.id})"
              style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
              onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
-            ${vol.cv_img
+        ${vol.cv_img
                 ? `<img src="${cv_img_path_small}${vol.cv_img.startsWith('/') ? '' : '/'}${vol.cv_img}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;">`
                 : '<div style="width:36px;height:36px;background:var(--bg-secondary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1rem;">📚</div>'}
             <div>

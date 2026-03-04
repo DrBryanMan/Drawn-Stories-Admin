@@ -93,7 +93,7 @@ router.get('/', (req, res) => {
       colParams.push(...pubIds);
     }
     themeIds.forEach(tid => {
-      colConds.push('EXISTS (SELECT 1 FROM collection_themes _ct WHERE _ct.collection_id = c.id AND _ct.theme_id = ?)');
+      colConds.push('EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.cv_vol_id = c.cv_vol_id AND _vt.theme_id = ?)');
       colParams.push(tid);
     });
 
