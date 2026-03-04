@@ -5,8 +5,8 @@
     --border-color: #e9ecef;
     --text-primary: #212529;
     --text-secondary: #6c757d;
-    --accent: #2563eb;
-    --accent-hover: #1d4ed8;
+    --accent: #1a88c1;
+    --accent-hover: #2770dc;
     --danger: #dc2626;
     --success: #16a34a;
     --warning: #d97706;
@@ -120,11 +120,31 @@ text-decoration: none;
     justify-content: space-between;
     align-items: center;
     flex-shrink: 0;
+    margin-bottom: .5em;
 }
 
 .page-header h2 {
-    font-size: 2rem;
     font-weight: 600;
+	font-size: 1.2rem;
+    color: var(--text-secondary)
+}
+
+#page-title > a {
+	text-decoration: none;
+	background: #0001;
+	color: var(--accent) !important;
+	display: inline-block;
+	line-height: 1;
+	padding: .1em .4em .2em;
+	border-radius: 10px;
+	opacity: .8;
+	transition: .3s;
+	
+	&:hover {
+		color: var(--accent-hover) !important;
+		background: #0002;
+		opacity: 1;
+	}
 }
 
 .header-actions {

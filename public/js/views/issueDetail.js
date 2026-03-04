@@ -32,7 +32,7 @@ export async function renderIssueDetail(params) {
         document.getElementById('page-title').innerHTML = `
             <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
                 ← Випуски
-            </a> / ${issue.name || 'Випуск'}
+            </a> /${issue.cv_slug}/4000-${issue.cv_id}/
         `;
 
         const content = document.getElementById('content');
@@ -46,7 +46,7 @@ export async function renderIssueDetail(params) {
                             : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📖</div>'}
                     </div>
                     <div style="flex: 1;">
-                        <h1 style="font-size: 2rem; margin-bottom: 1rem;">${issue.name || 'Без назви'}</h1>
+                        <h1 style="font-size: 2rem; margin-bottom: 1rem;">${issue.name || 'Без назви'} #${issue.issue_number}</h1>
                         <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
                             ${issue.volume_name ? `
                                 <div>
@@ -58,12 +58,8 @@ export async function renderIssueDetail(params) {
                                     </a>
                                 </div>
                             ` : `id: ${issue.cv_vol_id}`}
-                            ${issue.issue_number ? `<div><strong>Номер випуску:</strong> ${issue.issue_number}</div>` : ''}
-                            <div><strong>Volume CV ID:</strong> ${issue.cv_vol_id}</div>
-                            <div><strong>CV ID:</strong> ${issue.cv_id}</div>
-                            <div><strong>CV Slug:</strong> ${issue.cv_slug}</div>
-                            <div><strong>Дата обкладинки:</strong> ${formatCoverDate(issue.cover_date)}</div>
-                            <div><strong>Дата випуску:</strong> ${formatReleaseDate(issue.release_date)}</div>
+                            <div><strong>Публікація:</strong> ${formatCoverDate(issue.cover_date)}</div>
+                            <div><strong>Реліз:</strong> ${formatReleaseDate(issue.release_date)}</div>
                             <div><strong>Дата створення:</strong> ${formatDate(issue.created_at)}</div>
                             ${readingOrders.length > 0 ? `
                                 <div>

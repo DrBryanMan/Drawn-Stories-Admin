@@ -45,7 +45,7 @@ function renderPage(collection, seriesList = []) {
     document.getElementById('page-title').innerHTML = `
         <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
             &larr; Збірники
-        </a> / ${collection.name || 'Збірник'}
+        </a> /${collection.cv_slug}/4000-${collection.cv_id}/
     `;
 
     const content = document.getElementById('content');
@@ -59,7 +59,7 @@ function renderPage(collection, seriesList = []) {
                         : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">&#128213;</div>'}
                 </div>
                 <div style="flex: 1;">
-                    <h1 style="font-size: 2rem; margin-bottom: 1rem;">${collection.name}</h1>
+                    <h1 style="font-size: 2rem; margin-bottom: 1rem;">${collection.name} #${collection.issue_number}</h1>
                     <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
                         ${seriesList.length > 0 ? `
                             <div>
@@ -70,7 +70,6 @@ function renderPage(collection, seriesList = []) {
                                 `).join(' ')}
                             </div>
                         ` : ''}
-                        ${collection.cv_slug ? `<div><strong>CV Slug:</strong> ${collection.cv_slug}</div>` : ''}
                         ${collection.volume_name ? `
                             <div>
                                 <strong>Том:</strong>
@@ -83,11 +82,17 @@ function renderPage(collection, seriesList = []) {
                                 </a>
                             </div>
                         ` : ''}
-                        ${collection.issue_number ? `<div><strong>Номер:</strong> #${collection.issue_number}</div>` : ''}
                         ${collection.isbn ? `<div><strong>ISBN:</strong> ${collection.isbn}</div>` : ''}
                         ${collection.cover_date ? `<div><strong>Дата обкладинки:</strong> ${formatCoverDate(collection.cover_date)}</div>` : ''}
                         ${collection.release_date ? `<div><strong>Дата релізу:</strong> ${formatReleaseDate(collection.release_date)}</div>` : ''}
-                        ${collection.publisher_name ? `<div><strong>Видавець:</strong> ${collection.publisher_name}</div>` : ''}
+                        ${collection.publisher || collection.publisher_name ? `
+                            <div>
+                                <strong>Видавець:</strong>
+                                ${collection.publisher_name
+                                    ? `${collection.publisher_name} <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${collection.publisher})</span>`
+                                    : `cv_id: ${collection.publisher}`}
+                            </div>
+                        ` : ''}
                         ${collection.description ? `<div><strong>Опис:</strong> ${collection.description}</div>` : ''}
                         <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
                             ${buildThemeChipsViewHTML(collection.themes)}

@@ -51,9 +51,9 @@ export async function renderVolumeDetail(params) {
         const magazineParent = magazineParentData.data || null;
 
         document.getElementById('page-title').innerHTML = `
-            <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
+            <a href="#" onclick="event.preventDefault(); navigateToParent()">
                 ← Томи
-            </a> / ${volume.name || 'Том'}
+            </a> /${volume.cv_slug}/4050-${volume.cv_id}
         `;
 
         const content = document.getElementById('content');
@@ -79,8 +79,6 @@ export async function renderVolumeDetail(params) {
                                     `).join(' ')}
                                 </div>
                             ` : ''}
-                            <div><strong>CV ID:</strong> ${volume.cv_id}</div>
-                            <div><strong>CV Slug:</strong> ${volume.cv_slug}</div>
                             ${volume.start_year ? `<div><strong>Рік початку:</strong> ${volume.start_year}</div>` : ''}
                             ${volume.publisher || volume.publisher_name ? `
                                 <div>
