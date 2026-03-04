@@ -16,9 +16,9 @@ export async function fetchItems(type, params = {}) {
     });
     
     // Встановлюємо дефолтні значення якщо не передані
-    if (!queryParams.has('limit')) {
-        queryParams.set('limit', '50');
-    }
+    // if (!queryParams.has('limit')) {
+    //     queryParams.set('limit', '50');
+    // }
     if (!queryParams.has('offset')) {
         queryParams.set('offset', '0');
     }

@@ -7,6 +7,40 @@ import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxLis
 
 const API_BASE = 'http://localhost:7000/api';
 
+// ===== МОВНА МАПА =========================================================
+
+const LANG_MAP = {
+    en:    { label: 'Американська',           flag: '🇺🇸' },
+    gb:    { label: 'Британська',             flag: '🇬🇧' },
+    fr:    { label: 'Французька',             flag: '🇫🇷' },
+    de:    { label: 'Німецька',               flag: '🇩🇪' },
+    it:    { label: 'Італійська',             flag: '🇮🇹' },
+    es:    { label: 'Іспанська',              flag: '🇪🇸' },
+    'es-AR': { label: 'Іспанська (Аргентина)', flag: '🇦🇷' },
+    da:    { label: 'Данська',                flag: '🇩🇰' },
+    fi:    { label: 'Фінська',                flag: '🇫🇮' },
+    nb:    { label: 'Норвезька Букмол',       flag: '🇳🇴' },
+    nl:    { label: 'Нідерландська',          flag: '🇳🇱' },
+    no:    { label: 'Норвезька',              flag: '🇳🇴' },
+    pl:    { label: 'Польська',               flag: '🇵🇱' },
+    pt:    { label: 'Португальська',          flag: '🇵🇹' },
+    sr:    { label: 'Сербська',               flag: '🇷🇸' },
+    sv:    { label: 'Шведська',               flag: '🇸🇪' },
+    tr:    { label: 'Турецька',               flag: '🇹🇷' },
+    uk:    { label: 'Українська',             flag: '🇺🇦' },
+    ru:    { label: 'Російська',              flag: '🇷🇺' },
+    ja:    { label: 'Японська',               flag: '🇯🇵' },
+    zh:    { label: 'Китайська',              flag: '🇨🇳' },
+    ko:    { label: 'Корейська',              flag: '🇰🇷' },
+};
+
+function langDisplay(code) {
+    if (!code) return '';
+    const entry = LANG_MAP[code];
+    return entry ? `${entry.flag} ${entry.label}` : code;
+    // return entry ? `${entry.flag} ${entry.label} (${code})` : code;
+}
+
 export async function renderVolumeDetail(params) {
     const volumeId = params.id;
     if (!volumeId) { navigate('volumes'); return; }
@@ -30,7 +64,7 @@ export async function renderVolumeDetail(params) {
             magazineChildrenData,
             magazineParentData,
         ] = await Promise.all([
-            fetchItems('issues', { volume_id: volume.cv_id, limit: 1000 }),
+            fetchItems('issues', { volume_id: volume.cv_id }),
             fetch(`${API_BASE}/collections/by-volume/${volume.cv_id}`).then(r => r.ok ? r.json() : { data: [] }),
             fetch(`${API_BASE}/volumes/${volumeId}/collections-from-issues`).then(r => r.ok ? r.json() : { data: [] }),
             fetch(`${API_BASE}/volumes/${volumeId}/translations`).then(r => r.ok ? r.json() : { data: [] }),
@@ -89,7 +123,7 @@ export async function renderVolumeDetail(params) {
                                 </div>
                             ` : ''}
                             <div><strong>Дата створення:</strong> ${formatDate(volume.created_at)}</div>
-                        ${volume.lang ? `<div><strong>Мова:</strong> ${volume.lang}</div>` : ''}
+                        ${volume.lang ? `<div><strong>Мова:</strong> ${langDisplay(volume.lang)}</div>` : ''}
                         ${volumeThemes.length > 0 ? `
                                 <div>
                                     <strong>Теми:</strong>
@@ -161,7 +195,7 @@ export async function renderVolumeDetail(params) {
                 </div>
 
                 <!-- ── Оригінал (цей том — переклад) ────────────────────── -->
-            ${translationParent ? `
+                ${translationParent ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--accent); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
                             <h2 style="font-size:1.25rem; margin:0;">📖 Оригінал</h2>
@@ -184,7 +218,7 @@ export async function renderVolumeDetail(params) {
                 ` : ''}
 
                 <!-- ── Журнал: список підтомів (цей том — журнал) ─────────── -->
-            ${isMagazineVolume || magazineChildren.length > 0 ? `
+                ${isMagazineVolume || magazineChildren.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
                             <h2 style="font-size:1.25rem; margin:0;">📰 Томи журналу (${magazineChildren.length})</h2>
@@ -500,28 +534,9 @@ async function getVolumeFormHTML(volume = null) {
                     <label>Мова</label>
                     <select name="lang">
                         <option value="">— не вказано —</option>
-                        <option value="en" ${volume?.lang === 'en' ? 'selected' : ''}>🇺🇸 American (en)</option>
-                        <option value="gb" ${volume?.lang === 'gb' ? 'selected' : ''}>🇬🇧 English (uk)</option>
-                        <option value="fr" ${volume?.lang === 'fr' ? 'selected' : ''}>🇫🇷 Français (fr)</option>
-                        <option value="de" ${volume?.lang === 'de' ? 'selected' : ''}>🇩🇪 Deutsch (de)</option>
-                        <option value="it" ${volume?.lang === 'it' ? 'selected' : ''}>🇮🇹 Italiano (it)</option>
-                        <option value="es" ${volume?.lang === 'es' ? 'selected' : ''}>🇪🇸 Español (es)</option>
-                        <option value="es-AR" ${volume?.lang === 'es-AR' ? 'selected' : ''}>🇦🇷 Español (es-AR)</option>
-                        <option value="it" ${volume?.lang === 'it' ? 'selected' : ''}>🇮🇹 Italiano (it)</option>
-                        <option value="pl" ${volume?.lang === 'pl' ? 'selected' : ''}>🇵🇱 Polski (pl)</option>
-                        <option value="pt" ${volume?.lang === 'pt' ? 'selected' : ''}>🇵🇹 Português (pt)</option>
-                        <option value="nl" ${volume?.lang === 'nl' ? 'selected' : ''}>🇳🇱 Nederlands (nl)</option>
-                        <option value="sv" ${volume?.lang === 'sv' ? 'selected' : ''}>🇸🇪 Svenska (sv)</option>
-                        <option value="fi" ${volume?.lang === 'fi' ? 'selected' : ''}>🇫🇮 Suomi (fi)</option>
-                        <option value="no" ${volume?.lang === 'no' ? 'selected' : ''}>🇳🇴 Norsk (no)</option>
-                        <option value="nb" ${volume?.lang === 'nb' ? 'selected' : ''}>🇳🇴 Norsk Bokmål (nb)</option>
-                        <option value="da" ${volume?.lang === 'da' ? 'selected' : ''}>🇩🇰 Dansk (da)</option>
-                        <option value="tr" ${volume?.lang === 'tr' ? 'selected' : ''}>🇹🇷 Türkçe (tr)</option>
-                        <option value="uk" ${volume?.lang === 'uk' ? 'selected' : ''}>🇺🇦 Українська (uk)</option>
-                        <option value="ru" ${volume?.lang === 'ru' ? 'selected' : ''}>🇷🇺 Русский (ru)</option>
-                        <option value="ja" ${volume?.lang === 'ja' ? 'selected' : ''}>🇯🇵 日本語 (ja)</option>
-                        <option value="zh" ${volume?.lang === 'zh' ? 'selected' : ''}>🇨🇳 中文 (zh)</option>
-                        <option value="ko" ${volume?.lang === 'ko' ? 'selected' : ''}>🇰🇷 한국어 (ko)</option>
+                        ${Object.entries(LANG_MAP).map(([code, { label, flag }]) =>
+                            `<option value="${code}" ${volume?.lang === code ? 'selected' : ''}>${flag} ${label} (${code})</option>`
+                        ).join('\n                        ')}
                     </select>
                 </div>
                 <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}"></div>

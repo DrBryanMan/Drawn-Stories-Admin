@@ -26,7 +26,7 @@ function getNextFreeId() {
 }
 
 router.get('/', (req, res) => {
-  const { search, exact, cv_id, volume_id, name, volume_name, issue_number, limit = 50, offset = 0 } = req.query;
+  const { search, exact, cv_id, volume_id, name, volume_name, issue_number, limit, offset = 0 } = req.query;
   const isExact = exact === 'true';
   let query = `SELECT i.*, v.name as volume_name FROM issues i LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id`;
   let params = [], conditions = [];
@@ -44,13 +44,16 @@ router.get('/', (req, res) => {
   if (cv_id) { conditions.push('i.cv_id = ?'); params.push(parseInt(cv_id)); }
 
   if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
-  query += ' ORDER BY i.created_at DESC LIMIT ? OFFSET ?';
-  params.push(parseInt(limit), parseInt(offset));
+  query += ' ORDER BY i.created_at DESC';
+  if (limit) {
+    query += ' LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), parseInt(offset));
+  }
 
   const issues = getAll(query, params);
   let countQuery = `SELECT COUNT(*) as count FROM issues i LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id`;
   if (conditions.length) countQuery += ' WHERE ' + conditions.join(' AND ');
-  const total = getOne(countQuery, params.slice(0, -2));
+  const total = getOne(countQuery, limit ? params.slice(0, -2) : params);
   res.json({ data: issues, total: total?.count || 0 });
 });
 
