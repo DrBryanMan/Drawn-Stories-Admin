@@ -2,7 +2,7 @@
 
 import { initListPage, reloadCatalog } from '../components/catalog.js';
 import { cv_img_path_small } from '../utils/helpers.js';
-import { navigate } from '../utils/router.js';
+import { navigate, buildUrl } from '../utils/router.js';
 import { createItem, updateItem, deleteItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
 
@@ -103,6 +103,7 @@ export async function renderIssuesList() {
     onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
-    onNavigate: (id, cv_id, cv_slug) => navigate('issue-detail', { id, cv_id, cv_slug })
+    onNavigate: (id, cv_id, cv_slug) => navigate('issue-detail', { id, cv_id, cv_slug }),
+    buildUrl: (id) => buildUrl('volume-detail', { id }),
   });
 }

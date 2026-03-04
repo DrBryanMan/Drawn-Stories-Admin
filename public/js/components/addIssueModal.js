@@ -25,7 +25,8 @@ const IMPORTANCE_OPTIONS = [
 let _modal = null;
 let _config = null;
 let _searchTimeout = null;
-let _selectedIssueIds = new Set();   // множина обраних
+let _selectedIssueIds = new Set();      // множина обраних
+let _currentSearchResults = [];         // доступні результати поточного пошуку
 
 // ── Ін'єкція DOM один раз ────────────────────────────────────────────────
 
@@ -63,6 +64,16 @@ function ensureModal() {
             <span style="font-size:0.85rem;">Точно</span>
           </label>
         </div>
+      </div>
+
+      <!-- Рядок "Вибрати всі" -->
+      <div id="aim-select-all-row" style="display:none; align-items:center; justify-content:space-between; padding:0.5rem 0.75rem; margin-bottom:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:8px;">
+        <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem; user-select:none;">
+          <input type="checkbox" id="aim-select-all-checkbox" style="width:16px; height:16px; margin:0; accent-color:var(--accent);">
+          <span>Вибрати всі</span>
+          <span id="aim-select-all-count" style="color:var(--text-secondary);"></span>
+        </label>
+        <span id="aim-select-all-hint" style="font-size:0.78rem; color:var(--text-tertiary);"></span>
       </div>
 
       <div id="aim-results" class="aim-results-grid"></div>
@@ -106,6 +117,11 @@ function ensureModal() {
     closeAddIssueModal();
   });
 
+  // Чекбокс "Вибрати всі"
+  document.getElementById('aim-select-all-checkbox').addEventListener('change', (e) => {
+    toggleSelectAll(e.target.checked);
+  });
+
   // Пошук
   ['aim-name', 'aim-volume', 'aim-number', 'aim-cvvolid'].forEach(id => {
     document.getElementById(id).addEventListener('input', scheduleSearch);
@@ -126,6 +142,7 @@ export function openAddIssueModal(config) {
   ensureModal();
   _config = config;
   _selectedIssueIds.clear();
+  _currentSearchResults = [];
 
   document.getElementById('aim-title').textContent = config.title || 'Додати випуски';
 
@@ -136,6 +153,9 @@ export function openAddIssueModal(config) {
   document.getElementById('aim-results').innerHTML = '';
   document.getElementById('aim-results').style.display = 'grid';
   document.getElementById('aim-importance-block').style.display = config.showImportance ? 'block' : 'none';
+
+  const selectAllRow = document.getElementById('aim-select-all-row');
+  if (selectAllRow) selectAllRow.style.display = 'none';
 
   updateConfirmButtonState();
 
@@ -148,6 +168,9 @@ export function closeAddIssueModal() {
   _modal.classList.remove('active');
   _config = null;
   _selectedIssueIds.clear();
+  _currentSearchResults = [];
+  const selectAllRow = document.getElementById('aim-select-all-row');
+  if (selectAllRow) selectAllRow.style.display = 'none';
   clearTimeout(_searchTimeout);
 }
 
@@ -171,6 +194,7 @@ async function runSearch() {
 
   if (!name && !volume && !number && !cvVolId) {
     el.innerHTML = '';
+    updateSelectAllRow([]);
     return;
   }
 
@@ -190,6 +214,7 @@ async function runSearch() {
 
     if (!data.length) {
       el.innerHTML = '<div class="aim-empty">Нічого не знайдено</div>';
+      updateSelectAllRow([]);
       return;
     }
 
@@ -215,6 +240,8 @@ async function runSearch() {
       `;
     }).join('');
 
+    updateSelectAllRow(data);
+
     el.querySelectorAll('.aim-card:not(.aim-card--added)').forEach(card => {
       card.addEventListener('click', () => {
         const issueId = parseInt(card.dataset.issueId);
@@ -224,6 +251,7 @@ async function runSearch() {
 
   } catch (err) {
     el.innerHTML = '<div class="aim-empty" style="color:var(--danger);">Помилка пошуку</div>';
+    updateSelectAllRow([]);
     console.error('addIssueModal search error:', err);
   }
 }
@@ -237,6 +265,7 @@ function toggleIssueSelection(issueId, cardElement) {
     cardElement.classList.add('aim-card--selected');
   }
   updateConfirmButtonState();
+  updateSelectAllRow(_currentSearchResults);
 }
 
 function updateConfirmButtonState() {
@@ -247,6 +276,64 @@ function updateConfirmButtonState() {
   const count = _selectedIssueIds.size;
   countEl.textContent = count;
   btn.style.display = count > 0 ? 'inline-flex' : 'none';
+}
+
+// ── "Вибрати всі" ────────────────────────────────────────────────────────
+
+function updateSelectAllRow(data) {
+  const row      = document.getElementById('aim-select-all-row');
+  const checkbox = document.getElementById('aim-select-all-checkbox');
+  const countEl  = document.getElementById('aim-select-all-count');
+  const hint     = document.getElementById('aim-select-all-hint');
+  if (!row) return;
+
+  // Тільки ті, що ще не додані
+  const available = data.filter(i => !_config?.alreadyIds?.has(i.id));
+  _currentSearchResults = available;
+
+  if (available.length === 0) {
+    row.style.display = 'none';
+    return;
+  }
+
+  const alreadyCount = data.length - available.length;
+  row.style.display = 'flex';
+  countEl.textContent = `(${available.length})`;
+  hint.textContent = alreadyCount > 0 ? `${alreadyCount} вже у збірнику` : '';
+
+  // Синхронізуємо стан чекбоксу
+  const allSelected  = available.every(i => _selectedIssueIds.has(i.id));
+  const someSelected = available.some(i => _selectedIssueIds.has(i.id));
+  checkbox.checked       = allSelected;
+  checkbox.indeterminate = someSelected && !allSelected;
+}
+
+function toggleSelectAll(checked) {
+  const available = _currentSearchResults;
+  if (!available.length) return;
+
+  if (checked) {
+    available.forEach(i => _selectedIssueIds.add(i.id));
+  } else {
+    available.forEach(i => _selectedIssueIds.delete(i.id));
+  }
+
+  // Оновлюємо візуальний стан карток
+  document.getElementById('aim-results')
+    .querySelectorAll('.aim-card:not(.aim-card--added)')
+    .forEach(card => {
+      const id = parseInt(card.dataset.issueId);
+      if (_selectedIssueIds.has(id)) {
+        card.classList.add('aim-card--selected');
+      } else {
+        card.classList.remove('aim-card--selected');
+      }
+    });
+
+  updateConfirmButtonState();
+
+  const checkbox = document.getElementById('aim-select-all-checkbox');
+  if (checkbox) checkbox.indeterminate = false;
 }
 
 // ── Стилі ───────────────────────────────────────────────────────────────
@@ -296,7 +383,7 @@ function injectStyles() {
       grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
       gap: 0.9rem;
       padding: 0.8rem;
-      max-height: 420px;
+      max-height: 380px;
       overflow-y: auto;
       border: 1px solid var(--border-color);
       border-radius: 10px;

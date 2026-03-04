@@ -124,6 +124,23 @@ export function initRouter() {
     navigate(page, params);
 }
 
+export function buildUrl(path, params = {}) {
+    const url = new URL(window.location);
+    url.searchParams.set('page', path);
+
+    if (params.id !== undefined && params.id !== null)
+        url.searchParams.set('id', params.id);
+    else
+        url.searchParams.delete('id');
+
+    if (params.cv_id !== undefined && params.cv_id !== null)
+        url.searchParams.set('cv_id', params.cv_id);
+    else
+        url.searchParams.delete('cv_id');
+
+    return url.toString();
+}
+
 // Глобальний доступ для inline onclick у HTML-рядках
 window.navigate         = navigate;
 window.navigateToParent = navigateToParent;

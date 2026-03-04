@@ -54,8 +54,7 @@ export async function renderIssueDetail(params) {
                                     <a href="#" onclick="navigateToVolumeFromIssue(${issue.cv_vol_id})"
                                     style="color: var(--accent); text-decoration: none;">
                                         ${issue.volume_name}
-                                        <span style="color: var(--text-secondary); font-size: 0.85rem;">(id: ${issue.cv_vol_id})</span>
-                                    </a>
+                                    </a> <span style="color: var(--text-secondary); font-size: 0.85rem;">(id: ${issue.cv_vol_id})</span>
                                 </div>
                             ` : `id: ${issue.cv_vol_id}`}
                             <div><strong>Публікація:</strong> ${formatCoverDate(issue.cover_date)}</div>

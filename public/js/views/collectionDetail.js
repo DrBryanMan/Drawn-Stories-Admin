@@ -76,10 +76,7 @@ function renderPage(collection, seriesList = []) {
                                 <a href="#" onclick="event.preventDefault(); window.navigateToVolume(${collection.volume_id})"
                                    style="color: var(--accent); text-decoration: none;">
                                     ${collection.volume_name}
-                                    ${collection.cv_vol_id
-                                        ? `<span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${collection.cv_vol_id})</span>`
-                                        : ''}
-                                </a>
+                                </a> <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${collection.cv_vol_id})</span>
                             </div>
                         ` : ''}
                         ${collection.isbn ? `<div><strong>ISBN:</strong> ${collection.isbn}</div>` : ''}

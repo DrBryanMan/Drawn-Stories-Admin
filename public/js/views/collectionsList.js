@@ -1,5 +1,5 @@
 import { cv_img_path_small, showError, showLoading, showEmpty } from '../utils/helpers.js';
-import { navigate } from '../utils/router.js';
+import { navigate, buildUrl } from '../utils/router.js';
 import { createPagination, getInitialPage } from '../utils/pagination.js';
 import { mountHeaderActions } from '../components/headerActions.js';
 import { clearFiltersPanel, getFiltersPanel } from '../components/filtersPanel.js';
@@ -133,9 +133,35 @@ function renderItems(items) {
         if (!card) return;
         const id   = parseInt(card.dataset.itemId);
         const type = card.dataset.itemType;
-        if (type === 'collection') navigate('collection-detail', { id });
-        else                       navigate('issue-detail', { id });
+        const page = type === 'collection' ? 'collection-detail' : 'issue-detail';
+        if (e.ctrlKey || e.metaKey) {
+            window.open(buildUrl(page, { id }), '_blank');
+            return;
+        }
+        navigate(page, { id });
     };
+    content.onclick = (e) => {
+        const card = e.target.closest('[data-item-id]');
+        if (!card) return;
+        const id   = parseInt(card.dataset.itemId);
+        const type = card.dataset.itemType;
+        const page = type === 'collection' ? 'collection-detail' : 'issue-detail';
+        if (e.ctrlKey || e.metaKey) {
+            window.open(buildUrl(page, { id }), '_blank');
+            return;
+        }
+        navigate(page, { id });
+    };
+    content.addEventListener('mousedown', (e) => {
+        if (e.button !== 1) return;
+        const card = e.target.closest('[data-item-id]');
+        if (!card) return;
+        e.preventDefault();
+        const id   = parseInt(card.dataset.itemId);
+        const type = card.dataset.itemType;
+        const page = type === 'collection' ? 'collection-detail' : 'issue-detail';
+        window.open(buildUrl(page, { id }), '_blank');
+    });
 }
 
 function updatePagination(total) {

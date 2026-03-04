@@ -1,5 +1,5 @@
 import { initListPage, reloadCatalog } from '../components/catalog.js';
-import { navigate } from '../utils/router.js';
+import { navigate, buildUrl } from '../utils/router.js';
 import { createItem, updateItem, deleteItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
 
@@ -67,6 +67,7 @@ export async function renderReadingOrderList() {
     onAdd:       handleAdd,
     onEdit:      handleEdit,
     onDelete:    handleDelete,
-    onNavigate:  (id) => navigate('reading-order-detail', { id })
+    onNavigate:  (id) => navigate('reading-order-detail', { id }),
+    buildUrl: (id) => buildUrl('volume-detail', { id }),
   });
 }

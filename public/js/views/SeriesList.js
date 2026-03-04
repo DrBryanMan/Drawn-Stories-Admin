@@ -1,5 +1,5 @@
 import { initListPage, reloadCatalog } from '../components/catalog.js';
-import { navigate } from '../utils/router.js';
+import { navigate, buildUrl } from '../utils/router.js';
 import { createItem, updateItem, deleteItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
 
@@ -65,6 +65,7 @@ export async function renderSeriesList() {
     onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
-    onNavigate: (id) => navigate('series-detail', { id })
+    onNavigate: (id) => navigate('series-detail', { id }),
+    buildUrl: (id) => buildUrl('volume-detail', { id }),
   });
 }

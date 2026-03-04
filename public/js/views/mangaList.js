@@ -1,5 +1,5 @@
 import { cv_img_path_small, showError, showLoading, showEmpty } from '../utils/helpers.js';
-import { navigate } from '../utils/router.js';
+import { navigate, buildUrl } from '../utils/router.js';
 import { createPagination, getInitialPage } from '../utils/pagination.js';
 import { mountHeaderActions } from '../components/headerActions.js';
 import { clearFiltersPanel, getFiltersPanel } from '../components/filtersPanel.js';

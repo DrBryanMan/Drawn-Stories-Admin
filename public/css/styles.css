@@ -35,7 +35,7 @@ body {
 
 /* Sidebar */
 .sidebar {
-    width: 260px;
+    width: 220px;
     background: var(--bg-primary);
     border-right: 1px solid var(--border-color);
     display: flex;
@@ -76,7 +76,6 @@ text-decoration: none;
 }
 
 .stat-value {
-    font-size: 1.125rem;
     font-weight: 600;
     color: var(--accent);
 }
@@ -84,15 +83,17 @@ text-decoration: none;
 .nav-menu {
     list-style: none;
     flex: 1;
+    padding: .5em;
 }
 
 .nav-link {
     display: block;
-    padding: .5rem 1rem;
+    padding: .2rem .5rem;
     color: var(--text-secondary);
     text-decoration: none;
     transition: all 0.2s;
     font-weight: 500;
+    font-size: .85rem;
 }
 
 .nav-link:hover {

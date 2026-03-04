@@ -1,7 +1,7 @@
 // eventsList.js — public/js/views/eventsList.js
 
 import { initListPage, reloadCatalog } from '../components/catalog.js';
-import { navigate } from '../utils/router.js';
+import { navigate, buildUrl } from '../utils/router.js';
 import { createItem, updateItem, deleteItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
 import { mountHeaderActions } from '../components/headerActions.js';
@@ -83,6 +83,7 @@ export async function renderEventsList() {
     onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
-    onNavigate: (id) => navigate('event-detail', { id })
+    onNavigate: (id) => navigate('event-detail', { id }),
+    buildUrl: (id) => buildUrl('volume-detail', { id }),
   });
 }
