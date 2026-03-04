@@ -35,12 +35,16 @@ router.get('/search', (req, res) => {
 
 // Комбінований список: випуски з томів теми collection + таблиця collections
 router.get('/', (req, res) => {
-  const { search, limit = 50, offset = 0, type, publisher_ids } = req.query;
+  const { search, limit = 50, offset = 0, type, publisher_ids, theme_ids } = req.query;
 
   // Розбираємо publisher_ids: "1,2,3" → [1, 2, 3]
   const pubIds = publisher_ids
     ? publisher_ids.split(',').map(Number).filter(Boolean)
     : [];
+
+  const themeIds = theme_ids
+      ? theme_ids.split(',').map(Number).filter(Boolean)
+      : [];
 
   // ── Випуски (issues) з томів теми Collection ─────────────────────────────
   let issueItems = [];
@@ -56,6 +60,11 @@ router.get('/', (req, res) => {
       issueWhere += ` AND v.publisher IN (${pubIds.map(() => '?').join(',')})`;
       issueParams.push(...pubIds);
     }
+    themeIds.forEach(tid => {
+      issueWhere += ' AND EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.cv_vol_id = v.cv_id AND _vt.theme_id = ?)';
+      issueParams.push(tid);
+    });
+    
 
     issueItems = getAll(`
       SELECT DISTINCT i.id, i.name, i.cv_img, i.issue_number, i.release_date,
@@ -83,8 +92,12 @@ router.get('/', (req, res) => {
       colConds.push(`c.publisher IN (${pubIds.map(() => '?').join(',')})`);
       colParams.push(...pubIds);
     }
-    const colWhere = colConds.length ? 'WHERE ' + colConds.join(' AND ') : '';
+    themeIds.forEach(tid => {
+      colConds.push('EXISTS (SELECT 1 FROM collection_themes _ct WHERE _ct.collection_id = c.id AND _ct.theme_id = ?)');
+      colParams.push(tid);
+    });
 
+    const colWhere = colConds.length ? 'WHERE ' + colConds.join(' AND ') : '';
     colItems = getAll(`
       SELECT c.id, c.name, c.cv_img, c.issue_number, c.created_at as release_date,
              c.created_at,
@@ -241,10 +254,14 @@ const MANGA_THEME_ID = 36;
 const mangaRouter = Router();
 
 mangaRouter.get('/', (req, res) => {
-  const { search, limit = 50, offset = 0, type, publisher_ids } = req.query;
+  const { search, limit = 50, offset = 0, type, publisher_ids, theme_ids } = req.query;
 
   const pubIds = publisher_ids
     ? publisher_ids.split(',').map(Number).filter(Boolean)
+    : [];
+  
+  const themeIds = theme_ids
+    ? theme_ids.split(',').map(Number).filter(Boolean)
     : [];
 
   // ── Випуски манґи ─────────────────────────────────────────────────────────

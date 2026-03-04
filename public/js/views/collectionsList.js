@@ -5,13 +5,13 @@ import { mountHeaderActions } from '../components/headerActions.js';
 import { clearFiltersPanel, getFiltersPanel } from '../components/filtersPanel.js';
 import { mountPublisherFilter } from '../components/publisherFilterPanel.js';
 import { mountThemeFilter } from '../components/themeFilterPanel.js';
-import { setCatalogThemeIds } from '../components/catalog.js';
 
 const LIMIT = 50;
 let currentOffset = 0;
 let currentSearch = '';
 let currentType = '';
 let currentPublishers = [];
+let currentThemes = [];
 
 export async function renderCollectionsList(params) {
     const { currentOffset: initialOffset } = getInitialPage(LIMIT, params);
@@ -19,6 +19,7 @@ export async function renderCollectionsList(params) {
     currentSearch = '';
     currentType = '';
     currentPublishers = [];
+    currentThemes = [];
 
     mountHeaderActions();
     clearFiltersPanel();
@@ -60,9 +61,9 @@ export async function renderCollectionsList(params) {
     });
 
     mountThemeFilter({
-        panelId: 'volumes-theme-filter',
-        selectedThemes: [],
-        onChange: (themes) => { setCatalogThemeIds(themes.map(t => t.id)); },
+        panelId: 'collections-theme-filter',
+        selectedThemes: currentThemes,
+        onChange: (themes) => { currentThemes = themes; currentOffset = 0; loadAndRender(); },
     });
 
     // ── Пошук ─────────────────────────────────────────────────────────────────
@@ -87,6 +88,8 @@ async function loadAndRender() {
         if (currentType)   params.set('type', currentType);
         if (currentPublishers.length)
             params.set('publisher_ids', currentPublishers.map(p => p.id).join(','));
+        if (currentThemes.length)
+            params.set('theme_ids', currentThemes.map(t => t.id).join(','));
 
         const resp = await fetch(`http://localhost:7000/api/collections?${params}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
