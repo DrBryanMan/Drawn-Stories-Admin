@@ -84,6 +84,6 @@ export async function renderEventsList() {
     onEdit:     handleEdit,
     onDelete:   handleDelete,
     onNavigate: (id) => navigate('event-detail', { id }),
-    buildUrl: (id) => buildUrl('volume-detail', { id }),
+    buildUrl: (id) => buildUrl('event-detail', { id }),
   });
 }

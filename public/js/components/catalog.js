@@ -260,7 +260,11 @@ function buildTable(items) {
 // ── Обробники кліків ──────────────────────────────────────────────────────
 
 function attachClickHandlers(content) {
-  // Ctrl+click або Cmd+click — відкрити у новій вкладці
+  if (content._clickAbort) content._clickAbort.abort();
+  const ctrl = new AbortController();
+  content._clickAbort = ctrl;
+  const { signal } = ctrl;
+
   content.addEventListener('click', (e) => {
     const card = e.target.closest('[data-item-id]');
     if (!card) return;
@@ -276,19 +280,18 @@ function attachClickHandlers(content) {
       }
     }
     _config.onNavigate(id, cv_id);
-  });
+  }, { signal });
 
-  // Колесико миші (button === 1) — відкрити у новій вкладці
   content.addEventListener('mousedown', (e) => {
     if (e.button !== 1) return;
     const card = e.target.closest('[data-item-id]');
     if (!card) return;
-    e.preventDefault(); // зупинити скрол-авто-скрол
+    e.preventDefault();
     const id    = parseInt(card.dataset.itemId);
     const cv_id = card.dataset.itemCvId ? parseInt(card.dataset.itemCvId) : null;
     const url = _config.buildUrl ? _config.buildUrl(id, cv_id) : null;
     if (url) window.open(url, '_blank');
-  });
+  }, { signal });
 }
 
 // ── Пагінація ─────────────────────────────────────────────────────────────

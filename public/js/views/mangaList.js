@@ -120,13 +120,33 @@ function renderItems(items) {
         `;
     });
     content.innerHTML = `<div class="grid">${cards.join('')}</div>`;
+
+    if (content._clickAbort) content._clickAbort.abort();
+    const ctrl = new AbortController();
+    content._clickAbort = ctrl;
+    
     content.onclick = (e) => {
         const card = e.target.closest('[data-item-id]');
         if (!card) return;
-        const id = parseInt(card.dataset.itemId);
+        const id   = parseInt(card.dataset.itemId);
         const type = card.dataset.itemType;
-        navigate(type === 'collection' ? 'collection-detail' : 'issue-detail', { id });
+        const page = type === 'collection' ? 'collection-detail' : 'issue-detail';
+        if (e.ctrlKey || e.metaKey) {
+            window.open(buildUrl(page, { id }), '_blank');
+            return;
+        }
+        navigate(page, { id });
     };
+    content.addEventListener('mousedown', (e) => {
+        if (e.button !== 1) return;
+        const card = e.target.closest('[data-item-id]');
+        if (!card) return;
+        e.preventDefault();
+        const id   = parseInt(card.dataset.itemId);
+        const type = card.dataset.itemType;
+        const page = type === 'collection' ? 'collection-detail' : 'issue-detail';
+        window.open(buildUrl(page, { id }), '_blank');
+    });
 }
 
 function updatePagination(total) {

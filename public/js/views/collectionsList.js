@@ -4,6 +4,8 @@ import { createPagination, getInitialPage } from '../utils/pagination.js';
 import { mountHeaderActions } from '../components/headerActions.js';
 import { clearFiltersPanel, getFiltersPanel } from '../components/filtersPanel.js';
 import { mountPublisherFilter } from '../components/publisherFilterPanel.js';
+import { mountThemeFilter } from '../components/themeFilterPanel.js';
+import { setCatalogThemeIds } from '../components/catalog.js';
 
 const LIMIT = 50;
 let currentOffset = 0;
@@ -51,11 +53,16 @@ export async function renderCollectionsList(params) {
     });
     fp.appendChild(typeBlock);
 
-    // Фільтр видавництва
     mountPublisherFilter({
         panelId: 'collections-publisher-filter',
         selectedPubs: currentPublishers,
         onChange: (pubs) => { currentPublishers = pubs; currentOffset = 0; loadAndRender(); },
+    });
+
+    mountThemeFilter({
+        panelId: 'volumes-theme-filter',
+        selectedThemes: [],
+        onChange: (themes) => { setCatalogThemeIds(themes.map(t => t.id)); },
     });
 
     // ── Пошук ─────────────────────────────────────────────────────────────────
@@ -128,30 +135,25 @@ function renderItems(items) {
         `;
     });
     content.innerHTML = `<div class="grid">${cards.join('')}</div>`;
-    content.onclick = (e) => {
+
+    if (content._clickAbort) content._clickAbort.abort();
+    const ctrl = new AbortController();
+    content._clickAbort = ctrl;
+
+    content.addEventListener('click', (e) => {
         const card = e.target.closest('[data-item-id]');
         if (!card) return;
         const id   = parseInt(card.dataset.itemId);
         const type = card.dataset.itemType;
         const page = type === 'collection' ? 'collection-detail' : 'issue-detail';
         if (e.ctrlKey || e.metaKey) {
+            e.preventDefault();
             window.open(buildUrl(page, { id }), '_blank');
             return;
         }
         navigate(page, { id });
-    };
-    content.onclick = (e) => {
-        const card = e.target.closest('[data-item-id]');
-        if (!card) return;
-        const id   = parseInt(card.dataset.itemId);
-        const type = card.dataset.itemType;
-        const page = type === 'collection' ? 'collection-detail' : 'issue-detail';
-        if (e.ctrlKey || e.metaKey) {
-            window.open(buildUrl(page, { id }), '_blank');
-            return;
-        }
-        navigate(page, { id });
-    };
+    }, { signal: ctrl.signal });
+
     content.addEventListener('mousedown', (e) => {
         if (e.button !== 1) return;
         const card = e.target.closest('[data-item-id]');
@@ -161,7 +163,7 @@ function renderItems(items) {
         const type = card.dataset.itemType;
         const page = type === 'collection' ? 'collection-detail' : 'issue-detail';
         window.open(buildUrl(page, { id }), '_blank');
-    });
+    }, { signal: ctrl.signal });
 }
 
 function updatePagination(total) {

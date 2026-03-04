@@ -66,6 +66,6 @@ export async function renderSeriesList() {
     onEdit:     handleEdit,
     onDelete:   handleDelete,
     onNavigate: (id) => navigate('series-detail', { id }),
-    buildUrl: (id) => buildUrl('volume-detail', { id }),
+    buildUrl: (id) => buildUrl('series-detail', { id }),
   });
 }

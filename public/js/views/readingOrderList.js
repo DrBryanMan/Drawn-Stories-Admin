@@ -68,6 +68,6 @@ export async function renderReadingOrderList() {
     onEdit:      handleEdit,
     onDelete:    handleDelete,
     onNavigate:  (id) => navigate('reading-order-detail', { id }),
-    buildUrl: (id) => buildUrl('volume-detail', { id }),
+    buildUrl: (id) => buildUrl('reading-order-detail', { id }),
   });
 }
