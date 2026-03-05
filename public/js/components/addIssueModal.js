@@ -13,6 +13,11 @@
 //   apiBase        : string               — базовий URL API
 //   cvImgPathSmall : string               — префікс для зображень
 //   onAdd(issueIds: number[], importance?) — колбек при натисканні «Додати вибрані»
+//   searchEndpoint  : string   — повний URL для пошуку; за замовч. `${apiBase}/issues`
+//   nameLabel       : string   — лейбл першого поля;    за замовч. 'Назва випуску'
+//   namePlaceholder : string   — placeholder;           за замовч. 'Назва...'
+//   cardIcon        : string   — іконка-заглушка;       за замовч. '📖'
+//   cvVolIdParam    : string   — назва query-param для CV Vol ID; за замовч. 'volume_id'
 // }
 
 const IMPORTANCE_OPTIONS = [
@@ -42,7 +47,7 @@ function ensureModal() {
 
       <div class="aim-filters">
         <div class="form-group" style="margin:0;">
-          <label class="aim-label">Назва випуску</label>
+          <label class="aim-label" id="aim-name-label">Назва випуску</label>
           <input type="text" id="aim-name" placeholder="Назва..." style="width:100%;">
         </div>
         <div class="form-group" style="margin:0;">
@@ -108,13 +113,16 @@ function ensureModal() {
   document.getElementById('aim-cancel-btn').addEventListener('click', closeAddIssueModal);
 
   // Кнопка "Додати вибрані"
-  document.getElementById('aim-multi-confirm-btn').addEventListener('click', () => {
+  document.getElementById('aim-multi-confirm-btn').addEventListener('click', (e) => {
     if (!_config || _selectedIssueIds.size === 0) return;
     const importance = _config.showImportance
       ? document.getElementById('aim-importance')?.value
       : undefined;
-    _config.onAdd(Array.from(_selectedIssueIds), importance);
+    const ids   = Array.from(_selectedIssueIds);
+    const onAdd = _config.onAdd;
+    e.currentTarget.disabled = true;
     closeAddIssueModal();
+    onAdd(ids, importance);
   });
 
   // Чекбокс "Вибрати всі"
@@ -146,16 +154,16 @@ export function openAddIssueModal(config) {
 
   document.getElementById('aim-title').textContent = config.title || 'Додати випуски';
 
+  document.getElementById('aim-name-label').textContent =
+    config.nameLabel ?? 'Назва випуску';
+  document.getElementById('aim-name').placeholder =
+    config.namePlaceholder ?? 'Назва...';
+
   ['aim-name', 'aim-volume', 'aim-number', 'aim-cvvolid'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('aim-exact').checked = false;
-  document.getElementById('aim-results').innerHTML = '';
-  document.getElementById('aim-results').style.display = 'grid';
   document.getElementById('aim-importance-block').style.display = config.showImportance ? 'block' : 'none';
-
-  const selectAllRow = document.getElementById('aim-select-all-row');
-  if (selectAllRow) selectAllRow.style.display = 'none';
 
   updateConfirmButtonState();
 
@@ -169,8 +177,9 @@ export function closeAddIssueModal() {
   _config = null;
   _selectedIssueIds.clear();
   _currentSearchResults = [];
-  const selectAllRow = document.getElementById('aim-select-all-row');
-  if (selectAllRow) selectAllRow.style.display = 'none';
+  document.getElementById('aim-results').innerHTML = '';
+  document.getElementById('aim-select-all-row').style.display = 'none';
+  document.getElementById('aim-multi-confirm-btn').disabled = false;
   clearTimeout(_searchTimeout);
 }
 
@@ -200,15 +209,16 @@ async function runSearch() {
 
   el.innerHTML = '<div class="aim-empty">Пошук...</div>';
 
-  const params = new URLSearchParams({ limit: 60 });
-  if (name)    params.set('name', name);
-  if (volume)  params.set('volume_name', volume);
-  if (number)  params.set('issue_number', number);
-  if (cvVolId) params.set('volume_id', cvVolId);
-  if (exact)   params.set('exact', 'true');
+  const searchParams = new URLSearchParams({ limit: 60 });
+  if (name)    searchParams.set('name', name);
+  if (volume)  searchParams.set('volume_name', volume);
+  if (number)  searchParams.set('issue_number', number);
+  if (cvVolId) searchParams.set(_config.cvVolIdParam ?? 'volume_id', cvVolId);
+  if (exact)   searchParams.set('exact', 'true');
 
   try {
-    const res = await fetch(`${_config.apiBase}/issues?${params}`);
+    const endpoint = _config.searchEndpoint ?? `${_config.apiBase}/issues`;
+    const res = await fetch(`${endpoint}?${searchParams}`);
     const result = await res.json();
     const data = result.data || [];
 
@@ -231,7 +241,7 @@ async function runSearch() {
              title="${issue.name || 'Без назви'}">
           ${imgSrc
             ? `<img src="${imgSrc}" alt="" class="aim-card-img" loading="lazy">`
-            : '<div class="aim-card-placeholder">📖</div>'}
+            : `<div class="aim-card-placeholder">${_config.cardIcon ?? '📖'}</div>`}
           <div class="aim-card-info">
             <div class="aim-card-name">${issue.name || 'Без назви'}</div>
             <div class="aim-card-meta">${issue.volume_name || ''}${issue.issue_number ? ' #' + issue.issue_number : ''}</div>
@@ -299,7 +309,7 @@ function updateSelectAllRow(data) {
   const alreadyCount = data.length - available.length;
   row.style.display = 'flex';
   countEl.textContent = `(${available.length})`;
-  hint.textContent = alreadyCount > 0 ? `${alreadyCount} вже у збірнику` : '';
+  hint.textContent = alreadyCount > 0 ? `${alreadyCount} вже додано` : '';
 
   // Синхронізуємо стан чекбоксу
   const allSelected  = available.every(i => _selectedIssueIds.has(i.id));

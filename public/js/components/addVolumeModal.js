@@ -169,8 +169,9 @@ function updateConfirmBtn() {
 async function confirmSelection() {
   if (!_config?.onAdd || !_selectedVolumeIds.size) return;
   const ids = Array.from(_selectedVolumeIds);
+  const onAdd = _config.onAdd;
   closeAddVolumeModal();
-  await _config.onAdd(ids);
+  await onAdd(ids);
 }
 
 // ── Стилі ────────────────────────────────────────────────────────────────

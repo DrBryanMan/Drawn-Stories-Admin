@@ -19,17 +19,40 @@ router.get('/by-volume/:cv_vol_id', (req, res) => {
 
 // Пошук збірників (для модалок)
 router.get('/search', (req, res) => {
-  const { search, limit = 20 } = req.query;
-  let where = '', params = [];
-  if (search) { where = ' WHERE (c.name LIKE ? OR v.name LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
+  const { name, volume_name, issue_number, cv_vol_id, exact, limit = 60 } = req.query;
+  const isExact = exact === 'true';
+
+  const conds = [], params = [];
+
+  if (name) {
+    conds.push(isExact ? 'LOWER(c.name) = LOWER(?)' : 'c.name LIKE ?');
+    params.push(isExact ? name : `%${name}%`);
+  }
+  if (volume_name) {
+    conds.push(isExact ? 'LOWER(v.name) = LOWER(?)' : 'v.name LIKE ?');
+    params.push(isExact ? volume_name : `%${volume_name}%`);
+  }
+  if (issue_number) {
+    conds.push('c.issue_number LIKE ?');
+    params.push(`%${issue_number}%`);
+  }
+  if (cv_vol_id) {
+    conds.push('c.cv_vol_id = ?');
+    params.push(parseInt(cv_vol_id));
+  }
+
+  const where = conds.length ? 'WHERE ' + conds.join(' AND ') : '';
+
   const data = getAll(`
-    SELECT c.id, c.name, c.cv_img, v.name as volume_name
+    SELECT c.id, c.name, c.cv_img, c.cv_id, c.issue_number,
+           v.name as volume_name
     FROM collections c
     LEFT JOIN volumes v ON c.cv_vol_id = v.cv_id
     ${where}
     ORDER BY c.name ASC
     LIMIT ?
   `, [...params, parseInt(limit)]);
+
   res.json({ data });
 });
 

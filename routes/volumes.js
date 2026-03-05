@@ -104,6 +104,12 @@ router.post('/', (req, res) => {
       'INSERT INTO volumes (cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null]
     );
+    if (lang) {
+      rawRun(
+        'INSERT OR IGNORE INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)',
+        [cv_id, TRANSLATED_THEME_ID]
+      );
+    }
     res.json({ message: 'Том створено' });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
@@ -116,14 +122,24 @@ router.put('/:id', (req, res) => {
       [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null, req.params.id]
     );
     if (Array.isArray(theme_ids)) {
-      // cv_id може оновитись, тому беремо нове значення
-      const newCvId = cv_id;
-      rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ?', [newCvId]);
+      rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ?', [cv_id]);
       theme_ids.forEach(themeId =>
-        rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [newCvId, themeId])
+        rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [cv_id, themeId])
       );
-      saveDatabase();
     }
+    if (lang) {
+      rawRun(
+        'INSERT OR IGNORE INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)',
+        [cv_id, TRANSLATED_THEME_ID]
+      );
+    } else {
+      rawRun(
+        'DELETE FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?',
+        [cv_id, TRANSLATED_THEME_ID]
+      );
+    }
+
+    saveDatabase();
     res.json({ message: 'Том оновлено' });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });

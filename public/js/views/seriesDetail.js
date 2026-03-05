@@ -2,6 +2,7 @@ import { fetchItem } from '../api/api.js';
 import { cv_img_path_small, cv_img_path_original, formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openAddVolumeModal } from '../components/addVolumeModal.js';
+import { openAddIssueModal } from '../components/addIssueModal.js';
 
 const API_BASE = 'http://localhost:7000/api';
 
@@ -29,8 +30,9 @@ async function renderPage(series) {
     const collectionVolumes = volumes.filter(v => v.has_collection_theme);
     const regularVolumes    = volumes.filter(v => !v.has_collection_theme);
 
-    // Зберігаємо для використання у модалці
-    window._seriesVolumes = volumes;
+    // Зберігаємо для використання у модалках
+    window._seriesVolumes     = volumes;
+    window._seriesCollections = collections;
 
     document.getElementById('page-title').innerHTML = `
         <a href="#" onclick="event.preventDefault(); navigateBack()" style="color: var(--text-secondary); text-decoration: none;">
@@ -85,7 +87,7 @@ async function renderPage(series) {
             <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
                     <h2 style="font-size: 1.5rem; margin: 0;">Збірники (${collections.length})</h2>
-                    <button class="btn btn-primary" onclick="openAddCollectionModal(${series.id})">+ Додати збірник</button>
+                    <button class="btn btn-primary" onclick="openAddCollectionToSeriesModal(${series.id})">+ Додати збірник</button>
                 </div>
                 ${collections.length > 0
                     ? `<div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">${renderCollectionCards(collections, series.id)}</div>`
@@ -101,20 +103,6 @@ async function renderPage(series) {
                 <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1.25rem;">
                     <button class="btn btn-secondary" onclick="closeEditSeriesModal()">Скасувати</button>
                     <button class="btn btn-primary" onclick="saveSeriesEdit()">Зберегти</button>
-                </div>
-            </div>
-        </div>
-
-        <!-- Модалка додавання збірника -->
-        <div id="add-collection-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-            <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:500px; max-width:90vw;">
-                <h3 style="margin-bottom:1rem;">Додати збірник до серії</h3>
-                <div class="form-group">
-                    <input type="text" id="collection-search-input" placeholder="Введіть назву збірника..." style="width:100%;">
-                </div>
-                <div id="collection-search-results" style="max-height:320px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; margin-bottom:1rem; min-height:48px;"></div>
-                <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-                    <button class="btn btn-secondary" onclick="closeAddCollectionModal()">Скасувати</button>
                 </div>
             </div>
         </div>
@@ -243,57 +231,33 @@ window.removeVolumeFromSeries = async (seriesId, volumeId) => {
 
 // ===== ЗБІРНИКИ =========================================================
 
-let addCollectionSeriesId = null;
-let collectionSearchTimeout = null;
-
-window.openAddCollectionModal = (seriesId) => {
-    addCollectionSeriesId = seriesId;
-    document.getElementById('add-collection-modal').style.display = 'flex';
-    const input = document.getElementById('collection-search-input');
-    input.value = '';
-    document.getElementById('collection-search-results').innerHTML = '';
-    input.oninput = (e) => {
-        clearTimeout(collectionSearchTimeout);
-        collectionSearchTimeout = setTimeout(() => searchCollectionsForSeries(e.target.value, seriesId), 300);
-    };
-    input.focus();
-};
-
-window.closeAddCollectionModal = () => {
-    document.getElementById('add-collection-modal').style.display = 'none';
-    addCollectionSeriesId = null;
-};
-
-async function searchCollectionsForSeries(query, seriesId) {
-    if (!query.trim()) { document.getElementById('collection-search-results').innerHTML = ''; return; }
-    const res = await fetch(`${API_BASE}/collections/search?search=${encodeURIComponent(query)}&limit=20`);
-    const result = await res.json();
-    const el = document.getElementById('collection-search-results');
-    if (!result.data?.length) { el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary);">Нічого не знайдено</div>'; return; }
-    el.innerHTML = result.data.map(col => `
-        <div onclick="addCollectionToSeries(${seriesId}, ${col.id})"
-             style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
-             onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
-            ${col.cv_img
-                ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" style="width:40px; height:60px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
-                : '<div style="width:40px; height:60px; background:var(--bg-secondary); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">📗</div>'}
-            <div>
-                <div style="font-weight:500;">${col.name}</div>
-                ${col.volume_name ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${col.volume_name}</div>` : ''}
-            </div>
-        </div>
-    `).join('');
-}
-
-window.addCollectionToSeries = async (seriesId, collectionId) => {
-    const res = await fetch(`${API_BASE}/series/${seriesId}/collections`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ collection_id: collectionId })
+window.openAddCollectionToSeriesModal = (seriesId) => {
+    openAddIssueModal({
+        title: 'Додати збірник до серії',
+        alreadyIds: new Set((window._seriesCollections || []).map(c => c.id)),
+        apiBase: API_BASE,
+        cvImgPathSmall: cv_img_path_small,
+        showImportance: false,
+        // ── ось і вся різниця ──
+        searchEndpoint: `${API_BASE}/collections/search`,
+        nameLabel:      'Назва збірника',
+        cvVolIdParam:   'cv_vol_id',
+        cardIcon:       '📗',
+        onAdd: async (collectionIds) => {
+            let lastError = null;
+            for (const colId of collectionIds) {
+                const res = await fetch(`${API_BASE}/series/${seriesId}/collections`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ collection_id: colId })
+                });
+                if (!res.ok) { const err = await res.json(); lastError = err.error; }
+            }
+            if (lastError) alert(lastError);
+            const updatedSeries = await fetchItem('series', seriesId);
+            renderPage(updatedSeries);
+        }
     });
-    if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
-    window.closeAddCollectionModal();
-    const series = await fetchItem('series', seriesId);
-    renderPage(series);
 };
 
 window.removeCollectionFromSeries = async (seriesId, collectionId) => {
@@ -302,3 +266,7 @@ window.removeCollectionFromSeries = async (seriesId, collectionId) => {
     const series = await fetchItem('series', seriesId);
     renderPage(series);
 };
+
+// ===== НАВІГАЦІЯ =========================================================
+
+window.navigateBack = () => navigate('series');

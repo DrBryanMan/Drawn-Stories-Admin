@@ -109,15 +109,6 @@ export async function renderVolumeDetail(params) {
                     <div style="flex: 1;">
                         <h1 style="font-size: 2rem; margin-bottom: 1rem;">${volume.name || 'Без назви'}</h1>
                         <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-                        ${volumeSeries.length > 0 ? `
-                                <div>
-                                    <strong>Серія:</strong>
-                                ${volumeSeries.map(s => `
-                                        <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
-                                              onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
-                                    `).join(' ')}
-                                </div>
-                            ` : ''}
                         ${volume.start_year ? `<div><strong>Рік початку:</strong> ${volume.start_year}</div>` : ''}
                         ${volume.publisher || volume.publisher_name ? `
                                 <div>
@@ -129,6 +120,15 @@ export async function renderVolumeDetail(params) {
                             ` : ''}
                             <div><strong>Дата створення:</strong> ${formatDate(volume.created_at)}</div>
                         ${volume.lang ? `<div><strong>Мова:</strong> ${langDisplay(volume.lang)}</div>` : ''}
+                        ${volumeSeries.length > 0 ? `
+                                <div>
+                                    <strong>Серія:</strong>
+                                ${volumeSeries.map(s => `
+                                        <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
+                                              onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
+                                    `).join(' ')}
+                                </div>
+                            ` : ''}
                         ${volumeThemes.length > 0 ? `
                                 <div>
                                     <strong>Теми:</strong>
