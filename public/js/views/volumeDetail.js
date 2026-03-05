@@ -7,6 +7,11 @@ import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxLis
 
 const API_BASE = 'http://localhost:7000/api';
 
+// ===== ПАГІНАЦІЯ ВИПУСКІВ ================================================
+
+let _issuesPage = 0;
+const ISSUES_PAGE_SIZE = 100;
+
 // ===== МОВНА МАПА =========================================================
 
 const LANG_MAP = {
@@ -142,57 +147,62 @@ export async function renderVolumeDetail(params) {
                         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                             <button class="btn btn-secondary" onclick="editVolumeDetail(${volume.id})">Редагувати том</button>
                             <button class="btn btn-primary" onclick="openAddToSeriesModal(${volume.id}, 'volume')">+ Додати до серії</button>
-                            ${!translationParent ? `
-                                <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id})">🌐 Додати до першоджерела</button>
+                            ${!isMagazineVolume ? `
+                                ${!translationParent ? `
+                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id})">🌐 Додати до першоджерела</button>
+                                ` : ''}
+                                ${!magazineParent ? `
+                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
+                                ` : ''}
+                                ${isCollectionVolume ? `
+                                    ${issuesResult.data.length > 0 ? `
+                                        <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
+                                            📚 Конвертувати всі випуски (${issuesResult.data.length}) → збірники
+                                        </button>
+                                    ` : ''}
+                                    ${volCollections.length > 0 ? `
+                                        <button class="btn btn-danger" onclick="convertAllCollectionsToIssues(${volume.id}, ${volCollections.length})">
+                                            🔄 Повернути всі збірники (${volCollections.length}) → випуски
+                                        </button>
+                                    ` : ''}
+                                ` : `
+                                    ${issuesResult.data.length > 0 ? `
+                                        <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
+                                            📚 Конвертувати всі (${issuesResult.data.length}) у збірники
+                                        </button>
+                                    ` : ''}
+                                `}
                             ` : ''}
-                            ${!magazineParent ? `
-                                <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
-                            ` : ''}
-                        ${isCollectionVolume ? `
-                            ${issuesResult.data.length > 0 ? `
-                                    <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
-                                        📚 Конвертувати всі випуски (${issuesResult.data.length}) → збірники
-                                    </button>
-                                ` : ''}
-                            ${volCollections.length > 0 ? `
-                                    <button class="btn btn-danger" onclick="convertAllCollectionsToIssues(${volume.id}, ${volCollections.length})">
-                                        🔄 Повернути всі збірники (${volCollections.length}) → випуски
-                                    </button>
-                                ` : ''}
-                            ` : `
-                            ${issuesResult.data.length > 0 ? `
-                                    <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
-                                        📚 Конвертувати всі (${issuesResult.data.length}) у збірники
-                                    </button>
-                                ` : ''}
-                            `}
                         </div>
                     </div>
                 </div>
 
                 <!-- ── Переклади: список дочірніх (цей том — оригінал) ───── -->
-                <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
-                        <h2 style="font-size:1.25rem; margin:0;">🌐 Переклади (${translations.length})</h2>
-                        <button class="btn btn-primary btn-small"
-                            onclick="openVolumePickerModal('translation-add', ${volume.id})">
-                            + Додати переклад
-                        </button>
-                    </div>
-                ${translations.length > 0 ? `
-                        <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-                        ${translations.map(t => `
-                                <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;"
-                                     onclick="navigate('volume-detail', { id: ${t.id} })">
-                                ${t.cv_img ? `<img src="${cv_img_path_small}${t.cv_img.startsWith('/') ? '' : '/'}${t.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
-                                    <span style="font-size:0.9rem;">${t.lang ? `<strong>[${t.lang}]</strong> ` : ''}${t.name}</span>
-                                    <button class="btn btn-danger btn-small" style="padding:0.15rem 0.4rem; font-size:0.75rem; margin-left:0.25rem;"
-                                        onclick="event.stopPropagation(); removeTranslation(${volume.id}, ${t.id})">✕</button>
-                                </div>
-                            `).join('')}
+                
+                ${!isMagazineVolume ? `
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                            <h2 style="font-size:1.25rem; margin:0;">🌐 Переклади (${translations.length})</h2>
+                            <button class="btn btn-primary btn-small"
+                                onclick="openVolumePickerModal('translation-add', ${volume.id})">
+                                + Додати переклад
+                            </button>
                         </div>
-                    ` : `<p style="color:var(--text-secondary); margin:0; font-size:0.9rem;">Немає прив'язаних перекладів.</p>`}
-                </div>
+                        ${translations.length > 0 ? `
+                            <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                            ${translations.map(t => `
+                                    <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;"
+                                        onclick="navigate('volume-detail', { id: ${t.id} })">
+                                    ${t.cv_img ? `<img src="${cv_img_path_small}${t.cv_img.startsWith('/') ? '' : '/'}${t.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
+                                        <span style="font-size:0.9rem;">${t.lang ? `<strong>[${t.lang}]</strong> ` : ''}${t.name}</span>
+                                        <button class="btn btn-danger btn-small" style="padding:0.15rem 0.4rem; font-size:0.75rem; margin-left:0.25rem;"
+                                            onclick="event.stopPropagation(); removeTranslation(${volume.id}, ${t.id})">✕</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `<p style="color:var(--text-secondary); margin:0; font-size:0.9rem;">Немає прив'язаних перекладів.</p>`}
+                    </div>
+                ` : ''}
 
                 <!-- ── Оригінал (цей том — переклад) ────────────────────── -->
                 ${translationParent ? `
@@ -328,43 +338,7 @@ export async function renderVolumeDetail(params) {
                 ` : ''}
 
                 <!-- ── Випуски ────────────────────────────────────────────── -->
-            ${issuesResult && issuesResult.data.length > 0 ? `
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                        <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Випуски (${issuesResult.data.length})</h2>
-                        <div class="table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Обкладинка</th>
-                                        <th>Номер</th>
-                                        <th>Назва</th>
-                                        <th>Обкладинка</th>
-                                        <th>Реліз</th>
-                                        <th>Дії</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                ${issuesResult.data.map(issue => `
-                                        <tr onclick="navigateToIssue(${issue.id})" style="cursor: pointer;">
-                                            <td>
-                                            ${issue.cv_img
-                                                    ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
-                                                    : '📖'}
-                                            </td>
-                                            <td><strong>#${issue.issue_number || '?'}</strong></td>
-                                            <td>${issue.name || 'Без назви'}</td>
-                                            <td>${formatCoverDate(issue.cover_date)}</td>
-                                            <td>${formatReleaseDate(issue.release_date)}</td>
-                                            <td onclick="event.stopPropagation()">
-                                                <button class="btn btn-secondary btn-small" onclick="editIssueFromVolume(${issue.id})">Редагувати</button>
-                                            </td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                ` : ''}
+                ${issuesResult && issuesResult.data.length > 0 ? '<div id="issues-block"></div>' : ''}
 
             ${renderAddToSeriesModal()}
 
@@ -389,23 +363,111 @@ export async function renderVolumeDetail(params) {
             </div>
         `;
 
+        // ── Ініціалізація блоку випусків з пагінацією ──────────────────────
+        _issuesPage = 0;
+        if (issuesResult && issuesResult.data.length > 0) {
+            renderIssuesBlock(issuesResult.data, 0);
+        }
+
     } catch (error) {
         console.error('Помилка завантаження тому:', error);
         showError('Помилка завантаження даних');
     }
 }
 
+// ===== ПАГІНОВАНИЙ РЕНДЕР БЛОКУ ВИПУСКІВ =================================
+
+function renderIssuesBlock(allIssues, page) {
+    const block = document.getElementById('issues-block');
+    if (!block) return;
+
+    const total = allIssues.length;
+    const pages = Math.ceil(total / ISSUES_PAGE_SIZE);
+    const start = page * ISSUES_PAGE_SIZE;
+    const slice = allIssues.slice(start, start + ISSUES_PAGE_SIZE);
+
+    const paginationHtml = total > ISSUES_PAGE_SIZE ? `
+        <div style="display:inline-flex; align-items:center; gap:0.4rem; float:right;">
+            <button
+                id="issues-prev-btn"
+                class="btn btn-secondary btn-small"
+                ${page === 0 ? 'disabled' : ''}
+                style="padding:0.2rem 0.55rem; font-size:0.85rem; line-height:1;"
+            >←</button>
+            <span style="font-size:0.85rem; color:var(--text-secondary); white-space:nowrap;">
+                ${page + 1} / ${pages}
+            </span>
+            <button
+                id="issues-next-btn"
+                class="btn btn-secondary btn-small"
+                ${page >= pages - 1 ? 'disabled' : ''}
+                style="padding:0.2rem 0.55rem; font-size:0.85rem; line-height:1;"
+            >→</button>
+        </div>
+    ` : '';
+
+    block.innerHTML = `
+        <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem; display:flex; align-items:center; justify-content:space-between;">
+                <span>Випуски (${total})</span>
+                ${paginationHtml}
+            </h2>
+            <div class="table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Обкладинка</th>
+                            <th>Номер</th>
+                            <th>Назва</th>
+                            <th>Обкладинка</th>
+                            <th>Реліз</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    ${slice.map(issue => `
+                            <tr onclick="navigateToIssue(${issue.id})" style="cursor: pointer;">
+                                <td>
+                                ${issue.cv_img
+                                        ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
+                                        : '📖'}
+                                </td>
+                                <td><strong>#${issue.issue_number || '?'}</strong></td>
+                                <td>${issue.name || 'Без назви'}</td>
+                                <td>${formatCoverDate(issue.cover_date)}</td>
+                                <td>${formatReleaseDate(issue.release_date)}</td>
+                                <td onclick="event.stopPropagation()">
+                                    <button class="btn btn-secondary btn-small" onclick="editIssueFromVolume(${issue.id})">Редагувати</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('issues-prev-btn')?.addEventListener('click', () => {
+        _issuesPage--;
+        renderIssuesBlock(allIssues, _issuesPage);
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    document.getElementById('issues-next-btn')?.addEventListener('click', () => {
+        _issuesPage++;
+        renderIssuesBlock(allIssues, _issuesPage);
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 function formatIssueRanges(numbers) {
-    if (!numbers || numbers.length === 0) return null;
-
     const nums = numbers
-        .map(n => parseFloat(n))
+        .map(n => parseInt(n.trim()))
         .filter(n => !isNaN(n))
         .sort((a, b) => a - b);
 
-    if (nums.length === 0) return null;
+    if (!nums.length) return '';
 
     const ranges = [];
     let start = nums[0], end = nums[0];
@@ -694,7 +756,7 @@ window.convertAllIssuesToCollections = async (volumeId, count) => {
 };
 
 window.convertAllCollectionsToIssues = async (volumeId, count) => {
-    if (!confirm(`Повернути всі ${count} збірників цього тома назад у випуски? Тема "Collection" буде видалена з тому.`)) return;
+    if (!confirm(`Повернути всі ${count} збірників цього тома назад у випуски?\nТема "Collection" буде видалена з тому.`)) return;
     try {
         const res = await fetch(`${API_BASE}/volumes/${volumeId}/convert-all-collections-to-issues`, { method: 'POST' });
         const data = await res.json();
