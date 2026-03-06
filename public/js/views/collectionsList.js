@@ -128,11 +128,11 @@ function renderItems(items) {
                 </div>
                 <div class="card-body">
                     <div class="card-title">${title}</div>
-                    ${item.volume_name  ? `<div class="card-meta">📚 ${item.volume_name}</div>` : ''}
-                    ${item.issue_number ? `<div class="card-meta">#${item.issue_number}</div>` : ''}
-                    ${isCollection && item.issue_count ? `<div class="card-meta">📖 ${item.issue_count} вип.</div>` : ''}
-                    ${item.publisher_name ? `<div class="card-meta">🏢 ${item.publisher_name}</div>` : ''}
-                    <div class="card-meta">➕ ${item.created_at ? new Date(item.created_at).toLocaleDateString('uk-UA') : '—'}</div>
+                    ${item.volume_name  ? `<div class="card-meta vol-name">${item.volume_name}</div>` : ''}
+                    ${item.issue_number ? `<div class="card-meta issue-number">#${item.issue_number}</div>` : ''}
+                    ${isCollection && item.issue_count ? `<div class="badge badge-issue-count" style="position: absolute; top: 3.2em; right: .5em; font-size: .7rem; padding: .2em .5em;">📖 ${item.issue_count}</div>` : ''}
+                    ${item.publisher_name ? `<div class="card-meta">${item.publisher_name}</div>` : ''}
+                    <div class="card-meta">${item.created_at ? new Date(item.created_at).toLocaleDateString('uk-UA') : '—'}</div>
                 </div>
             </div>
         `;

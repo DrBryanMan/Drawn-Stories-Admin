@@ -1,6 +1,6 @@
 // routes/series.js
 const { Router } = require('express');
-const { runQuery, getAll, getOne } = require('../db');
+const { runQuery, getAll, getOne, rawRun, saveDatabase } = require('../db');
 
 const COLLECTION_THEME_ID = 44;
 
@@ -97,10 +97,28 @@ router.post('/:id/volumes', (req, res) => {
   const { volume_id } = req.body;
   if (!volume_id) return res.status(400).json({ error: 'volume_id обов\'язковий' });
   try {
-    const existing = getOne('SELECT id FROM series_volumes WHERE series_id = ? AND volume_id = ?', [req.params.id, volume_id]);
+    const seriesId = parseInt(req.params.id);
+
+    const existing = getOne('SELECT id FROM series_volumes WHERE series_id = ? AND volume_id = ?', [seriesId, volume_id]);
     if (existing) return res.status(400).json({ error: 'Цей том вже в серії' });
-    runQuery('INSERT INTO series_volumes (series_id, volume_id) VALUES (?, ?)', [req.params.id, volume_id]);
-    res.json({ message: 'Том додано до серії' });
+    rawRun('INSERT INTO series_volumes (series_id, volume_id) VALUES (?, ?)', [seriesId, volume_id]);
+
+    // Автоматично додаємо всі збірники цього тому
+    const volume = getOne('SELECT cv_id FROM volumes WHERE id = ?', [volume_id]);
+    let addedCollections = 0;
+    if (volume?.cv_id) {
+      const collections = getAll('SELECT id FROM collections WHERE cv_vol_id = ?', [volume.cv_id]);
+      for (const col of collections) {
+        const colExists = getOne('SELECT id FROM series_collections WHERE series_id = ? AND collection_id = ?', [seriesId, col.id]);
+        if (!colExists) {
+          rawRun('INSERT INTO series_collections (series_id, collection_id) VALUES (?, ?)', [seriesId, col.id]);
+          addedCollections++;
+        }
+      }
+    }
+
+    saveDatabase();
+    res.json({ message: 'Том додано до серії', auto_added_collections: addedCollections });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
@@ -117,12 +135,31 @@ router.post('/:id/collections', (req, res) => {
   const { collection_id } = req.body;
   if (!collection_id) return res.status(400).json({ error: 'collection_id обов\'язковий' });
   try {
-    const existing = getOne('SELECT id FROM series_collections WHERE series_id = ? AND collection_id = ?', [req.params.id, collection_id]);
+    const seriesId = parseInt(req.params.id);
+
+    const existing = getOne('SELECT id FROM series_collections WHERE series_id = ? AND collection_id = ?', [seriesId, collection_id]);
     if (existing) return res.status(400).json({ error: 'Цей збірник вже в серії' });
-    runQuery('INSERT INTO series_collections (series_id, collection_id) VALUES (?, ?)', [req.params.id, collection_id]);
-    res.json({ message: 'Збірник додано до серії' });
+    rawRun('INSERT INTO series_collections (series_id, collection_id) VALUES (?, ?)', [seriesId, collection_id]);
+
+    // Автоматично додаємо том цього збірника
+    let addedVolume = false;
+    const collection = getOne('SELECT cv_vol_id FROM collections WHERE id = ?', [collection_id]);
+    if (collection?.cv_vol_id) {
+      const volume = getOne('SELECT id FROM volumes WHERE cv_id = ?', [collection.cv_vol_id]);
+      if (volume) {
+        const volExists = getOne('SELECT id FROM series_volumes WHERE series_id = ? AND volume_id = ?', [seriesId, volume.id]);
+        if (!volExists) {
+          rawRun('INSERT INTO series_volumes (series_id, volume_id) VALUES (?, ?)', [seriesId, volume.id]);
+          addedVolume = true;
+        }
+      }
+    }
+
+    saveDatabase();
+    res.json({ message: 'Збірник додано до серії', auto_added_volume: addedVolume });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
+
 
 router.delete('/:id/collections/:collectionId', (req, res) => {
   try {

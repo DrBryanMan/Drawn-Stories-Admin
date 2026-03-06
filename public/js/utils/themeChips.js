@@ -7,12 +7,14 @@ if (!document.getElementById('theme-chips-style')) {
     /* Базовий чіп */
     .edit-chip {
       display: inline-flex;
+      align-items: stretch;
       align-items: center;
       gap: 0.3rem;
       padding: 0.2rem 0.5rem 0.2rem 0.6rem;
       border-radius: 12px;
       font-size: 0.8rem;
       font-weight: 500;
+      line-height: 1;
     }
     .edit-chip button {
       background: none;
@@ -161,11 +163,15 @@ export function buildThemeChipsViewHTML(allThemes) {
   const genres  = allThemes.filter(t => t.type === 'genre');
   const themes  = allThemes.filter(t => t.type === 'theme');
 
-  const renderChip = (t) => `
+  const renderChip = (t) => {
+    const label = t.ua_name
+        ? t.ua_name.charAt(0).toUpperCase() + t.ua_name.slice(1)
+        : t.name;
+    return `
     <span class="edit-chip ${chipClassByType(t.type)}" data-id="${t.id}">
-      ${t.ua_name || t.name}
+      ${label}
     </span>
-  `;
+  `};
 
   const parts = [];
   if (types.length) {
@@ -194,12 +200,16 @@ export function buildThemeChipsHTML(allThemes, removeFnName) {
   const genres  = allThemes.filter(t => t.type === 'genre');
   const themes  = allThemes.filter(t => t.type === 'theme' || !t.type);
 
-  const makeChips = (arr) => arr.map(t => `
-    <span class="edit-chip ${chipClassByType(t.type)}" data-id="${t.id}">
-      ${t.ua_name || t.name}
-      <button type="button" onclick="${removeFnName}(${t.id})" title="Видалити">×</button>
-    </span>
-  `).join('');
+  const makeChips = (arr) => arr.map(t => {
+    const label = t.ua_name
+        ? t.ua_name.charAt(0).toUpperCase() + t.ua_name.slice(1)
+        : t.name;
+    return `
+      <span class="edit-chip ${chipClassByType(t.type)}" data-id="${t.id}">
+        ${label}
+        <button type="button" onclick="${removeFnName}(${t.id})" title="Видалити">×</button>
+      </span>
+  `}).join('');
 
   const parts = [];
   if (types.length) {

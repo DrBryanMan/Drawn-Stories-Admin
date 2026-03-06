@@ -12,6 +12,9 @@
     --warning: #d97706;
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
+
+    --danger-hsl: 340, 100%, 50%;
+
 }
 
 * {
@@ -221,11 +224,12 @@ text-decoration: none;
 .btn {
     padding: 0.5rem 1rem;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 0.875rem;
     font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
+	margin: 0;
 }
 
 .btn-primary {
@@ -279,6 +283,27 @@ text-decoration: none;
     font-size: 0.8rem;
 }
 
+.btn-notext.btn-small {
+    padding: 0;
+    font-size: 0.8rem;
+	width: 2em;
+	aspect-ratio: 1 / 1;
+}
+
+.btn-notext.btn-danger {
+    background: hsl(var(--danger-hsl), .7);
+    color: white;
+}
+
+.btn-notext.btn-danger:hover {
+    background: hsl(var(--danger-hsl), .9);
+}
+
+.btn-nobg.btn-danger {
+    background: none !important;
+    color: hsl(var(--danger-hsl), .7);
+}
+
 /* Content */
 .content {
     flex: 1;
@@ -291,12 +316,19 @@ text-decoration: none;
 }
 
 .card {
+	position: relative;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     overflow: hidden;
     transition: all 0.2s;
     cursor: pointer;
+}
+
+.card .btn-delete {
+	position: absolute;
+	top: .5em;
+	right: .5em;
 }
 
 .card:hover {
@@ -562,8 +594,13 @@ text-decoration: none;
 
 .form-row {
     display: grid;
-    grid-template-columns: 1fr 1fr;
     gap: 1rem;
+}
+.form-row-2 {
+    grid-template-columns: 1fr 1fr;
+}
+.form-row-3 {
+    grid-template-columns: 1fr 1fr 1fr;
 }
 
 .empty-state {

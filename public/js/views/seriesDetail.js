@@ -5,6 +5,7 @@ import { openAddVolumeModal } from '../components/addVolumeModal.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
 
 const API_BASE = 'http://localhost:7000/api';
+let _collectionsSortOrder = 'date'; // 'date' | 'name' | 'number'
 
 export async function renderSeriesDetail(params) {
     const id = params.id;
@@ -87,11 +88,22 @@ async function renderPage(series) {
             <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color);">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
                     <h2 style="font-size: 1.5rem; margin: 0;">Збірники (${collections.length})</h2>
-                    <button class="btn btn-primary" onclick="openAddCollectionToSeriesModal(${series.id})">+ Додати збірник</button>
+                    <div style="display:flex; gap:0.75rem; align-items:center;">
+                        ${collections.length > 1 ? `
+                            <select id="collections-sort-select" style="padding:0.4rem 0.75rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-secondary); color:var(--text-primary); font-size:0.9rem;">
+                                <option value="date"   ${_collectionsSortOrder === 'date'   ? 'selected' : ''}>За датою</option>
+                                <option value="number" ${_collectionsSortOrder === 'number' ? 'selected' : ''}>За номером</option>
+                                <option value="name"   ${_collectionsSortOrder === 'name'   ? 'selected' : ''}>За назвою</option>
+                            </select>
+                        ` : ''}
+                        <button class="btn btn-primary" onclick="openAddCollectionToSeriesModal(${series.id})">+ Додати збірник</button>
+                    </div>
                 </div>
-                ${collections.length > 0
-                    ? `<div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">${renderCollectionCards(collections, series.id)}</div>`
-                    : '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Немає збірників. Додайте перший!</p>'}
+                <div id="collections-grid">
+                    ${collections.length > 0
+                        ? `<div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">${renderCollectionCards(sortCollections(collections, _collectionsSortOrder), series.id)}</div>`
+                        : '<p style="text-align: center; color: var(--text-secondary); padding: 2rem;">Немає збірників. Додайте перший!</p>'}
+                </div>
             </div>
         </div>
 
@@ -107,6 +119,16 @@ async function renderPage(series) {
             </div>
         </div>
     `;
+    const sortSelect = document.getElementById('collections-sort-select');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', () => {
+            _collectionsSortOrder = sortSelect.value;
+            const grid = document.getElementById('collections-grid');
+            if (grid) {
+                grid.innerHTML = `<div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">${renderCollectionCards(sortCollections(collections, _collectionsSortOrder), series.id)}</div>`;
+            }
+        });
+    }
 }
 
 // ── Картки томів ─────────────────────────────────────────────────────────
@@ -124,9 +146,9 @@ function renderVolumeCards(volumes, seriesId) {
                 ${vol.has_collection_theme
                     ? (vol.collection_count ? `<div class="card-meta">📗 ${vol.collection_count}</div>` : '')
                     : (vol.issue_count      ? `<div class="card-meta">📖 ${vol.issue_count}</div>`      : '')}
-                <button class="btn btn-danger btn-small" style="margin-top:0.5rem; width:100%;"
+                <button class="btn btn-notext btn-danger btn-small"
                     onclick="event.stopPropagation(); removeVolumeFromSeries(${seriesId}, ${vol.id})">
-                    Видалити
+                    ✕
                 </button>
             </div>
         </div>
@@ -147,13 +169,37 @@ function renderCollectionCards(collections, seriesId) {
                 <div class="card-title" title="${col.name}">${col.name}</div>
                 ${col.volume_name ? `<div class="card-meta">${col.volume_name}</div>` : ''}
                 ${col.issue_count ? `<div class="card-meta">📖 ${col.issue_count}</div>` : ''}
-                <button class="btn btn-danger btn-small" style="margin-top:0.5rem; width:100%;"
+                ${col.issue_number ? `<div class="card-meta">#${col.issue_number}</div>` : ''}
+                <button class="btn btn-notext btn-danger btn-small"
                     onclick="event.stopPropagation(); removeCollectionFromSeries(${seriesId}, ${col.id})">
-                    Видалити
+                    ✕
                 </button>
             </div>
         </div>
     `).join('');
+}
+
+function sortCollections(collections, order) {
+    const arr = [...collections];
+    if (order === 'name') {
+        return arr.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+    }
+    if (order === 'number') {
+        return arr.sort((a, b) => {
+            const na = parseFloat(a.issue_number) || Infinity;
+            const nb = parseFloat(b.issue_number) || Infinity;
+            return na - nb;
+        });
+    }
+    // 'date' — cover_date, fallback release_date, fallback без дати в кінець
+    return arr.sort((a, b) => {
+        const da = a.cover_date || a.release_date || '';
+        const db = b.cover_date || b.release_date || '';
+        if (!da && !db) return 0;
+        if (!da) return 1;
+        if (!db) return -1;
+        return da.localeCompare(db);
+    });
 }
 
 // ===== РЕДАГУВАННЯ СЕРІЇ ================================================

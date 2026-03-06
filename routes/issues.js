@@ -44,7 +44,7 @@ router.get('/', (req, res) => {
   if (cv_id) { conditions.push('i.cv_id = ?'); params.push(parseInt(cv_id)); }
 
   if (conditions.length) query += ' WHERE ' + conditions.join(' AND ');
-  query += ' ORDER BY CAST(i.issue_number AS REAL) DESC, i.issue_number DESC';
+  query += ' ORDER BY i.created_at DESC';
   if (limit) {
     query += ' LIMIT ? OFFSET ?';
     params.push(parseInt(limit), parseInt(offset));

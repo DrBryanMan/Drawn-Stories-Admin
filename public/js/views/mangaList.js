@@ -107,14 +107,15 @@ function renderItems(items) {
         const isCollection = item._type === 'collection';
         return `
             <div class="card" data-item-id="${item.id}" data-item-type="${item._type}" style="cursor:pointer;">
+                <div class="badge badge-${isCollection ? 'collection' : 'issue'}" style="position: absolute; top: .5em; right: .5em; font-size: .7rem; padding: .2rem .5rem;">${isCollection ? 'Збірник' : 'Випуск'}</div>
                 <div class="card-img">
                     ${imgUrl ? `<img src="${imgUrl}" alt="${escapeAttr(title)}">` : `<div style="font-size:3rem;">📖</div>`}
                 </div>
                 <div class="card-body">
                     <div class="card-title">${title}</div>
+                    ${item.issue_number ? `<div class="card-meta issue-number">#${item.issue_number}</div>` : ''}
                     ${item.volume_name ? `<div class="card-meta">Том: ${item.volume_name}</div>` : ''}
-                    ${item.issue_number ? `<div class="card-meta">#${item.issue_number}</div>` : ''}
-                    ${isCollection ? `<div class="card-meta" style="color:var(--accent-color)">Збірник</div>` : ''}
+                    ${isCollection ? `<div class="card-meta">Видавництво: ${item.publisher_name}</div>` : ''}
                 </div>
             </div>
         `;

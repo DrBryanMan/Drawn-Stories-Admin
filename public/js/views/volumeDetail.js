@@ -3,7 +3,7 @@ import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../u
 import { locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openModal } from '../components/modal.js';
-import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList } from '../utils/themeChips.js';
+import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList, buildThemeChipsViewHTML } from '../utils/themeChips.js';
 
 const API_BASE = 'http://localhost:7000/api';
 
@@ -101,48 +101,46 @@ export async function renderVolumeDetail(params) {
                 <!-- ── Шапка тому ────────────────────────────────────────── -->
                 <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                     <div style="flex-shrink: 0;">
-                    ${volume.cv_img
+                        ${volume.cv_img
                             ? `<img src="${cv_img_path_small + volume.cv_img}" alt="${volume.name}"
                                 style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
-                            : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📚</div>'}
+                            : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📚</div>'
+                        }
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1em;">
+                            <a href="https://comicvine.gamespot.com/${volume.cv_slug}/4050-${volume.cv_id}" target="_blank">${cv_logo_svg}</a>
+                            ${volume.locg_slug ? `
+                                <a href="https://leagueofcomicgeeks.com/comics/series/${volume.locg_id}/${volume.locg_slug}" target="_blank">
+                                    <img src="${locg_img}" alt="League of Comic Geeks" style="height:30px; vertical-align:middle;">
+                                </a>
+                            ` : ''}
+                        </div>
                     </div>
                     <div style="flex: 1;">
                         <h1 style="font-size: 2rem; margin-bottom: 1rem;">${volume.name || 'Без назви'}</h1>
                         <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-                        ${volume.start_year ? `<div><strong>Рік початку:</strong> ${volume.start_year}</div>` : ''}
-                        ${volume.publisher || volume.publisher_name ? `
-                                <div>
-                                    <strong>Видавець:</strong>
-                                ${volume.publisher_name
-                                        ? `${volume.publisher_name} <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${volume.publisher})</span>`
-                                        : `cv_id: ${volume.publisher}`}
-                                </div>
-                            ` : ''}
-                            <div><strong>Дата створення:</strong> ${formatDate(volume.created_at)}</div>
-                        ${volume.lang ? `<div><strong>Мова:</strong> ${langDisplay(volume.lang)}</div>` : ''}
-                        ${volumeSeries.length > 0 ? `
-                                <div>
-                                    <strong>Серія:</strong>
-                                ${volumeSeries.map(s => `
-                                        <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
-                                              onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
-                                    `).join(' ')}
-                                </div>
-                            ` : ''}
-                        ${volumeThemes.length > 0 ? `
-                                <div>
-                                    <strong>Теми:</strong>
-                                ${volumeThemes.map(t => `<span class="theme-badge">${t.ua_name || t.name}</span>`).join(' ')}
-                                </div>
-                            ` : ''}
-                            <div style="display: flex; align-items: center; gap: 0.5rem; height:30px;">
-                                <a href="https://comicvine.gamespot.com/${volume.cv_slug}/4050-${volume.cv_id}" target="_blank">${cv_logo_svg}</a>
-                            ${volume.locg_slug ? `
-                                    <a href="https://leagueofcomicgeeks.com/comics/series/${volume.locg_id}/${volume.locg_slug}" target="_blank">
-                                        <img src="${locg_img}" alt="League of Comic Geeks" style="height:30px; vertical-align:middle;">
-                                    </a>
+                            ${volume.start_year ? `<div><strong>Рік початку:</strong> ${volume.start_year}</div>` : ''}
+                            ${volume.publisher || volume.publisher_name ? `
+                                    <div>
+                                        <strong>Видавець:</strong>
+                                    ${volume.publisher_name
+                                            ? `${volume.publisher_name} <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${volume.publisher})</span>`
+                                            : `cv_id: ${volume.publisher}`}
+                                    </div>
                                 ` : ''}
+                            ${volume.lang ? `<div><strong>Мова:</strong> ${langDisplay(volume.lang)}</div>` : ''}
+                            ${volumeSeries.length > 0 ? `
+                                    <div>
+                                        <strong>Серія:</strong>
+                                    ${volumeSeries.map(s => `
+                                            <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
+                                                onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
+                                        `).join(' ')}
+                                    </div>
+                                ` : ''}
+                            <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
+                                ${buildThemeChipsViewHTML(volumeThemes)}
                             </div>
+                            <div><strong>Дата додавання:</strong> ${formatDate(volume.created_at)}</div>
                         </div>
                         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                             <button class="btn btn-secondary" onclick="editVolumeDetail(${volume.id})">Редагувати том</button>
@@ -191,11 +189,10 @@ export async function renderVolumeDetail(params) {
                         ${translations.length > 0 ? `
                             <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
                             ${translations.map(t => `
-                                    <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;"
+                                    <div style="display:flex; align-items:center; gap: .3rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: .3rem .6rem; cursor:pointer;"
                                         onclick="navigate('volume-detail', { id: ${t.id} })">
-                                    ${t.cv_img ? `<img src="${cv_img_path_small}${t.cv_img.startsWith('/') ? '' : '/'}${t.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
-                                        <span style="font-size:0.9rem;">${t.lang ? `<strong>[${t.lang}]</strong> ` : ''}${t.name}</span>
-                                        <button class="btn btn-danger btn-small" style="padding:0.15rem 0.4rem; font-size:0.75rem; margin-left:0.25rem;"
+                                        <span style="font-size:0.9rem;">${t.lang ? `<i>${langDisplay(t.lang)}</i> — ` : ''}${t.name}</span>
+                                        <button class="btn btn-notext btn-nobg btn-danger btn-small"
                                             onclick="event.stopPropagation(); removeTranslation(${volume.id}, ${t.id})">✕</button>
                                     </div>
                                 `).join('')}
@@ -206,7 +203,7 @@ export async function renderVolumeDetail(params) {
 
                 <!-- ── Оригінал (цей том — переклад) ────────────────────── -->
                 ${translationParent ? `
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--accent); margin-bottom: 1.5rem;">
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
                             <h2 style="font-size:1.25rem; margin:0;">📖 Оригінал</h2>
                             <button class="btn btn-danger btn-small"
@@ -255,7 +252,7 @@ export async function renderVolumeDetail(params) {
 
                 <!-- ── Батьківський журнал (цей том входить у журнал) ─────── -->
             ${magazineParent ? `
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 2px solid var(--accent); margin-bottom: 1.5rem;">
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
                             <h2 style="font-size:1.25rem; margin:0;">📰 Журнал</h2>
                             <button class="btn btn-danger btn-small"
@@ -340,7 +337,7 @@ export async function renderVolumeDetail(params) {
                 <!-- ── Випуски ────────────────────────────────────────────── -->
                 ${issuesResult && issuesResult.data.length > 0 ? '<div id="issues-block"></div>' : ''}
 
-            ${renderAddToSeriesModal()}
+                ${renderAddToSeriesModal()}
 
                 <!-- ── Модалка вибору тому (переклади + журнали) ─────────── -->
                 <div id="volume-picker-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">

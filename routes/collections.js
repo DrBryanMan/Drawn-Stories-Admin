@@ -1,10 +1,34 @@
-// routes/collections.js
 const { Router } = require('express');
 const { runQuery, getAll, getOne, rawRun, saveDatabase } = require('../db');
 
 const COLLECTION_THEME_ID = 44; // themes.id для "Collection"
 
 const router = Router();
+
+// ── Нормалізація order_num для існуючих записів ───────────────────────────
+// Якщо всі order_num = 0 або є дублікати — перенумеровуємо за номером випуску
+function ensureOrderNums(collectionId) {
+  const items = getAll(
+    'SELECT ci.issue_id, ci.order_num FROM collection_issues ci WHERE ci.collection_id = ? ORDER BY ci.order_num ASC, CAST((SELECT issue_number FROM issues WHERE id = ci.issue_id) AS REAL) ASC, ci.issue_id ASC',
+    [collectionId]
+  );
+  if (!items.length) return;
+
+  // Перевіряємо: якщо всі order_num = 0 або є дублікати — нормалізуємо
+  const nums = items.map(i => i.order_num);
+  const allZero = nums.every(n => n === 0);
+  const hasDuplicates = new Set(nums).size !== nums.length;
+
+  if (allZero || hasDuplicates) {
+    items.forEach((item, idx) => {
+      rawRun(
+        'UPDATE collection_issues SET order_num = ? WHERE collection_id = ? AND issue_id = ?',
+        [idx + 1, collectionId, item.issue_id]
+      );
+    });
+    saveDatabase();
+  }
+}
 
 // Збірники конкретного тому (по cv_vol_id)
 router.get('/by-volume/:cv_vol_id', (req, res) => {
@@ -87,7 +111,6 @@ router.get('/', (req, res) => {
       issueWhere += ' AND EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.cv_vol_id = v.cv_id AND _vt.theme_id = ?)';
       issueParams.push(tid);
     });
-    
 
     issueItems = getAll(`
       SELECT DISTINCT i.id, i.name, i.cv_img, i.issue_number, i.release_date,
@@ -175,13 +198,16 @@ router.get('/:id', (req, res) => {
   `, [req.params.id]);
   if (!collection) return res.status(404).json({ error: 'Збірник не знайдено' });
 
+  // Нормалізуємо order_num якщо потрібно (для старих даних з order_num = 0)
+  ensureOrderNums(req.params.id);
+
   const issues = getAll(`
-    SELECT i.*, v.name as volume_name
+    SELECT i.*, v.name as volume_name, v.id as volume_db_id, ci.order_num
     FROM issues i
     JOIN collection_issues ci ON i.id = ci.issue_id
     LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id
     WHERE ci.collection_id = ?
-    ORDER BY CAST(i.issue_number AS REAL) ASC, i.issue_number ASC
+    ORDER BY ci.order_num ASC, CAST(i.issue_number AS REAL) ASC
   `, [req.params.id]);
 
   const themes = getAll(
@@ -253,20 +279,100 @@ router.delete('/:id', (req, res) => {
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
+// ── Додавання випуску до збірника ─────────────────────────────────────────
+
 router.post('/:id/issues', (req, res) => {
   const { issue_id } = req.body;
   try {
-    const exists = getOne('SELECT id FROM collection_issues WHERE collection_id = ? AND issue_id = ?', [req.params.id, issue_id]);
+    const exists = getOne(
+      'SELECT id FROM collection_issues WHERE collection_id = ? AND issue_id = ?',
+      [req.params.id, issue_id]
+    );
     if (exists) return res.status(400).json({ error: 'Випуск вже є у збірнику' });
-    runQuery('INSERT INTO collection_issues (collection_id, issue_id) VALUES (?, ?)', [req.params.id, issue_id]);
-    res.json({ message: 'Випуск додано до збірника' });
+
+    // Призначаємо наступний order_num
+    const totalRow = getOne(
+      'SELECT COUNT(*) as cnt FROM collection_issues WHERE collection_id = ?',
+      [req.params.id]
+    );
+    const insertPos = (totalRow?.cnt || 0) + 1;
+
+    rawRun(
+      'INSERT INTO collection_issues (collection_id, issue_id, order_num) VALUES (?, ?, ?)',
+      [req.params.id, issue_id, insertPos]
+    );
+    saveDatabase();
+    res.json({ message: 'Випуск додано до збірника', order_num: insertPos });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
+// ── Видалення випуску зі збірника (з перенумерацією) ──────────────────────
+
 router.delete('/:id/issues/:issue_id', (req, res) => {
   try {
-    runQuery('DELETE FROM collection_issues WHERE collection_id = ? AND issue_id = ?', [req.params.id, req.params.issue_id]);
+    const item = getOne(
+      'SELECT order_num FROM collection_issues WHERE collection_id = ? AND issue_id = ?',
+      [req.params.id, req.params.issue_id]
+    );
+    if (item) {
+      rawRun(
+        'DELETE FROM collection_issues WHERE collection_id = ? AND issue_id = ?',
+        [req.params.id, req.params.issue_id]
+      );
+      // Зменшуємо order_num для всіх наступних
+      rawRun(
+        'UPDATE collection_issues SET order_num = order_num - 1 WHERE collection_id = ? AND order_num > ?',
+        [req.params.id, item.order_num]
+      );
+      saveDatabase();
+    }
     res.json({ message: 'Випуск видалено зі збірника' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+// ── Зміна порядку випуску у збірнику ──────────────────────────────────────
+
+router.put('/:id/issues/:issue_id/reorder', (req, res) => {
+  const collectionId = req.params.id;
+  const issueId      = req.params.issue_id;
+  const new_order    = parseInt(req.body.new_order);
+
+  if (isNaN(new_order)) return res.status(400).json({ error: 'new_order обов\'язковий' });
+
+  try {
+    const item = getOne(
+      'SELECT order_num FROM collection_issues WHERE collection_id = ? AND issue_id = ?',
+      [collectionId, issueId]
+    );
+    if (!item) return res.status(404).json({ error: 'Не знайдено' });
+
+    const old_order  = item.order_num;
+    const totalRow   = getOne('SELECT COUNT(*) as cnt FROM collection_issues WHERE collection_id = ?', [collectionId]);
+    const clampedNew = Math.max(1, Math.min(new_order, totalRow?.cnt || 1));
+
+    if (old_order === clampedNew) return res.json({ message: 'Без змін' });
+
+    if (old_order < clampedNew) {
+      // Рухаємо вниз: зменшуємо всі між старою і новою позицією
+      rawRun(
+        'UPDATE collection_issues SET order_num = order_num - 1 WHERE collection_id = ? AND order_num > ? AND order_num <= ?',
+        [collectionId, old_order, clampedNew]
+      );
+    } else {
+      // Рухаємо вгору: збільшуємо всі між новою і старою позицією
+      rawRun(
+        'UPDATE collection_issues SET order_num = order_num + 1 WHERE collection_id = ? AND order_num >= ? AND order_num < ?',
+        [collectionId, clampedNew, old_order]
+      );
+    }
+
+    rawRun(
+      'UPDATE collection_issues SET order_num = ? WHERE collection_id = ? AND issue_id = ?',
+      [clampedNew, collectionId, issueId]
+    );
+
+    saveDatabase();
+    res.json({ message: 'Порядок оновлено' });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
@@ -282,7 +388,7 @@ mangaRouter.get('/', (req, res) => {
   const pubIds = publisher_ids
     ? publisher_ids.split(',').map(Number).filter(Boolean)
     : [];
-  
+
   const themeIds = theme_ids
     ? theme_ids.split(',').map(Number).filter(Boolean)
     : [];
@@ -301,56 +407,60 @@ mangaRouter.get('/', (req, res) => {
       issueWhere += ` AND v.publisher IN (${pubIds.map(() => '?').join(',')})`;
       issueParams.push(...pubIds);
     }
+    themeIds.forEach(tid => {
+      issueWhere += ' AND EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.cv_vol_id = v.cv_id AND _vt.theme_id = ?)';
+      issueParams.push(tid);
+    });
 
     issueItems = getAll(`
       SELECT DISTINCT i.id, i.name, i.cv_img, i.issue_number, i.release_date,
-                      v.name as volume_name, v.id as volume_id, 'issue' as _type
+                      i.created_at,
+                      v.name as volume_name, 'issue' as _type
       FROM issues i
       JOIN volumes v ON i.cv_vol_id = v.cv_id
       JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
       ${issueWhere}
-      ORDER BY v.name ASC, CAST(i.issue_number AS REAL) ASC
+      ORDER BY i.created_at DESC
     `, issueParams);
   }
 
   // ── Збірники манґи ────────────────────────────────────────────────────────
   let colItems = [];
   if (!type || type === 'collection') {
-    // Для збірників манґи: тема на томі (vt.theme_id = MANGA_THEME_ID),
-    // видавництво — на томі (v.publisher), бо collections.publisher = том-видавництво при конвертації.
-    // Додаткову впевненість дає фільтр по v.publisher (том вже джойниться).
-    const extraConds = [];
-    const extraParams = [];
+    const colConds = [];
+    const colParams = [];
 
     if (search) {
-      extraConds.push('(c.name LIKE ? OR v.name LIKE ?)');
-      extraParams.push(`%${search}%`, `%${search}%`);
+      colConds.push('(c.name LIKE ? OR v.name LIKE ?)');
+      colParams.push(`%${search}%`, `%${search}%`);
     }
     if (pubIds.length) {
-      // Фільтруємо по publisher тому (v.publisher) — найнадійніше джерело
-      extraConds.push(`v.publisher IN (${pubIds.map(() => '?').join(',')})`);
-      extraParams.push(...pubIds);
+      colConds.push(`c.publisher IN (${pubIds.map(() => '?').join(',')})`);
+      colParams.push(...pubIds);
     }
-    const extraWhere = extraConds.length ? 'AND ' + extraConds.join(' AND ') : '';
+    themeIds.forEach(tid => {
+      colConds.push('EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.cv_vol_id = c.cv_vol_id AND _vt.theme_id = ?)');
+      colParams.push(tid);
+    });
 
+    const colWhere = colConds.length ? 'WHERE ' + colConds.join(' AND ') : '';
     colItems = getAll(`
-      SELECT DISTINCT c.id, c.name, c.cv_img, c.issue_number, c.release_date,
-                      v.name as volume_name, v.id as volume_id, 'collection' as _type
+      SELECT c.id, c.name, c.cv_img, c.issue_number, c.created_at as release_date,
+             c.created_at,
+             v.name as volume_name, 'collection' as _type,
+             p.name as publisher_name,
+             (SELECT COUNT(*) FROM collection_issues ci WHERE ci.collection_id = c.id) as issue_count
       FROM collections c
-      JOIN volumes v ON c.cv_vol_id = v.cv_id
-      JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
-      WHERE vt.theme_id = ?
-      ${extraWhere}
-      ORDER BY v.name ASC, CAST(c.issue_number AS REAL) ASC
-    `, [MANGA_THEME_ID, ...extraParams]);
+      LEFT JOIN volumes v ON c.cv_vol_id = v.cv_id
+      LEFT JOIN publishers p ON c.publisher = p.id
+      ${colWhere}
+      ORDER BY c.created_at DESC
+    `, colParams);
   }
 
   const allItems = [...issueItems, ...colItems];
-  const lim = parseInt(limit);
-  const off = parseInt(offset);
-
   res.json({
-    data: allItems.slice(off, off + lim),
+    data: allItems.slice(parseInt(offset), parseInt(offset) + parseInt(limit)),
     total: allItems.length,
   });
 });
