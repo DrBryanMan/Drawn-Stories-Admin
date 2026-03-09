@@ -65,15 +65,20 @@ async function updateStats() {
     try {
         const stats = await fetchStats();
         const elements = {
-            'stat-volumes':       stats.volumes,
-            'stat-issues':        stats.issues,
-            'stat-characters':    stats.characters,
-            'stat-collections':   stats.collections,
-            'stat-manga':         stats.manga ?? '',
-            'stat-series':        stats.series ?? 0,
-            'stat-personnel':     stats.personnel ?? 0,
-            'stat-events':        stats.events ?? 0,
-            'stat-reading-orders':stats.readingOrders ?? 0,
+            'stat-series':            stats.series ?? 0,
+            'stat-volumes':           stats.volumes,
+            'stat-volumes-comics':    stats.volumesComics ?? 0,
+            'stat-volumes-manga':     stats.volumesManga ?? 0,
+            'stat-volumes-collected': stats.volumesCollected ?? 0,
+            'stat-issues':            stats.issues,
+            'stat-issues-comics':     stats.issuesComics ?? 0,
+            'stat-issues-manga':      stats.issuesManga ?? 0,
+            'stat-issues-collected':  stats.issuesCollected ?? 0,
+            'stat-collections':       stats.collections,
+            'stat-characters':        stats.characters,
+            'stat-personnel':         stats.personnel ?? 0,
+            'stat-reading-orders':    stats.readingOrders ?? 0,
+            'stat-events':            stats.events ?? 0,
         };
         for (const [id, value] of Object.entries(elements)) {
             const el = document.getElementById(id);

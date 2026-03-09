@@ -1,2 +1,17 @@
 @import url('./styles.css');
 @import url('./filters-panel.css');
+
+.stat-item.stat-sub {
+    padding-top: 1px;
+    padding-bottom: 1px;
+    opacity: 0.75;
+}
+
+.stat-item.stat-sub .stat-label {
+    padding-left: 0.75rem;
+    font-size: 0.78rem;
+}
+
+.stat-item.stat-sub .stat-value {
+    font-size: 0.78rem;
+}
