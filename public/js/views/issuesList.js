@@ -1,10 +1,11 @@
-// issuesList.js — Розташування: public/js/views/issuesList.js
-
-import { initListPage, reloadCatalog } from '../components/catalog.js';
+import { initListPage, reloadCatalog, setCatalogPublisherIds, setCatalogThemeIds } from '../components/catalog.js';
 import { cv_img_path_small } from '../utils/helpers.js';
 import { navigate, buildUrl } from '../utils/router.js';
 import { createItem, updateItem, deleteItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
+import { clearFiltersPanel, getFiltersPanel } from '../components/filtersPanel.js';
+import { mountPublisherFilter } from '../components/publisherFilterPanel.js';
+import { mountThemeFilter } from '../components/themeFilterPanel.js';
 
 function getFormHTML(issue = null) {
   return `
@@ -76,6 +77,9 @@ async function handleDelete(id) {
 }
 
 export async function renderIssuesList() {
+  // 1. Очищаємо панель фільтрів перед ініціалізацією
+  clearFiltersPanel();
+
   await initListPage({
     title:      'Випуски',
     endpoint:   'issues',
@@ -105,5 +109,22 @@ export async function renderIssuesList() {
     onDelete:   handleDelete,
     onNavigate: (id, cv_id, cv_slug) => navigate('issue-detail', { id, cv_id, cv_slug }),
     buildUrl: (id) => buildUrl('volume-detail', { id }),
+  });
+
+  // 2. Показуємо панель фільтрів
+  getFiltersPanel();
+
+  // 3. Фільтр видавництва (фільтрує за видавцем тому, якому належить випуск)
+  mountPublisherFilter({
+    panelId: 'issues-publisher-filter',
+    selectedPubs: [],
+    onChange: (pubs) => { setCatalogPublisherIds(pubs.map(p => p.id)); },
+  });
+
+  // 4. Фільтр тем (фільтрує за темами тому, якому належить випуск)
+  mountThemeFilter({
+    panelId: 'issues-theme-filter',
+    selectedThemes: [],
+    onChange: (themes) => { setCatalogThemeIds(themes.map(t => t.id)); },
   });
 }

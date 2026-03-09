@@ -12,9 +12,14 @@ const API_BASE = 'http://localhost:7000/api';
 let _issuesPage = 0;
 const ISSUES_PAGE_SIZE = 100;
 
+// Стан сортування блоку випусків тому
+// key: 'issue_number' | 'release_date'   dir: 'asc' | 'desc'
+let _issuesSort = { key: 'issue_number', dir: 'desc' };
+
 // ===== МОВНА МАПА =========================================================
 
 const LANG_MAP = {
+    ja:    { label: 'Японська',               flag: '🇯🇵' },
     en:    { label: 'Американська',           flag: '🇺🇸' },
     gb:    { label: 'Британська',             flag: '🇬🇧' },
     fr:    { label: 'Французька',             flag: '🇫🇷' },
@@ -34,7 +39,6 @@ const LANG_MAP = {
     tr:    { label: 'Турецька',               flag: '🇹🇷' },
     uk:    { label: 'Українська',             flag: '🇺🇦' },
     ru:    { label: 'Російська',              flag: '🇷🇺' },
-    ja:    { label: 'Японська',               flag: '🇯🇵' },
     zh:    { label: 'Китайська',              flag: '🇨🇳' },
     ko:    { label: 'Корейська',              flag: '🇰🇷' },
 };
@@ -362,6 +366,7 @@ export async function renderVolumeDetail(params) {
 
         // ── Ініціалізація блоку випусків з пагінацією ──────────────────────
         _issuesPage = 0;
+        _issuesSort = { key: 'issue_number', dir: 'desc' };
         if (issuesResult && issuesResult.data.length > 0) {
             renderIssuesBlock(issuesResult.data, 0);
         }
@@ -378,13 +383,32 @@ function renderIssuesBlock(allIssues, page) {
     const block = document.getElementById('issues-block');
     if (!block) return;
 
-    const total = allIssues.length;
+    // ── Сортування ────────────────────────────────────────────
+    const sorted = [...allIssues].sort((a, b) => {
+        let va, vb;
+        if (_issuesSort.key === 'release_date') {
+            va = a.release_date || '';
+            vb = b.release_date || '';
+        } else {
+            // issue_number: парсимо як float, щоб 10.1 > 10
+            va = parseFloat(a.issue_number) ?? -Infinity;
+            vb = parseFloat(b.issue_number) ?? -Infinity;
+            if (isNaN(va)) va = -Infinity;
+            if (isNaN(vb)) vb = -Infinity;
+        }
+        if (va < vb) return _issuesSort.dir === 'asc' ? -1 : 1;
+        if (va > vb) return _issuesSort.dir === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const total = sorted.length;
     const pages = Math.ceil(total / ISSUES_PAGE_SIZE);
     const start = page * ISSUES_PAGE_SIZE;
-    const slice = allIssues.slice(start, start + ISSUES_PAGE_SIZE);
+    const slice = sorted.slice(start, start + ISSUES_PAGE_SIZE);
 
+    // ── Пагінація ─────────────────────────────────────────────
     const paginationHtml = total > ISSUES_PAGE_SIZE ? `
-        <div style="display:inline-flex; align-items:center; gap:0.4rem; float:right;">
+        <div style="display:inline-flex; align-items:center; gap:0.4rem;">
             <button
                 id="issues-prev-btn"
                 class="btn btn-secondary btn-small"
@@ -403,11 +427,38 @@ function renderIssuesBlock(allIssues, page) {
         </div>
     ` : '';
 
+    // ── Кнопки сортування ─────────────────────────────────────
+    function sortBtn(key, labelAsc, labelDesc) {
+        const isActive = _issuesSort.key === key;
+        const dir = isActive ? _issuesSort.dir : null;
+        const label = dir === 'asc' ? labelAsc : labelDesc;
+        return `
+            <button
+                id="issues-sort-${key}"
+                class="btn btn-secondary btn-small${isActive ? ' btn-active' : ''}"
+                style="padding:0.2rem 0.6rem; font-size:0.82rem; line-height:1; ${isActive ? 'font-weight:600;' : ''}"
+            >${label}</button>
+        `;
+    }
+
+    const sortHtml = `
+        <div style="display:inline-flex; align-items:center; gap:0.35rem;">
+            <span style="font-size:0.8rem; color:var(--text-secondary);">Сортування:</span>
+            ${sortBtn('issue_number', '№ ↑', '№ ↓')}
+            ${sortBtn('release_date', 'Реліз ↑', 'Реліз ↓')}
+        </div>
+    `;
+
     block.innerHTML = `
         <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-            <h2 style="font-size: 1.5rem; margin-bottom: 1rem; display:flex; align-items:center; justify-content:space-between;">
-                <span>Випуски (${total})</span>
-                ${paginationHtml}
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                    <span>Випуски (${total})</span>
+                    <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                        ${sortHtml}
+                        ${paginationHtml}
+                    </div>
+                </div>
             </h2>
             <div class="table">
                 <table>
@@ -444,6 +495,7 @@ function renderIssuesBlock(allIssues, page) {
         </div>
     `;
 
+    // ── Обробники пагінації ───────────────────────────────────
     document.getElementById('issues-prev-btn')?.addEventListener('click', () => {
         _issuesPage--;
         renderIssuesBlock(allIssues, _issuesPage);
@@ -454,7 +506,28 @@ function renderIssuesBlock(allIssues, page) {
         renderIssuesBlock(allIssues, _issuesPage);
         block.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
+
+    // ── Обробники сортування ─────────────────────────────────
+    document.getElementById('issues-sort-issue_number')?.addEventListener('click', () => {
+        if (_issuesSort.key === 'issue_number') {
+            _issuesSort.dir = _issuesSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            _issuesSort = { key: 'issue_number', dir: 'desc' };
+        }
+        _issuesPage = 0;
+        renderIssuesBlock(allIssues, 0);
+    });
+    document.getElementById('issues-sort-release_date')?.addEventListener('click', () => {
+        if (_issuesSort.key === 'release_date') {
+            _issuesSort.dir = _issuesSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            _issuesSort = { key: 'release_date', dir: 'desc' };
+        }
+        _issuesPage = 0;
+        renderIssuesBlock(allIssues, 0);
+    });
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 
