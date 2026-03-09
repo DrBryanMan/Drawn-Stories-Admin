@@ -15,6 +15,7 @@ function applyInitialSchema(db) {
     publisher  INTEGER,
     themes     INTEGER,
     lang       TEXT,
+    description TEXT,
     start_year INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
   )`);

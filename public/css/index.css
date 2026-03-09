@@ -15,3 +15,30 @@
 .stat-item.stat-sub .stat-value {
     font-size: 0.78rem;
 }
+
+
+/*  */
+
+.lang-chip {
+    cursor: pointer;
+    padding: 0.2rem 0.55rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    font-size: 0.82rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    user-select: none;
+    transition: .15s;
+    white-space: nowrap;
+}
+
+.lang-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.lang-chip--active {
+    background: var(--accent);
+    color: white !important;
+    border-color: var(--accent);
+}

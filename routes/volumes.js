@@ -98,11 +98,11 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year } = req.body;
+  const { cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year, description } = req.body;
   try {
     runQuery(
-      'INSERT INTO volumes (cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null]
+      'INSERT INTO volumes (cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null, description || null]
     );
     if (lang) {
       rawRun(
@@ -115,11 +115,11 @@ router.post('/', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-  const { cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year, theme_ids } = req.body;
+  const { cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year, description, theme_ids } = req.body;
   try {
     runQuery(
-      'UPDATE volumes SET cv_id = ?, cv_slug = ?, name = ?, cv_img = ?, lang = ?, locg_id = ?, locg_slug = ?, publisher = ?, start_year = ? WHERE id = ?',
-      [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null, req.params.id]
+      'UPDATE volumes SET cv_id = ?, cv_slug = ?, name = ?, cv_img = ?, lang = ?, locg_id = ?, locg_slug = ?, publisher = ?, start_year = ?, description = ? WHERE id = ?',
+      [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null, description || null, req.params.id]
     );
     if (Array.isArray(theme_ids)) {
       rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ?', [cv_id]);
@@ -374,14 +374,15 @@ router.get('/:id/magazine-children', (req, res) => {
 
 // GET батьківський журнал для цього тому
 router.get('/:id/magazine-parent', (req, res) => {
-  const row = getOne(`
+  const rows = getAll(`
     SELECT v.*, p.name as publisher_name
     FROM volume_magazines vm
     JOIN volumes v ON v.id = vm.magazine_id
     LEFT JOIN publishers p ON p.id = v.publisher
     WHERE vm.child_id = ?
+    ORDER BY v.name
   `, [req.params.id]);
-  res.json({ data: row || null });
+  res.json({ data: rows });
 });
 
 // POST додати том до журналу: цей том (id) є журналом, child_id — дочірній том

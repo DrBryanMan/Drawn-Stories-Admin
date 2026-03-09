@@ -91,7 +91,7 @@ export async function renderVolumeDetail(params) {
         const translations = translationsData.data || [];
         const translationParent = translationParentData.data || null;
         const magazineChildren = magazineChildrenData.data || [];
-        const magazineParent = magazineParentData.data || null;
+        const magazineParents = magazineParentData.data || [];
 
         document.getElementById('page-title').innerHTML = `
             <a href="#" onclick="event.preventDefault(); navigateToParent()">
@@ -145,6 +145,7 @@ export async function renderVolumeDetail(params) {
                                 ${buildThemeChipsViewHTML(volumeThemes)}
                             </div>
                             <div><strong>Дата додавання:</strong> ${formatDate(volume.created_at)}</div>
+                            ${volume.description ? `<div class="form-group">${volume.description}</div>` : ''}
                         </div>
                         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                             <button class="btn btn-secondary" onclick="editVolumeDetail(${volume.id})">Редагувати том</button>
@@ -153,9 +154,7 @@ export async function renderVolumeDetail(params) {
                                 ${!translationParent ? `
                                     <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id})">🌐 Додати до першоджерела</button>
                                 ` : ''}
-                                ${!magazineParent ? `
-                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
-                                ` : ''}
+                                <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
                                 ${isCollectionVolume ? `
                                     ${issuesResult.data.length > 0 ? `
                                         <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
@@ -255,24 +254,28 @@ export async function renderVolumeDetail(params) {
                 ` : ''}
 
                 <!-- ── Батьківський журнал (цей том входить у журнал) ─────── -->
-            ${magazineParent ? `
+                ${magazineParents.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
-                            <h2 style="font-size:1.25rem; margin:0;">📰 Журнал</h2>
-                            <button class="btn btn-danger btn-small"
-                                onclick="removeMagazineChild(${magazineParent.id}, ${volume.id})">
-                                Від'єднати
-                            </button>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
-                             onclick="navigate('volume-detail', { id: ${magazineParent.id} })">
-                        ${magazineParent.cv_img
-                                ? `<img src="${cv_img_path_small}${magazineParent.cv_img.startsWith('/') ? '' : '/'}${magazineParent.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
-                                : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📰</div>'}
-                            <div>
-                                <div style="font-weight:600;">${magazineParent.name}</div>
-                            ${magazineParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${magazineParent.publisher_name}</div>` : ''}
-                            </div>
+                        <h2 style="font-size:1.25rem; margin:0 0 1rem;">📰 Журнали (${magazineParents.length})</h2>
+                        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                            ${magazineParents.map(mp => `
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.5rem 0.75rem;">
+                                    <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer; flex:1;"
+                                        onclick="navigate('volume-detail', { id: ${mp.id} })">
+                                        ${mp.cv_img
+                                            ? `<img src="${cv_img_path_small}${mp.cv_img.startsWith('/') ? '' : '/'}${mp.cv_img}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0;">`
+                                            : '<div style="width:40px;height:40px;background:var(--bg-tertiary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">📰</div>'}
+                                        <div>
+                                            <div style="font-weight:600;">${mp.name}</div>
+                                            ${mp.publisher_name ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${mp.publisher_name}</div>` : ''}
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-danger btn-small" style="margin-left:0.75rem;"
+                                        onclick="event.stopPropagation(); removeMagazineChild(${mp.id}, ${volume.id})">
+                                        Від'єднати
+                                    </button>
+                                </div>
+                            `).join('')}
                         </div>
                     </div>
                 ` : ''}
@@ -660,16 +663,23 @@ async function getVolumeFormHTML(volume = null) {
                 <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${volume?.cv_slug || ''}" required></div>
             </div>
             <div class="form-group"><label>Назва</label><input type="text" name="name" value="${volume?.name || ''}"></div>
+            <div class="form-group">
+                <label>Опис</label>
+                <textarea name="description" rows="4" style="width:100%; resize:vertical;">${volume?.description || ''}</textarea>
+            </div>
             <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${volume?.cv_img || ''}"></div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Мова</label>
-                    <select name="lang">
-                        <option value="">— не вказано —</option>
-                        ${Object.entries(LANG_MAP).map(([code, { label, flag }]) =>
-                            `<option value="${code}" ${volume?.lang === code ? 'selected' : ''}>${flag} ${label} (${code})</option>`
-                        ).join('\n                        ')}
-                    </select>
+                    <input type="hidden" name="lang" id="lang-hidden" value="${volume?.lang || ''}">
+                    <div id="lang-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.4rem;">
+                        <span class="lang-chip${!volume?.lang ? ' lang-chip--active' : ''}"
+                            data-code="" onclick="selectLangChip(this)">— ?</span>
+                        ${Object.entries(LANG_MAP).map(([code, { flag }]) =>
+                            `<span class="lang-chip${volume?.lang === code ? ' lang-chip--active' : ''}"
+                                data-code="${code}" onclick="selectLangChip(this)">${flag} ${code}</span>`
+                        ).join('')}
+                    </div>
                 </div>
                 <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}"></div>
             </div>
@@ -793,6 +803,12 @@ window.removeThemeChipVolume = (themeId) => {
 
 window.onThemeCheckboxChangeVol = () => { rebuildVolThemeChips(); };
 window.filterThemesVol = (q) => { filterThemeCheckboxList(q, 'themes-list'); };
+
+window.selectLangChip = (el) => {
+    document.querySelectorAll('#lang-chips .lang-chip').forEach(c => c.classList.remove('lang-chip--active'));
+    el.classList.add('lang-chip--active');
+    document.getElementById('lang-hidden').value = el.dataset.code;
+};
 
 // ===== РЕДАГУВАННЯ ВИПУСКУ ===============================================
 

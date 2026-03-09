@@ -217,6 +217,13 @@ const MIGRATIONS = [
       db.run(`CREATE INDEX IF NOT EXISTS idx_vmag_child    ON volume_magazines(child_id)`);
     },
   },
+  // ── M013: volumes — додаємо поле description ────────────────────────────
+  {
+    id: 'M013_volumes_description',
+    up(db) {
+      db.run(`ALTER TABLE volumes ADD COLUMN description TEXT`);
+    },
+  },
 
 ];
 
