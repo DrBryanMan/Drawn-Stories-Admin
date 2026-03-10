@@ -24,6 +24,8 @@ const VOLUME_CONDITIONS = {
                            AND v.id NOT IN (SELECT child_id FROM volume_translations))`,
   no_manga_magazine:     `(EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 36)
                            AND v.id NOT IN (SELECT child_id FROM volume_magazines))`,
+  has_mixed_types:       `(EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 44)
+                           AND EXISTS (SELECT 1 FROM issues i WHERE i.cv_vol_id = v.cv_id))`,
 };
 
 router.get('/volumes', (req, res) => {
@@ -56,9 +58,11 @@ router.get('/volumes', (req, res) => {
              CASE WHEN (EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 51)
                         AND v.id NOT IN (SELECT child_id FROM volume_translations)) THEN 1 ELSE 0 END as miss_translation_source,
              CASE WHEN (EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 36)
-                        AND v.id NOT IN (SELECT child_id FROM volume_magazines))    THEN 1 ELSE 0 END as miss_manga_magazine
+                        AND v.id NOT IN (SELECT child_id FROM volume_magazines))    THEN 1 ELSE 0 END as miss_manga_magazine,
+             CASE WHEN (EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 44)
+                        AND EXISTS (SELECT 1 FROM issues i WHERE i.cv_vol_id = v.cv_id))            THEN 1 ELSE 0 END as miss_mixed_types
       FROM volumes v
-      LEFT JOIN publishers p ON v.publisher = p.cv_id
+      LEFT JOIN publishers p ON v.publisher = p.id
       WHERE (${filterWhere}) ${searchClause}
       ORDER BY v.name ASC
       LIMIT ? OFFSET ?
@@ -190,7 +194,7 @@ router.get('/collections', (req, res) => {
              CASE WHEN c.id NOT IN (SELECT collection_id FROM collection_issues)  THEN 1 ELSE 0 END as miss_issues
       FROM collections c
       LEFT JOIN volumes v ON c.cv_vol_id = v.cv_id
-      LEFT JOIN publishers p ON c.publisher = p.cv_id
+      LEFT JOIN publishers p ON c.publisher = p.id
       WHERE (${filterWhere}) ${searchClause}
       ORDER BY v.name ASC, CAST(c.issue_number AS REAL) ASC
       LIMIT ? OFFSET ?

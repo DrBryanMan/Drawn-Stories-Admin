@@ -121,7 +121,7 @@ router.put('/:id', (req, res) => {
       'UPDATE volumes SET cv_id = ?, cv_slug = ?, name = ?, cv_img = ?, lang = ?, locg_id = ?, locg_slug = ?, publisher = ?, start_year = ?, description = ? WHERE id = ?',
       [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null, description || null, req.params.id]
     );
-    if (Array.isArray(theme_ids)) {
+    if (Array.isArray(theme_ids) && cv_id) {
       rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ?', [cv_id]);
       theme_ids.forEach(themeId =>
         rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [cv_id, themeId])
@@ -210,6 +210,15 @@ router.post('/:id/convert-all-to-collections', (req, res) => {
     const themeExists = getOne('SELECT id FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?', [volume.cv_id, COLLECTION_THEME_ID]);
     if (!themeExists) {
       rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [volume.cv_id, COLLECTION_THEME_ID]);
+    }
+
+    // Якщо том належить до журналу — прибираємо тему Translated
+    const hasMagazineParent = getOne('SELECT id FROM volume_magazines WHERE child_id = ?', [volumeId]);
+    if (hasMagazineParent) {
+      rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?', [volume.cv_id, TRANSLATED_THEME_ID]);
+      if (!volume.lang || volume.lang === '') {
+        rawRun("UPDATE volumes SET lang = 'ja' WHERE id = ?", [volumeId]);
+      }
     }
 
     saveDatabase();
@@ -413,6 +422,11 @@ router.post('/:id/magazine-children', (req, res) => {
 
     // Автоматично додаємо тему Magazine (35) до батьківського тому-журналу
     ensureVolumeTheme(magazineId, MAGAZINE_THEME_ID);
+    // Автоматично встановлюємо мову 'ja' для дочірнього тому (якщо ще не задана)
+    rawRun(
+      "UPDATE volumes SET lang = 'ja' WHERE id = ? AND (lang IS NULL OR lang = '')",
+      [parseInt(child_id)]
+    );
 
     saveDatabase();
     res.json({ message: 'Том додано до журналу' });

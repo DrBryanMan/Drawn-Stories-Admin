@@ -25,7 +25,8 @@ const LANG_MAP = {
     de:    { label: 'Німецька',               flag: '🇩🇪' },
     it:    { label: 'Італійська',             flag: '🇮🇹' },
     es:    { label: 'Іспанська',              flag: '🇪🇸' },
-    'es-AR': { label: 'Іспанська (Аргентина)', flag: '🇦🇷' },
+    'es-AR': { label: 'Іспанська (Аргентина)',flag: '🇦🇷' },
+    id:    { label: 'Індонезійська',          flag: '🇮🇩' },
     da:    { label: 'Данська',                flag: '🇩🇰' },
     fi:    { label: 'Фінська',                flag: '🇫🇮' },
     nb:    { label: 'Норвезька Букмол',       flag: '🇳🇴' },
@@ -126,8 +127,8 @@ export async function renderVolumeDetail(params) {
                                     <div>
                                         <strong>Видавець:</strong>
                                     ${volume.publisher_name
-                                            ? `${volume.publisher_name} <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${volume.publisher})</span>`
-                                            : `cv_id: ${volume.publisher}`}
+                                            ? `${volume.publisher_name} <span style="color: var(--text-secondary); font-size: 0.85rem;">(db_id: ${volume.publisher})</span>`
+                                            : `db_id: ${volume.publisher}`}
                                     </div>
                                 ` : ''}
                             ${volume.lang ? `<div><strong>Мова:</strong> ${langDisplay(volume.lang)}</div>` : ''}
@@ -150,7 +151,7 @@ export async function renderVolumeDetail(params) {
                             <button class="btn btn-secondary" onclick="editVolumeDetail(${volume.id})">Редагувати том</button>
                             <button class="btn btn-primary" onclick="openAddToSeriesModal(${volume.id}, 'volume')">+ Додати до серії</button>
                             ${!isMagazineVolume ? `
-                                ${!translationParent && translations.length === 0 ? `
+                                ${!translationParent && translations.length === 0 && magazineParents.length === 0 ? `
                                     <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id})">🌐 Додати до першоджерела</button>
                                 ` : ''}
                                 ${magazineParents.length === 0 && !translationParent ? `
@@ -195,7 +196,7 @@ export async function renderVolumeDetail(params) {
                             ${translations.map(t => `
                                     <div style="display:flex; align-items:center; gap: .3rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: .3rem .6rem; cursor:pointer;"
                                         onclick="navigate('volume-detail', { id: ${t.id} })">
-                                        <span style="font-size:0.9rem;">${t.lang ? `<i>${langDisplay(t.lang)}</i> — ` : ''}${t.name}</span>
+                                        <span style="font-size:0.9rem;">${t.lang ? `<i style="color: skyblue;">${langDisplay(t.lang)}</i> ` : ''}${t.name}</span>
                                         <button class="btn btn-notext btn-nobg btn-danger btn-small"
                                             onclick="event.stopPropagation(); removeTranslation(${volume.id}, ${t.id})">✕</button>
                                     </div>
@@ -759,8 +760,8 @@ async function getVolumeFormHTML(volume = null) {
     return `
         <form id="edit-form">
             <div class="form-row">
-                <div class="form-group"><label>CV ID *</label><input type="number" name="cv_id" value="${volume?.cv_id || ''}" required></div>
-                <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${volume?.cv_slug || ''}" required></div>
+                <div class="form-group"><label>CV ID</label><input type="number" name="cv_id" value="${volume?.cv_id || ''}"></div>
+                <div class="form-group"><label>CV Slug</label><input type="text" name="cv_slug" value="${volume?.cv_slug || ''}"></div>
             </div>
             <div class="form-group"><label>Назва</label><input type="text" name="name" value="${volume?.name || ''}"></div>
             <div class="form-group">
