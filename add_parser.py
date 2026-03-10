@@ -380,7 +380,7 @@ def parse_issue_api(issue_data, cv_id):
 
 
 def fetch_volume_via_api(scraper, cv_id):
-    endpoint = f"volume/4000-{cv_id}"
+    endpoint = f"volume/4050-{cv_id}"
     params = {
         'field_list': 'id,name,publisher,image,start_year,site_detail_url,count_of_issues'
     }

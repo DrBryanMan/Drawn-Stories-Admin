@@ -10,11 +10,10 @@ const API_BASE = 'http://localhost:7000/api';
 // ===== ПАГІНАЦІЯ ВИПУСКІВ ================================================
 
 let _issuesPage = 0;
+let _collectionsPage = 0;
 const ISSUES_PAGE_SIZE = 100;
-
-// Стан сортування блоку випусків тому
-// key: 'issue_number' | 'release_date'   dir: 'asc' | 'desc'
 let _issuesSort = { key: 'issue_number', dir: 'desc' };
+let _collectionsSort = { key: 'issue_number', dir: 'desc' };
 
 // ===== МОВНА МАПА =========================================================
 
@@ -151,10 +150,12 @@ export async function renderVolumeDetail(params) {
                             <button class="btn btn-secondary" onclick="editVolumeDetail(${volume.id})">Редагувати том</button>
                             <button class="btn btn-primary" onclick="openAddToSeriesModal(${volume.id}, 'volume')">+ Додати до серії</button>
                             ${!isMagazineVolume ? `
-                                ${!translationParent ? `
+                                ${!translationParent && translations.length === 0 ? `
                                     <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id})">🌐 Додати до першоджерела</button>
                                 ` : ''}
-                                <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
+                                ${magazineParents.length === 0 && !translationParent ? `
+                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
+                                ` : ''}
                                 ${isCollectionVolume ? `
                                     ${issuesResult.data.length > 0 ? `
                                         <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
@@ -307,39 +308,7 @@ export async function renderVolumeDetail(params) {
                 ` : ''}
 
                 <!-- ── Збірники тому (якщо Collection-том) ───────────────── -->
-            ${isCollectionVolume && volCollections.length > 0 ? `
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                        <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Збірники (${volCollections.length})</h2>
-                        <div class="table">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Обкладинка</th>
-                                        <th>Номер</th>
-                                        <th>Назва</th>
-                                        <th>Дата обкладинки</th>
-                                        <th>Реліз</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                ${volCollections.map(col => `
-                                        <tr onclick="navigateToCollection(${col.id})" style="cursor: pointer;">
-                                            <td>
-                                            ${col.cv_img
-                                                    ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" alt="${col.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
-                                                    : '📗'}
-                                            </td>
-                                            <td><strong>#${col.issue_number || '?'}</strong></td>
-                                            <td>${col.name || 'Без назви'}</td>
-                                            <td>${formatCoverDate(col.cover_date)}</td>
-                                            <td>${formatReleaseDate(col.release_date)}</td>
-                                        </tr>
-                                    `).join('')}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                ` : ''}
+                ${isCollectionVolume ? '<div id="collections-block"></div>' : ''}
 
                 <!-- ── Випуски ────────────────────────────────────────────── -->
                 ${issuesResult && issuesResult.data.length > 0 ? '<div id="issues-block"></div>' : ''}
@@ -372,6 +341,11 @@ export async function renderVolumeDetail(params) {
         _issuesSort = { key: 'issue_number', dir: 'desc' };
         if (issuesResult && issuesResult.data.length > 0) {
             renderIssuesBlock(issuesResult.data, 0);
+        }
+        _collectionsPage = 0;
+        _collectionsSort = { key: 'issue_number', dir: 'desc' };
+        if (isCollectionVolume) {
+            renderCollectionsBlock(volCollections, 0);
         }
 
     } catch (error) {
@@ -430,35 +404,12 @@ function renderIssuesBlock(allIssues, page) {
         </div>
     ` : '';
 
-    // ── Кнопки сортування ─────────────────────────────────────
-    function sortBtn(key, labelAsc, labelDesc) {
-        const isActive = _issuesSort.key === key;
-        const dir = isActive ? _issuesSort.dir : null;
-        const label = dir === 'asc' ? labelAsc : labelDesc;
-        return `
-            <button
-                id="issues-sort-${key}"
-                class="btn btn-secondary btn-small${isActive ? ' btn-active' : ''}"
-                style="padding:0.2rem 0.6rem; font-size:0.82rem; line-height:1; ${isActive ? 'font-weight:600;' : ''}"
-            >${label}</button>
-        `;
-    }
-
-    const sortHtml = `
-        <div style="display:inline-flex; align-items:center; gap:0.35rem;">
-            <span style="font-size:0.8rem; color:var(--text-secondary);">Сортування:</span>
-            ${sortBtn('issue_number', '№ ↑', '№ ↓')}
-            ${sortBtn('release_date', 'Реліз ↑', 'Реліз ↓')}
-        </div>
-    `;
-
     block.innerHTML = `
         <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
             <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">
                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
                     <span>Випуски (${total})</span>
                     <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-                        ${sortHtml}
                         ${paginationHtml}
                     </div>
                 </div>
@@ -468,10 +419,14 @@ function renderIssuesBlock(allIssues, page) {
                     <thead>
                         <tr>
                             <th>Обкладинка</th>
-                            <th>Номер</th>
+                            <th id="issues-sort-issue_number" style="cursor:pointer; user-select:none;">
+                                Номер${_issuesSort.key === 'issue_number' ? (_issuesSort.dir === 'asc' ? ' ↑' : ' ↓') : ' ↕'}
+                            </th>
                             <th>Назва</th>
-                            <th>Обкладинка</th>
-                            <th>Реліз</th>
+                            <th>Дата обкладинки</th>
+                            <th id="issues-sort-release_date" style="cursor:pointer; user-select:none;">
+                                Реліз${_issuesSort.key === 'release_date' ? (_issuesSort.dir === 'asc' ? ' ↑' : ' ↓') : ' ↕'}
+                            </th>
                             <th>Дії</th>
                         </tr>
                     </thead>
@@ -531,6 +486,151 @@ function renderIssuesBlock(allIssues, page) {
     });
 }
 
+// ===== РЕНДЕР БЛОКУ ЗБІРНИКІВ ============================================
+
+function renderCollectionsBlock(allCollections, page) {
+    const block = document.getElementById('collections-block');
+    if (!block) return;
+
+    if (!allCollections.length) {
+        block.innerHTML = `
+            <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px;
+                        border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Збірники (0)</h2>
+                <p style="color: var(--text-secondary);">Збірників немає.</p>
+            </div>`;
+        return;
+    }
+
+    const sorted = [...allCollections].sort((a, b) => {
+        let va, vb;
+        if (_collectionsSort.key === 'release_date') {
+            va = a.release_date || '';
+            vb = b.release_date || '';
+        } else {
+            va = parseFloat(a.issue_number);
+            vb = parseFloat(b.issue_number);
+            if (isNaN(va)) va = -Infinity;
+            if (isNaN(vb)) vb = -Infinity;
+        }
+        if (va < vb) return _collectionsSort.dir === 'asc' ? -1 : 1;
+        if (va > vb) return _collectionsSort.dir === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const total = sorted.length;
+    const pages = Math.ceil(total / ISSUES_PAGE_SIZE);
+    const start = page * ISSUES_PAGE_SIZE;
+    const slice = sorted.slice(start, start + ISSUES_PAGE_SIZE);
+
+    // ── Пагінація ─────────────────────────────────────────────
+    const paginationHtml = total > ISSUES_PAGE_SIZE ? `
+        <div style="display:inline-flex; align-items:center; gap:0.4rem;">
+            <button
+                id="collections-prev-btn"
+                class="btn btn-secondary btn-small"
+                ${page === 0 ? 'disabled' : ''}
+                style="padding:0.2rem 0.55rem; font-size:0.85rem; line-height:1;"
+            >←</button>
+            <span style="font-size:0.85rem; color:var(--text-secondary); white-space:nowrap;">
+                ${page + 1} / ${pages}
+            </span>
+            <button
+                id="collections-next-btn"
+                class="btn btn-secondary btn-small"
+                ${page >= pages - 1 ? 'disabled' : ''}
+                style="padding:0.2rem 0.55rem; font-size:0.85rem; line-height:1;"
+            >→</button>
+        </div>
+    ` : '';
+
+    const sortArrow = (key) => {
+        if (_collectionsSort.key !== key) return ' ↕';
+        return _collectionsSort.dir === 'asc' ? ' ↑' : ' ↓';
+    };
+
+    block.innerHTML = `
+        <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px;
+                    border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                    <span>Збірники (${total})</span>
+                    <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                        ${paginationHtml}
+                    </div>
+                </div>
+            </h2>
+            <div class="table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Обкладинка</th>
+                            <th id="col-sort-issue_number" style="cursor:pointer; user-select:none;">
+                                Номер${sortArrow('issue_number')}
+                            </th>
+                            <th>Назва</th>
+                            <th>Дата обкладинки</th>
+                            <th id="col-sort-release_date" style="cursor:pointer; user-select:none;">
+                                Реліз${sortArrow('release_date')}
+                            </th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${slice.map(col => `
+                            <tr onclick="navigateToCollection(${col.id})" style="cursor: pointer;">
+                                <td>
+                                    ${col.cv_img
+                                        ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}"
+                                               alt="${col.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
+                                        : '📗'}
+                                </td>
+                                <td><strong>#${col.issue_number || '?'}</strong></td>
+                                <td>${col.name || 'Без назви'}</td>
+                                <td>${formatCoverDate(col.cover_date)}</td>
+                                <td>${formatReleaseDate(col.release_date)}</td>
+                                <td onclick="event.stopPropagation()">
+                                    <button class="btn btn-secondary btn-small"
+                                            onclick="editCollectionFromVolume(${col.id})">Редагувати</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    document.getElementById('collections-prev-btn')?.addEventListener('click', () => {
+        _collectionsPage--;
+        renderCollectionsBlock(allCollections, _collectionsPage);
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    document.getElementById('collections-next-btn')?.addEventListener('click', () => {
+        _collectionsPage++;
+        renderCollectionsBlock(allCollections, _collectionsPage);
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    document.getElementById('col-sort-issue_number')?.addEventListener('click', () => {
+        if (_collectionsSort.key === 'issue_number') {
+            _collectionsSort.dir = _collectionsSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            _collectionsSort = { key: 'issue_number', dir: 'asc' };
+        }
+        _collectionsPage = 0;
+        renderCollectionsBlock(allCollections, 0);
+    });
+    document.getElementById('col-sort-release_date')?.addEventListener('click', () => {
+        if (_collectionsSort.key === 'release_date') {
+            _collectionsSort.dir = _collectionsSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            _collectionsSort = { key: 'release_date', dir: 'desc' };
+        }
+        _collectionsPage = 0;
+        renderCollectionsBlock(allCollections, 0);
+    });
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -736,6 +836,27 @@ function getIssueFormHTML(issue = null) {
     `;
 }
 
+function getCollectionFormHTML(col = null) {
+    return `
+        <form id="edit-form">
+            <div class="form-row">
+                <div class="form-group"><label>CV ID *</label><input type="number" name="cv_id" value="${col?.cv_id || ''}" required></div>
+                <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${col?.cv_slug || ''}" required></div>
+            </div>
+            <div class="form-group"><label>Назва</label><input type="text" name="name" value="${col?.name || ''}"></div>
+            <div class="form-row">
+                <div class="form-group"><label>Номер</label><input type="text" name="issue_number" value="${col?.issue_number || ''}"></div>
+                <div class="form-group"><label>Volume CV ID</label><input type="number" name="cv_vol_id" value="${col?.cv_vol_id || ''}"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Дата обкладинки</label><input type="date" name="cover_date" value="${col?.cover_date || ''}"></div>
+                <div class="form-group"><label>Дата релізу</label><input type="date" name="release_date" value="${col?.release_date || ''}"></div>
+            </div>
+            <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${col?.cv_img || ''}"></div>
+        </form>
+    `;
+}
+
 // ===== НАВІГАЦІЯ =========================================================
 
 window.navigateToIssue = (id) => navigate('issue-detail', { id });
@@ -816,6 +937,21 @@ window.editIssueFromVolume = async (id) => {
     const issue = await fetch(`${API_BASE}/issues/${id}`).then(r => r.json());
     openModal('Редагувати випуск', getIssueFormHTML(issue), async (data) => {
         await fetch(`${API_BASE}/issues/${id}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const volumeId = new URL(window.location).searchParams.get('id');
+        if (volumeId) await renderVolumeDetail({ id: volumeId });
+        await window.updateStats();
+    });
+};
+
+// ===== РЕДАГУВАННЯ ЗБІРНИКА З ТОМУ =======================================
+
+window.editCollectionFromVolume = async (id) => {
+    const col = await fetch(`${API_BASE}/collections/${id}`).then(r => r.json());
+    openModal('Редагувати збірник', getCollectionFormHTML(col), async (data) => {
+        await fetch(`${API_BASE}/collections/${id}`, {
             method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });

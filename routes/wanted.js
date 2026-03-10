@@ -15,11 +15,15 @@ function buildWhereFromFilters(filters, conditions) {
 // ── Тома ───────────────────────────────────────────────────────────────────
 
 const VOLUME_CONDITIONS = {
-  no_name_uk:   `(v.name_uk IS NULL OR v.name_uk = '')`,
-  no_lang:      `(v.lang IS NULL OR v.lang = '')`,
-  no_start_year:`(v.start_year IS NULL)`,
-  no_publisher: `(v.publisher IS NULL)`,
-  no_theme:     `(v.cv_id NOT IN (SELECT cv_vol_id FROM volume_themes))`,
+  no_name_uk:            `(v.name_uk IS NULL OR v.name_uk = '')`,
+  no_lang:               `(v.lang IS NULL OR v.lang = '')`,
+  no_start_year:         `(v.start_year IS NULL)`,
+  no_publisher:          `(v.publisher IS NULL)`,
+  no_theme:              `(v.cv_id NOT IN (SELECT cv_vol_id FROM volume_themes))`,
+  no_translation_source: `(EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 51)
+                           AND v.id NOT IN (SELECT child_id FROM volume_translations))`,
+  no_manga_magazine:     `(EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 36)
+                           AND v.id NOT IN (SELECT child_id FROM volume_magazines))`,
 };
 
 router.get('/volumes', (req, res) => {
@@ -27,7 +31,6 @@ router.get('/volumes', (req, res) => {
     const { filters, search, limit = 200, offset = 0 } = req.query;
     const filterList = Array.isArray(filters) ? filters : (filters || '').split(',').filter(Boolean);
 
-    // Якщо жодного фільтру — повертаємо порожній список
     if (!filterList.length) return res.json({ data: [], total: 0, counts: {} });
 
     const filterWhere = buildWhereFromFilters(filterList, VOLUME_CONDITIONS);
@@ -49,7 +52,11 @@ router.get('/volumes', (req, res) => {
              CASE WHEN (v.lang IS NULL OR v.lang = '')        THEN 1 ELSE 0 END as miss_lang,
              CASE WHEN v.start_year IS NULL                   THEN 1 ELSE 0 END as miss_start_year,
              CASE WHEN v.publisher IS NULL                    THEN 1 ELSE 0 END as miss_publisher,
-             CASE WHEN v.cv_id NOT IN (SELECT cv_vol_id FROM volume_themes) THEN 1 ELSE 0 END as miss_theme
+             CASE WHEN v.cv_id NOT IN (SELECT cv_vol_id FROM volume_themes) THEN 1 ELSE 0 END as miss_theme,
+             CASE WHEN (EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 51)
+                        AND v.id NOT IN (SELECT child_id FROM volume_translations)) THEN 1 ELSE 0 END as miss_translation_source,
+             CASE WHEN (EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 36)
+                        AND v.id NOT IN (SELECT child_id FROM volume_magazines))    THEN 1 ELSE 0 END as miss_manga_magazine
       FROM volumes v
       LEFT JOIN publishers p ON v.publisher = p.cv_id
       WHERE (${filterWhere}) ${searchClause}
@@ -68,7 +75,6 @@ router.get('/volumes', (req, res) => {
     const data  = getAll(sql, params);
     const total = getOne(countSql, countParams)?.count || 0;
 
-    // Окремі лічильники для кожного фільтру
     const counts = {};
     Object.keys(VOLUME_CONDITIONS).forEach(key => {
       try {
@@ -111,7 +117,7 @@ router.get('/issues', (req, res) => {
     const sql = `
       SELECT i.*,
              v.name as volume_name,
-             CASE WHEN (i.cover_date IS NULL OR i.cover_date = '')   THEN 1 ELSE 0 END as miss_cover_date,
+             CASE WHEN (i.cover_date IS NULL OR i.cover_date = '')    THEN 1 ELSE 0 END as miss_cover_date,
              CASE WHEN (i.release_date IS NULL OR i.release_date = '') THEN 1 ELSE 0 END as miss_release_date
       FROM issues i
       LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id
@@ -177,11 +183,11 @@ router.get('/collections', (req, res) => {
              v.name as volume_name,
              p.name as publisher_name,
              (SELECT COUNT(*) FROM collection_issues ci WHERE ci.collection_id = c.id) as issue_count,
-             CASE WHEN (c.isbn IS NULL OR c.isbn = '')             THEN 1 ELSE 0 END as miss_isbn,
+             CASE WHEN (c.isbn IS NULL OR c.isbn = '')                THEN 1 ELSE 0 END as miss_isbn,
              CASE WHEN (c.release_date IS NULL OR c.release_date = '') THEN 1 ELSE 0 END as miss_release_date,
-             CASE WHEN c.id NOT IN (SELECT collection_id FROM collection_themes) THEN 1 ELSE 0 END as miss_theme,
-             CASE WHEN (c.description IS NULL OR c.description = '') THEN 1 ELSE 0 END as miss_description,
-             CASE WHEN c.id NOT IN (SELECT collection_id FROM collection_issues) THEN 1 ELSE 0 END as miss_issues
+             CASE WHEN c.id NOT IN (SELECT collection_id FROM collection_themes)  THEN 1 ELSE 0 END as miss_theme,
+             CASE WHEN (c.description IS NULL OR c.description = '')  THEN 1 ELSE 0 END as miss_description,
+             CASE WHEN c.id NOT IN (SELECT collection_id FROM collection_issues)  THEN 1 ELSE 0 END as miss_issues
       FROM collections c
       LEFT JOIN volumes v ON c.cv_vol_id = v.cv_id
       LEFT JOIN publishers p ON c.publisher = p.cv_id
