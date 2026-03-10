@@ -509,14 +509,14 @@ router.get('/:id/relations', (req, res) => {
 
   // ── 2. Інші зв'язки (sequel / prequel / spinoff / related) ───────────────
   const otherRows = getAll(`
-    SELECT
-      vr.id       AS rel_id,
-      vr.rel_type,
-      CASE WHEN vr.from_vol_id = ? THEN vr.to_vol_id ELSE vr.from_vol_id END AS other_id
-    FROM volume_relations vr
-    WHERE (vr.from_vol_id = ? OR vr.to_vol_id = ?)
-      AND vr.rel_type != 'continuation'
-  `, [volId, volId, volId]);
+      SELECT
+        vr.id       AS rel_id,
+        vr.rel_type,
+        vr.to_vol_id AS other_id
+      FROM volume_relations vr
+      WHERE vr.from_vol_id = ?
+        AND vr.rel_type != 'continuation'
+    `, [volId]);
 
   const other = { sequel: [], prequel: [], spinoff: [], related: [] };
 
@@ -545,8 +545,10 @@ router.post('/:id/relations', (req, res) => {
   if (!rel_type)  return res.status(400).json({ error: 'rel_type обов\'язковий' });
   if (parseInt(to_vol_id) === fromId) return res.status(400).json({ error: 'Том не може посилатися на себе' });
 
-  const validTypes = ['continuation','sequel','prequel','spinoff','related'];
+  const validTypes = ['continuation','sequel','prequel'];
   if (!validTypes.includes(rel_type)) return res.status(400).json({ error: 'Невалідний тип зв\'язку' });
+
+  const mirrorType = { sequel:'prequel', prequel:'sequel' };
 
   try {
     const existing = getOne(
@@ -555,11 +557,10 @@ router.post('/:id/relations', (req, res) => {
     );
     if (existing) return res.status(400).json({ error: 'Такий зв\'язок вже існує' });
 
-    // Перевірка на зворотній дублікат (для continuation)
     if (rel_type === 'continuation') {
       const reverse = getOne(
-          'SELECT id FROM volume_relations WHERE from_vol_id = ? AND to_vol_id = ? AND rel_type = ?',
-          [to_vol_id, fromId, 'continuation']
+        'SELECT id FROM volume_relations WHERE from_vol_id = ? AND to_vol_id = ? AND rel_type = ?',
+        [to_vol_id, fromId, 'continuation']
       );
       if (reverse) return res.status(400).json({ error: 'Зворотній зв\'язок вже існує' });
     }
@@ -568,26 +569,21 @@ router.post('/:id/relations', (req, res) => {
       'INSERT INTO volume_relations (from_vol_id, to_vol_id, rel_type, order_num) VALUES (?, ?, ?, ?)',
       [fromId, to_vol_id, rel_type, order_num]
     );
-    
-    // Автоматично створюємо зворотний зв'язок
-    const mirrorType = {
-        sequel:  'prequel',
-        prequel: 'sequel',
-    };
 
+    // Автоматично створюємо дзеркальний зв'язок (для всіх крім continuation)
     if (mirrorType[rel_type]) {
-        const mirrorExists = getOne(
-            'SELECT id FROM volume_relations WHERE from_vol_id = ? AND to_vol_id = ? AND rel_type = ?',
-            [to_vol_id, fromId, mirrorType[rel_type]]
+      const mirrorExists = getOne(
+        'SELECT id FROM volume_relations WHERE from_vol_id = ? AND to_vol_id = ? AND rel_type = ?',
+        [to_vol_id, fromId, mirrorType[rel_type]]
+      );
+      if (!mirrorExists) {
+        runQuery(
+          'INSERT INTO volume_relations (from_vol_id, to_vol_id, rel_type, order_num) VALUES (?, ?, ?, ?)',
+          [to_vol_id, fromId, mirrorType[rel_type], 0]
         );
-        if (!mirrorExists) {
-            runQuery(
-                'INSERT INTO volume_relations (from_vol_id, to_vol_id, rel_type, order_num) VALUES (?, ?, ?, ?)',
-                [to_vol_id, fromId, mirrorType[rel_type], 0]
-            );
-        }
+      }
     }
-    
+
     res.json({ message: 'Зв\'язок додано' });
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -608,18 +604,27 @@ router.put('/:id/relations/:relId', (req, res) => {
     }
 
     if (rel_type !== undefined) {
-      const mirrorType = { sequel:'prequel', prequel:'sequel', spinoff:'spinoff', related:'related' };
+      const mirrorType = { sequel:'prequel', prequel:'sequel' };
 
       runQuery('UPDATE volume_relations SET rel_type = ? WHERE id = ?',
         [rel_type, req.params.relId]);
 
-      // Оновлюємо дзеркальний зв'язок
       if (mirrorType[rel_type]) {
-        runQuery(
-          `UPDATE volume_relations SET rel_type = ?
-           WHERE from_vol_id = ? AND to_vol_id = ? AND rel_type = ?`,
-          [mirrorType[rel_type], rel.to_vol_id, rel.from_vol_id, mirrorType[rel.rel_type]]
+        const mirror = getOne(
+          'SELECT id FROM volume_relations WHERE from_vol_id = ? AND to_vol_id = ?',
+          [rel.to_vol_id, rel.from_vol_id]
         );
+        if (mirror) {
+          // Дзеркальний існує — оновлюємо його тип
+          runQuery('UPDATE volume_relations SET rel_type = ? WHERE id = ?',
+            [mirrorType[rel_type], mirror.id]);
+        } else {
+          // Дзеркального немає (старий запис) — створюємо
+          runQuery(
+            'INSERT INTO volume_relations (from_vol_id, to_vol_id, rel_type, order_num) VALUES (?, ?, ?, ?)',
+            [rel.to_vol_id, rel.from_vol_id, mirrorType[rel_type], 0]
+          );
+        }
       }
     }
 

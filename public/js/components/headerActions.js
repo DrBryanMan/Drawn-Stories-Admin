@@ -23,7 +23,6 @@ export function unmountHeaderActions() {
     // Елементи які catalog.js вставляє в header-actions
     document.getElementById('exact-match-wrapper')?.remove();
     document.getElementById('cv-id-search-wrapper')?.remove();
-    document.getElementById('view-toggle')?.remove();
 
     // Очищаємо панель фільтрів
     const filtersPanel = document.getElementById('filters-panel');

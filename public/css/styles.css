@@ -191,35 +191,6 @@ text-decoration: none;
     height: 14px;
 }
 
-/* View toggle */
-.view-toggle {
-    display: flex;
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    overflow: hidden;
-}
-
-.btn-view {
-    background: var(--bg-primary);
-    border: none;
-    padding: 0.4rem 0.7rem;
-    font-size: 1.1rem;
-    cursor: pointer;
-    color: var(--text-secondary);
-    transition: all 0.15s;
-    line-height: 1;
-}
-
-.btn-view:hover {
-    background: var(--bg-hover);
-    color: var(--text-primary);
-}
-
-.btn-view.active {
-    background: var(--accent);
-    color: #fff;
-}
-
 /* Buttons */
 .btn {
     padding: 0.5rem 1rem;

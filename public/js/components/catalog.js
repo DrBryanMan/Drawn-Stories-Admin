@@ -7,7 +7,6 @@ import { cv_img_path_original } from '../utils/helpers.js';
 import { mountHeaderActions } from './headerActions.js';
 
 // ── Стан модуля (один активний список за раз) ─────────────────────────────
-let viewMode = 'grid';
 let currentOffset = 0;
 let currentSearch = '';
 let currentCvId = '';
@@ -17,7 +16,6 @@ let currentThemeIds = [];
 const LIMIT = 100;
 
 let _config = null;       // поточна конфігурація сторінки
-let _lastData = null;     // останні завантажені дані (для перемикання виду без запиту)
 
 // ── Публічний API ─────────────────────────────────────────────────────────
 
@@ -33,13 +31,11 @@ export async function initListPage(config) {
   currentPublisherIds = [];
   currentThemeIds = [];
   _config = config;
-  _lastData = null;
 
   mountHeaderActions();
   document.getElementById('page-title').textContent = config.title;
   setupAddBtn(config.onAdd);
   setupSearchArea();
-  setupViewToggle();
 
   await loadAndRender();
 }
@@ -89,11 +85,12 @@ function setupSearchArea() {
   exactWrapper.innerHTML = `<input type="checkbox" id="exact-match-cb" ${exactMatch ? 'checked' : ''}> Точне`;
   searchInput.parentElement?.insertBefore(exactWrapper, searchInput.nextSibling);
 
-  document.getElementById('exact-match-cb')?.addEventListener('change', (e) => {
+  const cb = document.getElementById('exact-match-cb');
+  if (cb) cb.onchange = (e) => {
     exactMatch = e.target.checked;
     currentOffset = 0;
     loadAndRender();
-  });
+  };
 
   // ── Пошук по CV ID ──
   const cvIdWrapper = document.createElement('span');
@@ -127,29 +124,13 @@ function setupSearchArea() {
 
   // ── Пошук по назві ──
   let searchDebounce;
-  searchInput.addEventListener('input', (e) => {
+  searchInput.oninput = (e) => {
     clearTimeout(searchDebounce);
     searchDebounce = setTimeout(() => {
       currentSearch = e.target.value;
       currentOffset = 0;
       loadAndRender();
     }, 300);
-  });
-}
-
-function setupViewToggle() {
-  const toggle = document.getElementById('view-toggle');
-  if (!toggle) return;
-  toggle.innerHTML = `
-    <button class="btn-view ${viewMode === 'grid' ? 'active' : ''}" data-view="grid" title="Сітка">⊞</button>
-    <button class="btn-view ${viewMode === 'table' ? 'active' : ''}" data-view="table" title="Таблиця">≡</button>
-  `;
-  toggle.onclick = (e) => {
-    const btn = e.target.closest('.btn-view');
-    if (!btn) return;
-    viewMode = btn.dataset.view;
-    toggle.querySelectorAll('.btn-view').forEach(b => b.classList.toggle('active', b.dataset.view === viewMode));
-    if (_lastData) renderItems(_lastData);
   };
 }
 
@@ -167,7 +148,6 @@ async function loadAndRender() {
 
   try {
     const result = await fetchItems(_config.endpoint, params);
-    _lastData = result.data;
 
     if (!result.data.length) {
       showEmpty('Нічого не знайдено');
@@ -185,7 +165,7 @@ async function loadAndRender() {
 
 function renderItems(items) {
   const content = document.getElementById('content');
-  content.innerHTML = viewMode === 'grid' ? buildGrid(items) : buildTable(items);
+  content.innerHTML = buildGrid(items);
   attachClickHandlers(content);
 }
 
@@ -235,26 +215,6 @@ function buildGrid(items) {
     `;
   });
   return `<div class="grid">${cards.join('')}</div>`;
-}
-
-// ── Побудова Table ─────────────────────────────────────────────────────────
-
-function buildTable(items) {
-  const cols = _config.tableColumns || [];
-  const headers = cols.map(c => `<th>${c.label}</th>`).join('');
-  const rows = items.map(item => {
-    const cells = cols.map(c => {
-      let v = item[c.key];
-      if (c.type === 'image') {
-        const url = resolveImageUrl(item);
-        return `<td>${url ? `<img src="${url}" style="width:40px; height:60px; object-fit:cover; border-radius:3px;">` : ''}</td>`;
-      }
-      if (c.type === 'date' && v) v = new Date(v).toLocaleDateString('uk');
-      return `<td>${v ?? ''}</td>`;
-    }).join('');
-    return `<tr data-item-id="${item.id}" data-item-cv-id="${item.cv_id || ''}" style="cursor:pointer">${cells}</tr>`;
-  });
-  return `<table class="data-table"><thead><tr>${headers}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
 }
 
 // ── Обробники кліків ──────────────────────────────────────────────────────
