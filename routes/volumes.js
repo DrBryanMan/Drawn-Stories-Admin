@@ -444,4 +444,217 @@ router.delete('/:id/magazine-children/:childId', (req, res) => {
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
+// ── Хронологія / зв'язки між томами ──────────────────────────────────────
+
+// Повертає:
+//   chain : масив томів типу 'continuation', відсортованих за order_num
+//           з позначкою current:true для поточного тому
+//   other : { sequel:[...], prequel:[...], spinoff:[...], related:[...] }
+//           кожен елемент містить поля тому + rel_id для видалення
+router.get('/:id/relations', (req, res) => {
+  const volId = parseInt(req.params.id);
+
+  // ── 1. Ланцюжок continuation (рекурсивний CTE) ────────────────────────────
+  const chainRaw = getAll(`
+    WITH RECURSIVE chain(id, visited) AS (
+      SELECT ?, ',' || ? || ','
+
+      UNION ALL
+
+      SELECT
+        CASE WHEN vr.from_vol_id = c.id THEN vr.to_vol_id ELSE vr.from_vol_id END,
+        c.visited || CASE WHEN vr.from_vol_id = c.id THEN vr.to_vol_id ELSE vr.from_vol_id END || ','
+      FROM volume_relations vr
+      JOIN chain c ON (vr.from_vol_id = c.id OR vr.to_vol_id = c.id)
+      WHERE vr.rel_type = 'continuation'
+        AND c.visited NOT LIKE '%,' || CASE WHEN vr.from_vol_id = c.id THEN vr.to_vol_id ELSE vr.from_vol_id END || ',%'
+    )
+    SELECT DISTINCT v.id, v.cv_id, v.name, v.cv_img, v.start_year, v.lang
+    FROM chain ch
+    JOIN volumes v ON v.id = ch.id
+  `, [volId, volId]);
+
+  // Дедуплікація
+  const seen = new Set();
+  const uniqueChain = chainRaw.filter(v => {
+    if (seen.has(v.id)) return false;
+    seen.add(v.id);
+    return true;
+  });
+
+  // Для кожного тому в ланцюжку шукаємо його виходячий зв'язок continuation
+  // (from_vol_id = цей том) — саме там зберігається order_num і rel_id
+  const chain = uniqueChain.map(v => {
+    const rel = getOne(
+      `SELECT id AS rel_id, order_num
+       FROM volume_relations
+       WHERE from_vol_id = ? AND rel_type = 'continuation'`,
+      [v.id]
+    );
+    return {
+      ...v,
+      rel_id:    rel?.rel_id    ?? null,
+      order_num: rel?.order_num ?? null,
+      current:   v.id === volId,
+    };
+  });
+
+  // Сортуємо: спочатку ті що мають order_num, потім за start_year
+  chain.sort((a, b) => {
+    if (a.order_num !== null && b.order_num !== null) return a.order_num - b.order_num;
+    if (a.order_num !== null) return -1;
+    if (b.order_num !== null) return 1;
+    return (a.start_year || 9999) - (b.start_year || 9999);
+  });
+
+  // ── 2. Інші зв'язки (sequel / prequel / spinoff / related) ───────────────
+  const otherRows = getAll(`
+    SELECT
+      vr.id       AS rel_id,
+      vr.rel_type,
+      CASE WHEN vr.from_vol_id = ? THEN vr.to_vol_id ELSE vr.from_vol_id END AS other_id
+    FROM volume_relations vr
+    WHERE (vr.from_vol_id = ? OR vr.to_vol_id = ?)
+      AND vr.rel_type != 'continuation'
+  `, [volId, volId, volId]);
+
+  const other = { sequel: [], prequel: [], spinoff: [], related: [] };
+
+  for (const row of otherRows) {
+    const vol = getOne(`
+      SELECT v.id, v.cv_id, v.name, v.cv_img, v.start_year, v.lang, p.name AS publisher_name
+      FROM volumes v
+      LEFT JOIN publishers p ON p.id = v.publisher
+      WHERE v.id = ?
+    `, [row.other_id]);
+
+    if (vol && other[row.rel_type] !== undefined) {
+      other[row.rel_type].push({ ...vol, rel_id: row.rel_id });
+    }
+  }
+
+  res.json({ chain, other });
+});
+
+// POST /volumes/:id/relations — створити зв'язок
+router.post('/:id/relations', (req, res) => {
+  const fromId = parseInt(req.params.id);
+  const { to_vol_id, rel_type, order_num = 0 } = req.body;
+
+  if (!to_vol_id) return res.status(400).json({ error: 'to_vol_id обов\'язковий' });
+  if (!rel_type)  return res.status(400).json({ error: 'rel_type обов\'язковий' });
+  if (parseInt(to_vol_id) === fromId) return res.status(400).json({ error: 'Том не може посилатися на себе' });
+
+  const validTypes = ['continuation','sequel','prequel','spinoff','related'];
+  if (!validTypes.includes(rel_type)) return res.status(400).json({ error: 'Невалідний тип зв\'язку' });
+
+  try {
+    const existing = getOne(
+      'SELECT id FROM volume_relations WHERE from_vol_id = ? AND to_vol_id = ? AND rel_type = ?',
+      [fromId, to_vol_id, rel_type]
+    );
+    if (existing) return res.status(400).json({ error: 'Такий зв\'язок вже існує' });
+
+    // Перевірка на зворотній дублікат (для continuation)
+    if (rel_type === 'continuation') {
+      const reverse = getOne(
+          'SELECT id FROM volume_relations WHERE from_vol_id = ? AND to_vol_id = ? AND rel_type = ?',
+          [to_vol_id, fromId, 'continuation']
+      );
+      if (reverse) return res.status(400).json({ error: 'Зворотній зв\'язок вже існує' });
+    }
+
+    runQuery(
+      'INSERT INTO volume_relations (from_vol_id, to_vol_id, rel_type, order_num) VALUES (?, ?, ?, ?)',
+      [fromId, to_vol_id, rel_type, order_num]
+    );
+    
+    // Автоматично створюємо зворотний зв'язок
+    const mirrorType = {
+        sequel:  'prequel',
+        prequel: 'sequel',
+    };
+
+    if (mirrorType[rel_type]) {
+        const mirrorExists = getOne(
+            'SELECT id FROM volume_relations WHERE from_vol_id = ? AND to_vol_id = ? AND rel_type = ?',
+            [to_vol_id, fromId, mirrorType[rel_type]]
+        );
+        if (!mirrorExists) {
+            runQuery(
+                'INSERT INTO volume_relations (from_vol_id, to_vol_id, rel_type, order_num) VALUES (?, ?, ?, ?)',
+                [to_vol_id, fromId, mirrorType[rel_type], 0]
+            );
+        }
+    }
+    
+    res.json({ message: 'Зв\'язок додано' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// PUT /volumes/:id/relations/:relId — оновити order_num зв'язку
+router.put('/:id/relations/:relId', (req, res) => {
+  const { order_num, rel_type } = req.body;
+
+  try {
+    const rel = getOne('SELECT * FROM volume_relations WHERE id = ?', [req.params.relId]);
+    if (!rel) return res.status(404).json({ error: 'Зв\'язок не знайдено' });
+
+    if (order_num !== undefined) {
+      runQuery('UPDATE volume_relations SET order_num = ? WHERE id = ?',
+        [parseInt(order_num), req.params.relId]);
+    }
+
+    if (rel_type !== undefined) {
+      const mirrorType = { sequel:'prequel', prequel:'sequel', spinoff:'spinoff', related:'related' };
+
+      runQuery('UPDATE volume_relations SET rel_type = ? WHERE id = ?',
+        [rel_type, req.params.relId]);
+
+      // Оновлюємо дзеркальний зв'язок
+      if (mirrorType[rel_type]) {
+        runQuery(
+          `UPDATE volume_relations SET rel_type = ?
+           WHERE from_vol_id = ? AND to_vol_id = ? AND rel_type = ?`,
+          [mirrorType[rel_type], rel.to_vol_id, rel.from_vol_id, mirrorType[rel.rel_type]]
+        );
+      }
+    }
+
+    res.json({ message: 'Зв\'язок оновлено' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// DELETE /volumes/:id/relations/:relId — видалити зв'язок
+router.delete('/:id/relations/:relId', (req, res) => {
+  try {
+    const rel = getOne('SELECT * FROM volume_relations WHERE id = ?', [req.params.relId]);
+    if (!rel) return res.status(404).json({ error: 'Зв\'язок не знайдено' });
+
+    const mirrorType = {
+      sequel:  'prequel',
+      prequel: 'sequel',
+    };
+
+    // Видаляємо основний
+    runQuery('DELETE FROM volume_relations WHERE id = ?', [req.params.relId]);
+
+    // Видаляємо дзеркальний (якщо є і якщо це не continuation)
+    if (mirrorType[rel.rel_type]) {
+      runQuery(
+        'DELETE FROM volume_relations WHERE from_vol_id = ? AND to_vol_id = ? AND rel_type = ?',
+        [rel.to_vol_id, rel.from_vol_id, mirrorType[rel.rel_type]]
+      );
+    }
+
+    res.json({ message: 'Зв\'язок видалено' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 module.exports = router;

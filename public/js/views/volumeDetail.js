@@ -1,11 +1,10 @@
-import { fetchItem, fetchItems } from '../api/api.js';
-import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../utils/publisherSearch.js';
-import { locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
-import { navigate } from '../utils/router.js';
-import { openModal } from '../components/modal.js';
+import { API_BASE, locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList, buildThemeChipsViewHTML } from '../utils/themeChips.js';
-
-const API_BASE = 'http://localhost:7000/api';
+import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../utils/publisherSearch.js';
+import { fetchItem, fetchItems } from '../api/api.js';
+import { mountVolumeRelations } from '../components/volumeRelations.js';
+import { openModal } from '../components/modal.js';
+import { navigate } from '../utils/router.js';
 
 // ===== ПАГІНАЦІЯ ВИПУСКІВ ================================================
 
@@ -282,6 +281,9 @@ export async function renderVolumeDetail(params) {
                     </div>
                 ` : ''}
 
+                <!-- ── Хронологія та зв'язки ──────────────────────────── -->
+                <div id="volume-relations-mount"></div>
+
                 <!-- ── Збірники (collections-from-issues) ────────────────── -->
                 ${!isCollectionVolume && volCollectionsFromIssues.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
@@ -348,6 +350,13 @@ export async function renderVolumeDetail(params) {
         if (isCollectionVolume) {
             renderCollectionsBlock(volCollections, 0);
         }
+
+        // Монтуємо компонент зв'язків
+        await mountVolumeRelations(
+            volumeId,
+            'volume-relations-mount',
+            () => renderVolumeDetail(params),
+        );
 
     } catch (error) {
         console.error('Помилка завантаження тому:', error);
@@ -1165,6 +1174,11 @@ document.addEventListener('keydown', (e) => {
         const mainModal = document.getElementById('modal');
         if (mainModal?.classList.contains('active')) {
             mainModal.classList.remove('active');
+        }
+        const vrelModal = document.getElementById('vrel-modal');
+        if (vrelModal?.classList.contains('open')) {
+            window._vrelCloseModal();
+            return;
         }
     }
 });

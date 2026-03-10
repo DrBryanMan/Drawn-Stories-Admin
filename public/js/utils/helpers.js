@@ -1,5 +1,6 @@
 import { unmountHeaderActions } from '../components/headerActions.js';
 
+export const API_BASE = 'http://localhost:7000/api';
 export const cv_img_path_small = 'https://comicvine.gamespot.com/a/uploads/scale_small'
 export const cv_img_path_original = 'https://comicvine.gamespot.com/a/uploads/original'
 export const locg_img = 'https://leagueofcomicgeeks.com/assets/images/user-menu-logo-icon.png'

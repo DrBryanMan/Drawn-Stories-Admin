@@ -224,6 +224,22 @@ const MIGRATIONS = [
       db.run(`ALTER TABLE volumes ADD COLUMN description TEXT`);
     },
   },
+  // ── M014: volume_relations — хронологія та зв'язки між томами ────────────
+  {
+    id: 'M014_volume_relations',
+    up(db) {
+      db.run(`CREATE TABLE IF NOT EXISTS volume_relations (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        from_vol_id INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+        to_vol_id   INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+        rel_type    TEXT    NOT NULL CHECK(rel_type IN ('continuation','sequel','prequel','spinoff','related')),
+        order_num   INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(from_vol_id, to_vol_id, rel_type)
+      )`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_vrel_from ON volume_relations(from_vol_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_vrel_to   ON volume_relations(to_vol_id)`);
+    },
+  },
 
 ];
 
