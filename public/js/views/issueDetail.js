@@ -30,10 +30,13 @@ export async function renderIssueDetail(params) {
         const readingOrders = roData.data || [];
         const collectionMemberships = colMemberData.data || [];
 
+        const isMangaChapter = !issue.cv_vol_id && !!issue.ds_vol_id;
         document.getElementById('page-title').innerHTML = `
             <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
                 ← Випуски
-            </a> /${issue.cv_slug}/4000-${issue.cv_id}/
+            </a> ${isMangaChapter
+                ? `/ ${issue.volume_name || 'Манга'} / Розділ #${issue.issue_number || issue.id}`
+                : `/${issue.cv_slug}/4000-${issue.cv_id}/`}
         `;
 
         const content = document.getElementById('content');
@@ -49,15 +52,25 @@ export async function renderIssueDetail(params) {
                     <div style="flex: 1;">
                         <h1 style="font-size: 2rem; margin-bottom: 1rem;">${issue.name || 'Без назви'} #${issue.issue_number}</h1>
                         <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            ${issue.volume_name ? `
-                                <div>
+                            ${issue.volume_name && !isMangaChapter ?
+                                `<div>
                                     <strong>Том:</strong>
                                     <a href="#" onclick="navigateToVolumeFromIssue(${issue.cv_vol_id})"
                                     style="color: var(--accent); text-decoration: none;">
                                         ${issue.volume_name}
                                     </a> <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${issue.cv_vol_id})</span>
                                 </div>
-                            ` : `cv_id: ${issue.cv_vol_id}`}
+                            ` : (!isMangaChapter ? `cv_id: ${issue.cv_vol_id}` : '')}
+                            ${isMangaChapter && issue.volume_name ?
+                                `<div>
+                                    <strong>Том манги:</strong>
+                                    <a href="#" onclick="event.preventDefault(); navigate('volume-detail', { id: ${issue.ds_vol_id} })"
+                                       style="color: var(--accent); text-decoration: none;">
+                                        ${issue.volume_name}
+                                    </a>
+                                    <span style="color:var(--text-secondary); font-size:0.85rem;">(db_id: ${issue.ds_vol_id})</span>
+                                </div>`
+                            : ''}
                             <div><strong>Публікація:</strong> ${formatCoverDate(issue.cover_date)}</div>
                             <div><strong>Реліз:</strong> ${formatReleaseDate(issue.release_date)}</div>
                             <div><strong>Дата створення:</strong> ${formatDate(issue.created_at)}</div>
@@ -169,7 +182,7 @@ export async function renderIssueDetail(params) {
         `;
 
         // Монтуємо навігацію між випусками тому
-        if (issue.cv_vol_id) {
+        if (issue.cv_vol_id || issue.ds_vol_id) {
             mountIssueVolumeNav(issue);
         }
 
@@ -181,16 +194,26 @@ export async function renderIssueDetail(params) {
 
 // ===== РЕДАГУВАННЯ =====
 function getIssueFormHTML(issue = null) {
+    const isMangaChapter = !issue?.cv_id && !!issue?.ds_vol_id;
     return `
         <form id="edit-form">
+            ${!isMangaChapter ? `
             <div class="form-row">
-                <div class="form-group"><label>CV ID *</label><input type="number" name="cv_id" value="${issue?.cv_id || ''}" required></div>
-                <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${issue?.cv_slug || ''}" required></div>
-            </div>
+                <div class="form-group"><label>CV ID</label><input type="number" name="cv_id" value="${issue?.cv_id || ''}"></div>
+                <div class="form-group"><label>CV Slug</label><input type="text" name="cv_slug" value="${issue?.cv_slug || ''}"></div>
+            </div>` : ''}
             <div class="form-group"><label>Назва</label><input type="text" name="name" value="${issue?.name || ''}"></div>
             <div class="form-row">
+                ${!isMangaChapter ? `
                 <div class="form-group"><label>Volume CV ID</label><input type="number" name="cv_vol_id" value="${issue?.cv_vol_id || ''}"></div>
-                <div class="form-group"><label>Номер випуску</label><input type="text" name="issue_number" value="${issue?.issue_number || ''}"></div>
+                ` : `
+                <div class="form-group">
+                    <label>Том манги (ds_vol_id)</label>
+                    <input type="number" name="ds_vol_id" value="${issue?.ds_vol_id || ''}">
+                    ${issue?.volume_name ? `<small style="color:var(--text-secondary);">${issue.volume_name}</small>` : ''}
+                </div>
+                `}
+                <div class="form-group"><label>Номер розділу</label><input type="text" name="issue_number" value="${issue?.issue_number || ''}"></div>
             </div>
             <div class="form-row">
                 <div class="form-group"><label>Дата обкладинки</label><input type="date" name="cover_date" value="${issue?.cover_date || ''}"></div>
@@ -542,7 +565,7 @@ function _inavRender() {
     container.innerHTML = `
         <div class="inav" style="width: fit-content;">
             <div class="inav__header">
-                <span class="inav__label">Випуски тому</span>
+                <span class="inav__label">${_inav_issues._isManga ? 'Розділи тому' : 'Випуски тому'}</span>
                 <span class="inav__vol">${_inav_issues._volName || ''}</span>
                 <span class="inav__label">(${total})</span>
                 ${pagerHTML}
@@ -589,7 +612,12 @@ export async function mountIssueVolumeNav(issue) {
     container.innerHTML = '<div style="padding:0.75rem 1rem; color:var(--text-secondary); font-size:0.82rem;">Завантаження…</div>';
 
     try {
-        const res  = await fetch(`${API_BASE}/issues?volume_id=${issue.cv_vol_id}&limit=5000`);
+        const isMangaChapter = !issue.cv_vol_id && !!issue.ds_vol_id;
+        const fetchUrl = isMangaChapter
+            ? `${API_BASE}/issues?ds_vol_id=${issue.ds_vol_id}&limit=5000`
+            : `${API_BASE}/issues?volume_id=${issue.cv_vol_id}&limit=5000`;
+
+        const res  = await fetch(fetchUrl);
         const data = await res.json();
         const all  = data.data || [];
 
@@ -605,6 +633,7 @@ export async function mountIssueVolumeNav(issue) {
 
         _inav_issues = all;
         _inav_issues._volName = issue.volume_name || '';
+        _inav_issues._isManga = isMangaChapter;
 
         // Визначаємо сторінку поточного випуску
         const idx = all.findIndex(i => i.id === issue.id);

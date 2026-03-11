@@ -127,11 +127,14 @@ router.get('/:id/collections-membership', (req, res) => {
 
 router.get('/:id', (req, res) => {
   const issue = getOne(`
-    SELECT i.*, v.name as volume_name, v.id as volume_db_id,
+    SELECT i.*,
+           COALESCE(v.name, mv.name)  as volume_name,
+           COALESCE(v.id,   mv.id)    as volume_db_id,
            p.name as publisher_name
     FROM issues i
-    LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id
-    LEFT JOIN publishers p ON v.publisher = p.id
+    LEFT JOIN volumes v  ON i.cv_vol_id = v.cv_id
+    LEFT JOIN volumes mv ON i.ds_vol_id = mv.id
+    LEFT JOIN publishers p ON COALESCE(v.publisher, mv.publisher) = p.id
     WHERE i.id = ?
   `, [req.params.id]);
   if (!issue) return res.status(404).json({ error: 'Випуск не знайдено' });
@@ -153,11 +156,11 @@ router.post('/', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-  const { cv_id, cv_slug, name, cv_img, cv_vol_id, issue_number, cover_date, release_date, description } = req.body;
+  const { cv_id, cv_slug, name, cv_img, cv_vol_id, ds_vol_id, issue_number, cover_date, release_date } = req.body;
   try {
     runQuery(
-      'UPDATE issues SET cv_id = ?, cv_slug = ?, name = ?, cv_img = ?, cv_vol_id = ?, issue_number = ?, cover_date = ?, release_date = ?, description = ? WHERE id = ?',
-      [cv_id, cv_slug || null, name || null, cv_img || null, cv_vol_id || null, issue_number || null, cover_date || null, release_date || null, description || null, req.params.id]
+      'UPDATE issues SET cv_id=?, cv_slug=?, name=?, cv_img=?, cv_vol_id=?, ds_vol_id=?, issue_number=?, cover_date=?, release_date=? WHERE id=?',
+      [cv_id||null, cv_slug||null, name, cv_img||null, cv_vol_id||null, ds_vol_id||null, issue_number||null, cover_date||null, release_date||null, req.params.id]
     );
     saveDatabase();
     res.json({ message: 'Випуск оновлено' });
