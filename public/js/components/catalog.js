@@ -2,7 +2,7 @@
 // Розташування: public/js/components/catalog.js
 
 import { fetchItems } from '../api/api.js';
-import { showEmpty, showError, showLoading } from '../utils/helpers.js';
+import { cv_img_path_small, showEmpty, showError, showLoading } from '../utils/helpers.js';
 import { cv_img_path_original } from '../utils/helpers.js';
 import { mountHeaderActions } from './headerActions.js';
 
@@ -282,7 +282,7 @@ function resolveImageUrl(item) {
   const filename = item[_config.imageKey];
   if (!filename) return null;
   if (filename.startsWith('http://') || filename.startsWith('https://')) return filename;
-  if (filename.startsWith('/')) return cv_img_path_original + filename;
+  if (filename.startsWith('/')) return cv_img_path_small + filename;
   return cv_img_path_original + '/' + filename;
 }
 

@@ -198,6 +198,7 @@ export async function renderVolumeDetail(params) {
                                     <div style="display:flex; align-items:center; gap: .3rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: .3rem .6rem; cursor:pointer;"
                                         onclick="navigate('volume-detail', { id: ${t.id} })">
                                         <span style="font-size:0.9rem;">${t.lang ? `<i style="color: skyblue;">${langDisplay(t.lang)}</i> ` : ''}${t.name}</span>
+                                        ${t.collections_count ? `<span class="badge" style="font-size: .75rem; padding: .1rem .4rem; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-secondary);">${t.collections_count}</span>` : ''}
                                         <button class="btn btn-notext btn-nobg btn-danger btn-small"
                                             onclick="event.stopPropagation(); removeTranslation(${volume.id}, ${t.id})">✕</button>
                                     </div>
@@ -225,6 +226,7 @@ export async function renderVolumeDetail(params) {
                             <div>
                                 <div style="font-weight:600;">${translationParent.lang ? `[${translationParent.lang}] ` : ''}${translationParent.name}</div>
                             ${translationParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationParent.publisher_name}</div>` : ''}
+                            ${translationParent.collections_count ? `<div style="font-size:0.85rem; color:var(--text-secondary);">📚 ${translationParent.collections_count} збірн.</div>` : ''}
                             </div>
                         </div>
                     </div>

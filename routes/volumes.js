@@ -292,7 +292,8 @@ function ensureVolumeTheme(volumeDbId, themeId) {
 // GET список перекладів (дочірні томи) даного тому-оригіналу
 router.get('/:id/translations', (req, res) => {
   const data = getAll(`
-    SELECT v.*, p.name as publisher_name
+    SELECT v.*, p.name as publisher_name,
+      (SELECT COUNT(*) FROM collections c WHERE c.cv_vol_id = v.cv_id) as collections_count
     FROM volume_translations vt
     JOIN volumes v ON v.id = vt.child_id
     LEFT JOIN publishers p ON p.id = v.publisher
@@ -305,7 +306,8 @@ router.get('/:id/translations', (req, res) => {
 // GET батьківський том-оригінал для цього перекладу
 router.get('/:id/translation-parent', (req, res) => {
   const row = getOne(`
-    SELECT v.*, p.name as publisher_name
+    SELECT v.*, p.name as publisher_name,
+      (SELECT COUNT(*) FROM collections c WHERE c.cv_vol_id = v.cv_id) as collections_count
     FROM volume_translations vt
     JOIN volumes v ON v.id = vt.parent_id
     LEFT JOIN publishers p ON p.id = v.publisher
