@@ -21,14 +21,15 @@
 // ── Побудова Map ─────────────────────────────────────────────────────────
 
 export function buildVolumesMap(issues, {
-  keyField       = 'cv_vol_id',
-  nameField      = 'volume_name',
-  dbIdField      = 'volume_db_id',
-  collectNumbers = false,
+  keyField          = 'cv_vol_id',
+  fallbackKeyField  = null,
+  nameField         = 'volume_name',
+  dbIdField         = 'volume_db_id',
+  collectNumbers    = false,
 } = {}) {
   const map = new Map();
   for (const issue of issues) {
-    const key   = issue[keyField];
+    const key = issue[keyField] ?? (fallbackKeyField ? issue[fallbackKeyField] : null);
     const name  = issue[nameField] || 'Без назви';
     const db_id = issue[dbIdField] || null;
     if (!key) continue;

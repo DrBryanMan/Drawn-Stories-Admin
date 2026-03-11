@@ -213,13 +213,24 @@ const issues = getAll(`
     WHERE ci.collection_id = ?
     ORDER BY ci.order_num ASC, CAST(i.issue_number AS REAL) ASC
   `, [req.params.id]);
-  
-  const themes = getAll(
+
+const themes = getAll(
     `SELECT t.* FROM themes t JOIN collection_themes ct ON t.id = ct.theme_id WHERE ct.collection_id = ?`,
     [req.params.id]
   );
 
-  res.json({ ...collection, issues, themes });
+  // Теми тому збірника (для comics — через cv_vol_id, для manga — через ds_vol_id розділів)
+  const volumeDbId = collection.volume_id
+    || issues.find(i => i.ds_vol_id)?.ds_vol_id
+    || null;
+  const volume_themes = volumeDbId
+    ? getAll(
+        `SELECT t.* FROM themes t JOIN volume_themes vt ON t.id = vt.theme_id WHERE vt.volume_id = ?`,
+        [volumeDbId]
+      )
+    : [];
+
+  res.json({ ...collection, issues, themes, volume_themes });
 });
 
 router.put('/:id', (req, res) => {

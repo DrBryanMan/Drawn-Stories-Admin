@@ -52,8 +52,7 @@ function renderPage(collection, seriesList = []) {
     currentCollectionId = collection.id;
 
     const MANGA_THEME_ID = 36;
-    const isMangaCollection = (collection.themes || []).some(t => t.id === MANGA_THEME_ID);
-
+    const isMangaCollection = (collection.volume_themes || []).some(t => t.id === MANGA_THEME_ID);
 
     // Скасовуємо старі обробники
     if (handlersAbortController) handlersAbortController.abort();
@@ -69,10 +68,11 @@ function renderPage(collection, seriesList = []) {
     // ── Volume summary з проміжками номерів ──────────────────────────────────
     injectVolumeChipsStyles();
     const volumesMap = buildVolumesMap(collection.issues || [], {
-        keyField:       isMangaCollection ? 'ds_vol_id' : 'cv_vol_id',
-        nameField:      'volume_name',
-        dbIdField:      'volume_db_id',
-        collectNumbers: true,
+        keyField:         'cv_vol_id',
+        fallbackKeyField: 'ds_vol_id',
+        nameField:        'volume_name',
+        dbIdField:        'volume_db_id',
+        collectNumbers:   true,
     });
     const volumesHtml = renderVolumeSummary(volumesMap, {
         label:      'Додані серії',
