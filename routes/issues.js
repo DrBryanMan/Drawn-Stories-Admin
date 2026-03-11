@@ -102,7 +102,7 @@ router.get('/:id/reading-orders', (req, res) => {
 router.get('/:id/collections-membership', (req, res) => {
   try {
     const data = getAll(`
-      SELECT c.id, c.name, c.cv_img, ci.order_num
+      SELECT c.id, c.name, c.cv_img, c.cover_date, c.release_date, ci.order_num
       FROM collections c
       JOIN collection_issues ci ON c.id = ci.collection_id
       WHERE ci.issue_id = ?

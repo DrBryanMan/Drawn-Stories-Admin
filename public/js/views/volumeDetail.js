@@ -25,21 +25,23 @@ const LANG_MAP = {
     it:    { label: 'Італійська',             flag: '🇮🇹' },
     es:    { label: 'Іспанська',              flag: '🇪🇸' },
     'es-AR': { label: 'Іспанська (Аргентина)',flag: '🇦🇷' },
-    id:    { label: 'Індонезійська',          flag: '🇮🇩' },
+    be:    { label: 'Бельгійська',            flag: '🇧🇪' },
+    el:    { label: 'Грецька',                flag: '🇬🇷' },
     da:    { label: 'Данська',                flag: '🇩🇰' },
-    fi:    { label: 'Фінська',                flag: '🇫🇮' },
+    id:    { label: 'Індонезійська',          flag: '🇮🇩' },
     nb:    { label: 'Норвезька Букмол',       flag: '🇳🇴' },
     nl:    { label: 'Нідерландська',          flag: '🇳🇱' },
     no:    { label: 'Норвезька',              flag: '🇳🇴' },
     pl:    { label: 'Польська',               flag: '🇵🇱' },
     pt:    { label: 'Португальська',          flag: '🇵🇹' },
     sr:    { label: 'Сербська',               flag: '🇷🇸' },
-    sv:    { label: 'Шведська',               flag: '🇸🇪' },
     tr:    { label: 'Турецька',               flag: '🇹🇷' },
+    fi:    { label: 'Фінська',                flag: '🇫🇮' },
+    sv:    { label: 'Шведська',               flag: '🇸🇪' },
     uk:    { label: 'Українська',             flag: '🇺🇦' },
-    ru:    { label: 'Російська',              flag: '🇷🇺' },
     zh:    { label: 'Китайська',              flag: '🇨🇳' },
     ko:    { label: 'Корейська',              flag: '🇰🇷' },
+    ru:    { label: 'Російська',              flag: '🇷🇺' },
 };
 
 function langDisplay(code) {
@@ -287,24 +289,28 @@ export async function renderVolumeDetail(params) {
                 <!-- ── Збірники (collections-from-issues) ────────────────── -->
                 ${!isCollectionVolume && volCollectionsFromIssues.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                        <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Входить у збірники (${volCollectionsFromIssues.length})</h2>
+                        <h2 style="font-size: 1.2rem; margin-bottom: 1rem;">Входить у збірники (${volCollectionsFromIssues.length})</h2>
                         <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
                         ${volCollectionsFromIssues.map(col => {
                                 const range = col.issue_numbers ? formatIssueRanges(col.issue_numbers.split(',')) : null;
+                                const year = col.cover_date
+                                    ? col.cover_date.substring(0, 4)
+                                    : col.release_date
+                                        ? col.release_date.substring(0, 4)
+                                        : null;
                                 return `
-                                    <div onclick="navigateToCollection(${col.id})"
-                                         style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;">
-                                    ${col.cv_img ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
-                                        <div>
-                                            <div style="font-size:0.9rem; font-weight:500;">${col.name || 'Без назви'}</div>
+                                    <div onclick="navigateToCollection(${col.id})" style="display:flex; flex-direction: column; align-items:center; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding: .3em; cursor:pointer;">
+                                        ${col.cv_img ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" style="width: 100px; height: 160px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
+                                        <div style="font-size:0.9rem; font-weight:500;">${col.name || 'Без назви'}</div>
                                         ${range ? `
                                                 <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
                                                     📖 ${range}
                                                 </div>
-                                            ` : ''}
-                                        </div>
+                                            ` : ''
+                                        }
+                                        ${year ? `<div style="font-size: 0.75rem; color: var(--text-secondary);">${year}</div>` : ''}
                                     </div>
-                                `;
+                                `; 
                             }).join('')}
                         </div>
                     </div>
@@ -785,9 +791,9 @@ async function getVolumeFormHTML(volume = null) {
                     <div id="lang-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-top:0.4rem;">
                         <span class="lang-chip${!volume?.lang ? ' lang-chip--active' : ''}"
                             data-code="" onclick="selectLangChip(this)">— ?</span>
-                        ${Object.entries(LANG_MAP).map(([code, { flag }]) =>
+                        ${Object.entries(LANG_MAP).map(([code, { flag, label }]) =>
                             `<span class="lang-chip${volume?.lang === code ? ' lang-chip--active' : ''}"
-                                data-code="${code}" onclick="selectLangChip(this)">${flag} ${code}</span>`
+                                data-code="${code}" onclick="selectLangChip(this)">${flag} ${label}</span>`
                         ).join('')}
                     </div>
                 </div>

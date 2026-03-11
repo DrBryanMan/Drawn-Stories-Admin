@@ -72,15 +72,6 @@ export async function renderIssueDetail(params) {
                                     `).join(' ')}
                                 </div>
                             ` : ''}
-                            ${collectionMemberships.length > 0 ? `
-                                <div>
-                                    <strong>У збірниках:</strong>
-                                    ${collectionMemberships.map(c => `
-                                        <span class="theme-badge" style="background:#dbeafe; color:#1e40af; border-color:#bfdbfe; cursor:pointer;"
-                                              onclick="navigateTo('collection-detail', ${c.id})">${c.name}</span>
-                                    `).join(' ')}
-                                </div>
-                            ` : ''}
                         </div>
                         <div>
                             <a href="https://comicvine.gamespot.com/${issue.cv_slug}/4000-${issue.cv_id}" target="_blank">${cv_logo_svg}</a>
@@ -136,6 +127,45 @@ export async function renderIssueDetail(params) {
 
             <!-- Навігація між випусками тому -->
             <div id="issue-volume-nav" style="display: flex; margin-top: 1.5rem; justify-content: center;"></div>
+
+            ${collectionMemberships.length > 0 ? `
+                <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 1.5rem;">
+                    <h2 style="font-size: 1.2rem; margin-bottom: 1rem;">📚 У збірниках (${collectionMemberships.length})</h2>
+                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+                        ${collectionMemberships.map(c => {
+                            const imgUrl = c.cv_img
+                                ? (c.cv_img.startsWith('https') ? c.cv_img
+                                    : c.cv_img.startsWith('/') ? cv_img_path_small + c.cv_img
+                                    : cv_img_path_small + '/' + c.cv_img)
+                                : null;
+                            const year = c.cover_date
+                                ? c.cover_date.substring(0, 4)
+                                : c.release_date
+                                    ? c.release_date.substring(0, 4)
+                                    : null;
+                            return `
+                                <div onclick="navigateTo('collection-detail', ${c.id})"
+                                     style="display:flex; flex-direction:column; align-items:center; cursor:pointer; background:var(--bg-secondary);
+                                            border:1px solid var(--border-color); border-radius:8px; transition:box-shadow 0.15s; padding: .3em;"
+                                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.18)'"
+                                     onmouseout="this.style.boxShadow='none'">
+                                    ${imgUrl
+                                        ? `<img src="${imgUrl}" alt=""
+                                               style="width:100px; height:160px; object-fit:cover; border-radius:5px; flex-shrink:0;">`
+                                        : `<div style="width:72px; height:108px; background:var(--bg-tertiary); border-radius:5px;
+                                                       display:flex; align-items:center; justify-content:center; font-size:2rem;">📚</div>`
+                                    }
+                                    <div style="font-size:0.78rem; font-weight:500; text-align:center; line-height:1.3;
+                                                color:var(--text-primary); word-break:break-word;">
+                                        ${c.name || 'Без назви'}
+                                    </div>
+                                    ${year ? `<div style="font-size:0.72rem; color:var(--text-secondary);">${year}</div>` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : ''}
         `;
 
         // Монтуємо навігацію між випусками тому
