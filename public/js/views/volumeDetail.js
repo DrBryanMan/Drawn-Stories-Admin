@@ -4,7 +4,7 @@ import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../u
 import { fetchItem, fetchItems } from '../api/api.js';
 import { mountVolumeRelations } from '../components/volumeRelations.js';
 import { openModal } from '../components/modal.js';
-import { navigate } from '../utils/router.js';
+import { navigate, buildUrl } from '../utils/router.js';
 
 // ===== ПАГІНАЦІЯ ВИПУСКІВ ================================================
 
@@ -663,7 +663,9 @@ function renderCollectionsBlock(allCollections, page) {
                     </thead>
                     <tbody>
                         ${slice.map(col => `
-                            <tr onclick="navigateToCollection(${col.id})" style="cursor: pointer;">
+                            <tr onclick="navigateToCollection(event, ${col.id})"
+                                onmousedown="collectionMiddleClick(event, ${col.id})"
+                                style="cursor: pointer;">
                                 <td>
                                     ${col.cv_img
                                         ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}"
@@ -961,7 +963,21 @@ function getCollectionFormHTML(col = null) {
 // ===== НАВІГАЦІЯ =========================================================
 
 window.navigateToIssue = (id) => navigate('issue-detail', { id });
-window.navigateToCollection = (id) => navigate('collection-detail', { id });
+window.navigateToCollection = (e, id) => {
+    if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        window.open(buildUrl('collection-detail', { id }), '_blank');
+        return;
+    }
+    navigate('collection-detail', { id });
+};
+
+window.collectionMiddleClick = (e, id) => {
+    if (e.button === 1) {
+        e.preventDefault();
+        window.open(buildUrl('collection-detail', { id }), '_blank');
+    }
+};
 
 // ===== РЕДАГУВАННЯ ТОМУ ==================================================
 

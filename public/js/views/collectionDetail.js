@@ -52,7 +52,7 @@ function renderPage(collection, seriesList = []) {
     currentCollectionId = collection.id;
 
     const MANGA_THEME_ID = 36;
-    const isMangaCollection = (collection.volume_themes || []).some(t => t.id === MANGA_THEME_ID);
+    const isMangaCollection = (collection.themes || []).some(t => t.id === MANGA_THEME_ID);
 
     // Скасовуємо старі обробники
     if (handlersAbortController) handlersAbortController.abort();
