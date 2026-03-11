@@ -152,28 +152,47 @@ router.get('/:id/collections-from-issues', (req, res) => {
     const volume = getOne('SELECT * FROM volumes WHERE id = ?', [parseInt(req.params.id)]);
     if (!volume) return res.status(404).json({ error: 'Том не знайдено' });
 
-    const collections = getAll(`
-      SELECT DISTINCT c.*
-      FROM collections c
-      JOIN collection_issues ci ON c.id = ci.collection_id
-      JOIN issues i ON ci.issue_id = i.id
-      WHERE i.cv_vol_id = ?
-      ORDER BY CAST(c.issue_number AS REAL) ASC, c.name ASC
-    `, [volume.cv_id]);
+// Визначаємо тип тому: манґа (ds_vol_id) чи комікс (cv_vol_id)
+    const isMangaVol = !volume.cv_id && !!volume.hikka_slug;
+    const collections = isMangaVol
+      ? getAll(`
+          SELECT DISTINCT c.*
+          FROM collections c
+          JOIN collection_issues ci ON c.id = ci.collection_id
+          JOIN issues i ON ci.issue_id = i.id
+          WHERE i.ds_vol_id = ?
+          ORDER BY CAST(c.issue_number AS REAL) ASC, c.name ASC
+        `, [volume.id])
+      : getAll(`
+          SELECT DISTINCT c.*
+          FROM collections c
+          JOIN collection_issues ci ON c.id = ci.collection_id
+          JOIN issues i ON ci.issue_id = i.id
+          WHERE i.cv_vol_id = ?
+          ORDER BY CAST(c.issue_number AS REAL) ASC, c.name ASC
+        `, [volume.cv_id]);
 
-    // Для кожного збірника визначаємо номери випусків з цього тому
+    // Для кожного збірника визначаємо номери розділів/випусків з цього тому
     const result = collections.map(col => {
-      const issueNumbers = getAll(`
-        SELECT i.issue_number
-        FROM collection_issues ci
-        JOIN issues i ON ci.issue_id = i.id
-        WHERE ci.collection_id = ? AND i.cv_vol_id = ? AND i.issue_number IS NOT NULL
-        ORDER BY CAST(i.issue_number AS REAL) ASC
-      `, [col.id, volume.cv_id]).map(r => r.issue_number);
+      const issueNumbers = isMangaVol
+        ? getAll(`
+            SELECT i.issue_number
+            FROM collection_issues ci
+            JOIN issues i ON ci.issue_id = i.id
+            WHERE ci.collection_id = ? AND i.ds_vol_id = ? AND i.issue_number IS NOT NULL
+            ORDER BY CAST(i.issue_number AS REAL) ASC
+          `, [col.id, volume.id]).map(r => r.issue_number)
+        : getAll(`
+            SELECT i.issue_number
+            FROM collection_issues ci
+            JOIN issues i ON ci.issue_id = i.id
+            WHERE ci.collection_id = ? AND i.cv_vol_id = ? AND i.issue_number IS NOT NULL
+            ORDER BY CAST(i.issue_number AS REAL) ASC
+          `, [col.id, volume.cv_id]).map(r => r.issue_number);
 
       return { ...col, volume_issue_numbers: issueNumbers };
     });
-
+    
     res.json({ data: result });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });

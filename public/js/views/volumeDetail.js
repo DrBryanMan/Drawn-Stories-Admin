@@ -85,8 +85,16 @@ export async function renderVolumeDetail(params) {
         let magazineParentData      = { data: null };
 
         if (isMangaSourceVolume) {
-            // Для тому-джерела розділів — нічого зайвого не завантажуємо
-            // chapters завантажить loadChapters() після рендеру
+            // Для манґа-тому завантажуємо тільки журнал і збірники
+            [
+                magazineChildrenData,
+                magazineParentData,
+                collectionsFromIssuesData,
+            ] = await Promise.all([
+                fetch(`${API_BASE}/volumes/${volumeId}/magazine-children`).then(r => r.ok ? r.json() : { data: [] }),
+                fetch(`${API_BASE}/volumes/${volumeId}/magazine-parent`).then(r => r.ok ? r.json() : { data: [] }),
+                fetch(`${API_BASE}/volumes/${volumeId}/collections-from-issues`).then(r => r.ok ? r.json() : { data: [] }),
+            ]);
         } else {
             [
                 issuesResult,

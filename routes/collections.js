@@ -201,15 +201,19 @@ router.get('/:id', (req, res) => {
   // Нормалізуємо order_num якщо потрібно (для старих даних з order_num = 0)
   ensureOrderNums(req.params.id);
 
-  const issues = getAll(`
-    SELECT i.*, v.name as volume_name, v.id as volume_db_id, ci.order_num
+const issues = getAll(`
+    SELECT i.*,
+           COALESCE(v.name, mv.name)   AS volume_name,
+           COALESCE(v.id,   mv.id)     AS volume_db_id,
+           ci.order_num
     FROM issues i
     JOIN collection_issues ci ON i.id = ci.issue_id
-    LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id
+    LEFT JOIN volumes v  ON i.cv_vol_id = v.cv_id
+    LEFT JOIN volumes mv ON i.ds_vol_id = mv.id
     WHERE ci.collection_id = ?
     ORDER BY ci.order_num ASC, CAST(i.issue_number AS REAL) ASC
   `, [req.params.id]);
-
+  
   const themes = getAll(
     `SELECT t.* FROM themes t JOIN collection_themes ct ON t.id = ct.theme_id WHERE ct.collection_id = ?`,
     [req.params.id]

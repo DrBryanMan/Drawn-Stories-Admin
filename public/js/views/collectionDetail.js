@@ -69,7 +69,7 @@ function renderPage(collection, seriesList = []) {
     // ── Volume summary з проміжками номерів ──────────────────────────────────
     injectVolumeChipsStyles();
     const volumesMap = buildVolumesMap(collection.issues || [], {
-        keyField:       'cv_vol_id',
+        keyField:       isMangaCollection ? 'ds_vol_id' : 'cv_vol_id',
         nameField:      'volume_name',
         dbIdField:      'volume_db_id',
         collectNumbers: true,
