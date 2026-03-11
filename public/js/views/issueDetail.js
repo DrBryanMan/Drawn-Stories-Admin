@@ -135,7 +135,7 @@ export async function renderIssueDetail(params) {
             </div>
 
             <!-- Навігація між випусками тому -->
-            <div id="issue-volume-nav" style="margin-top: 1.5rem;"></div>
+            <div id="issue-volume-nav" style="display: flex; margin-top: 1.5rem; justify-content: center;"></div>
         `;
 
         // Монтуємо навігацію між випусками тому
@@ -371,7 +371,7 @@ window.confirmAddToRO = async () => {
 // НАВІГАЦІЯ МІЖ ВИПУСКАМИ ТОМУ
 // ═══════════════════════════════════════════════════════════════
 
-const ISSUE_NAV_PAGE_SIZE = 20;
+const ISSUE_NAV_PAGE_SIZE = 100;
 let _inav_issues   = [];
 let _inav_page     = 0;
 let _inav_current  = null; // id поточного випуску
@@ -428,8 +428,7 @@ function _inavInjectCSS() {
             transition: background 0.12s, border-color 0.12s;
         }
         .inav__pager-btn:hover:not(:disabled) {
-            background: var(--bg-tertiary, #0f3460);
-            border-color: var(--accent);
+            background: var(--border-color);
         }
         .inav__pager-btn:disabled { opacity: 0.35; cursor: default; }
         .inav__pager-info {
@@ -437,9 +436,22 @@ function _inavInjectCSS() {
             color: var(--text-secondary);
             white-space: nowrap;
         }
+
+        .inav__pager-input {
+            padding: .2rem .5rem;
+            font-size: .75rem;
+            text-align: center;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .inav__pager-input::-webkit-inner-spin-button,
+        .inav__pager-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+
         .inav__grid {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
             gap: 0.35rem;
             padding: 0.75rem 1rem;
         }
@@ -492,13 +504,13 @@ function _inavRender() {
     const pagerHTML = needsPager ? `
         <div class="inav__pager">
             <button class="inav__pager-btn" id="inav-prev" ${_inav_page === 0 ? 'disabled' : ''}>‹</button>
-            <span class="inav__pager-info">${_inav_page + 1} / ${totalPages}</span>
+            <input class="inav__pager-input" id="inav-goto" type="number" min="1" max="${totalPages}" placeholder="${_inav_page + 1}" title="Перейти на сторінку"><span class="inav__pager-info"> / ${totalPages}</span>
             <button class="inav__pager-btn" id="inav-next" ${_inav_page >= totalPages - 1 ? 'disabled' : ''}>›</button>
         </div>
     ` : '';
 
     container.innerHTML = `
-        <div class="inav">
+        <div class="inav" style="width: fit-content;">
             <div class="inav__header">
                 <span class="inav__label">Випуски тому</span>
                 <span class="inav__vol">${_inav_issues._volName || ''}</span>
@@ -524,6 +536,11 @@ function _inavRender() {
     container.querySelector('#inav-next')?.addEventListener('click', () => {
         if (_inav_page < totalPages - 1) { _inav_page++; _inavRender(); }
     });
+    container.querySelector('#inav-goto')?.addEventListener('change', (e) => {
+        const p = parseInt(e.target.value) - 1;
+        if (!isNaN(p) && p >= 0 && p < totalPages) { _inav_page = p; _inavRender(); }
+        else e.target.value = '';
+    });
 
     // Навігація по кнопках випусків
     container.querySelectorAll('.inav__btn:not(.inav__btn--current)').forEach(btn => {
@@ -542,7 +559,7 @@ export async function mountIssueVolumeNav(issue) {
     container.innerHTML = '<div style="padding:0.75rem 1rem; color:var(--text-secondary); font-size:0.82rem;">Завантаження…</div>';
 
     try {
-        const res  = await fetch(`${API_BASE}/issues?cv_vol_id=${issue.cv_vol_id}&limit=9999`);
+        const res  = await fetch(`${API_BASE}/issues?volume_id=${issue.cv_vol_id}&limit=5000`);
         const data = await res.json();
         const all  = data.data || [];
 
