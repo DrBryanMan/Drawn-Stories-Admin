@@ -321,6 +321,13 @@ const MIGRATIONS = [
       db.run(`CREATE INDEX IF NOT EXISTS idx_vthemes_cv_vol_id    ON volume_themes(cv_vol_id)`);
     },
   },
+  // ── M018: volumes — додаємо hikka_img для постера з Hikka/MAL ────────────
+  {
+    id: 'M018_volumes_hikka_img',
+    up(db) {
+      db.run(`ALTER TABLE volumes ADD COLUMN hikka_img TEXT`);
+    },
+  },
 
 ];
 

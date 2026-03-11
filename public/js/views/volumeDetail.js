@@ -62,31 +62,51 @@ export async function renderVolumeDetail(params) {
         const [volume, themesData, seriesData] = await Promise.all([
             fetchItem('volumes', volumeId),
             fetch(`${API_BASE}/volumes/${volumeId}/themes`).then(r => r.json()),
-            fetch(`${API_BASE}/volumes/${volumeId}/series`).then(r => r.json())
-        ]);
-
-        const [
-            issuesResult,
-            volumeCollectionsData,
-            collectionsFromIssuesData,
-            translationsData,
-            translationParentData,
-            magazineChildrenData,
-            magazineParentData,
-        ] = await Promise.all([
-            fetchItems('issues', { volume_id: volume.cv_id }),
-            fetch(`${API_BASE}/collections/by-volume/${volume.cv_id}`).then(r => r.ok ? r.json() : { data: [] }),
-            fetch(`${API_BASE}/volumes/${volumeId}/collections-from-issues`).then(r => r.ok ? r.json() : { data: [] }),
-            fetch(`${API_BASE}/volumes/${volumeId}/translations`).then(r => r.ok ? r.json() : { data: [] }),
-            fetch(`${API_BASE}/volumes/${volumeId}/translation-parent`).then(r => r.ok ? r.json() : { data: null }),
-            fetch(`${API_BASE}/volumes/${volumeId}/magazine-children`).then(r => r.ok ? r.json() : { data: [] }),
-            fetch(`${API_BASE}/volumes/${volumeId}/magazine-parent`).then(r => r.ok ? r.json() : { data: null }),
+            fetch(`${API_BASE}/volumes/${volumeId}/series`).then(r => r.json()),
         ]);
 
         const volumeThemes = themesData.data || [];
         const volumeSeries = seriesData.data || [];
-        const isCollectionVolume = volumeThemes.some(t => t.id === 44);
-        const isMagazineVolume   = volumeThemes.some(t => t.id === 35);
+        const isCollectionVolume  = volumeThemes.some(t => t.id === 44);
+        const isMagazineVolume    = volumeThemes.some(t => t.id === 35);
+        const isMangaVolume       = volumeThemes.some(t => t.id === 36);
+        const isMangaSourceVolume = !isCollectionVolume && !!(volume.hikka_slug || volume.mal_id);
+
+        // Другий етап — тільки потрібні запити залежно від типу тому
+        let issuesResult            = { data: [] };
+        let volumeCollectionsData   = { data: [] };
+        let collectionsFromIssuesData = { data: [] };
+        let translationsData        = { data: [] };
+        let translationParentData   = { data: null };
+        let magazineChildrenData    = { data: [] };
+        let magazineParentData      = { data: null };
+
+        if (isMangaSourceVolume) {
+            // Для тому-джерела розділів — нічого зайвого не завантажуємо
+            // chapters завантажить loadChapters() після рендеру
+        } else {
+            [
+                issuesResult,
+                volumeCollectionsData,
+                collectionsFromIssuesData,
+                translationsData,
+                translationParentData,
+                magazineChildrenData,
+                magazineParentData,
+            ] = await Promise.all([
+                volume.cv_id
+                    ? fetchItems('issues', { volume_id: volume.cv_id })
+                    : Promise.resolve({ data: [] }),
+                volume.cv_id
+                    ? fetch(`${API_BASE}/collections/by-volume/${volume.cv_id}`).then(r => r.ok ? r.json() : { data: [] })
+                    : Promise.resolve({ data: [] }),
+                fetch(`${API_BASE}/volumes/${volumeId}/collections-from-issues`).then(r => r.ok ? r.json() : { data: [] }),
+                fetch(`${API_BASE}/volumes/${volumeId}/translations`).then(r => r.ok ? r.json() : { data: [] }),
+                fetch(`${API_BASE}/volumes/${volumeId}/translation-parent`).then(r => r.ok ? r.json() : { data: null }),
+                fetch(`${API_BASE}/volumes/${volumeId}/magazine-children`).then(r => r.ok ? r.json() : { data: [] }),
+                fetch(`${API_BASE}/volumes/${volumeId}/magazine-parent`).then(r => r.ok ? r.json() : { data: null }),
+            ]);
+        }
         const volCollections = volumeCollectionsData.data || [];
         const volCollectionsFromIssues = collectionsFromIssuesData.data || [];
         const translations = translationsData.data || [];
@@ -97,8 +117,11 @@ export async function renderVolumeDetail(params) {
         document.getElementById('page-title').innerHTML = `
             <a href="#" onclick="event.preventDefault(); navigateToParent()">
                 ← Томи
-            </a> /${volume.cv_slug}/4050-${volume.cv_id}
+            </a> ${isMangaSourceVolume
+                ? `/ hikka: ${volume.hikka_slug} / MAL: ${volume.mal_id}`
+                : `/${volume.cv_slug}/4050-${volume.cv_id}`}
         `;
+
 
         const content = document.getElementById('content');
         content.innerHTML = `
@@ -109,11 +132,21 @@ export async function renderVolumeDetail(params) {
                         ${volume.cv_img
                             ? `<img src="${cv_img_path_small + volume.cv_img}" alt="${volume.name}"
                                 style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
-                            : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📚</div>'
+                            : volume.hikka_img
+                                ? `<img src="${volume.hikka_img}" alt="${volume.name}"
+                                    style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
+                                : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📚</div>'
                         }
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1em;">
-                            <a href="https://comicvine.gamespot.com/${volume.cv_slug}/4050-${volume.cv_id}" target="_blank">${cv_logo_svg}</a>
-                            ${volume.locg_slug ? `
+                                ${!isMangaSourceVolume
+                                    ? `<a href="https://comicvine.gamespot.com/${volume.cv_slug}/4050-${volume.cv_id}" target="_blank">${cv_logo_svg}</a>`
+                                    : ''}
+                                ${isMangaSourceVolume && volume.hikka_slug
+                                    ? `<a href="https://hikka.io/manga/${volume.hikka_slug}" target="_blank" style="color:var(--accent); font-size:0.85rem; text-decoration:none;">hikka.io ↗</a>`
+                                    : ''}
+                                ${isMangaSourceVolume && volume.mal_id
+                                    ? `<a href="https://myanimelist.net/manga/${volume.mal_id}" target="_blank" style="color:var(--accent); font-size:0.85rem; text-decoration:none;">MAL ↗</a>`
+                                    : ''}                            ${volume.locg_slug ? `
                                 <a href="https://leagueofcomicgeeks.com/comics/series/${volume.locg_id}/${volume.locg_slug}" target="_blank">
                                     <img src="${locg_img}" alt="League of Comic Geeks" style="height:30px; vertical-align:middle;">
                                 </a>
@@ -123,22 +156,6 @@ export async function renderVolumeDetail(params) {
                     <div style="flex: 1;">
                         <h1 style="font-size: 2rem; margin-bottom: 1rem;">${volume.name || 'Без назви'}</h1>
                         <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            ${volume.hikka_slug ? `
-                                <div>
-                                    <strong>Hikka:</strong>
-                                    <a href="https://hikka.io/manga/${volume.hikka_slug}" target="_blank" style="color:var(--accent);">
-                                        ${volume.hikka_slug}
-                                    </a>
-                                </div>
-                            ` : ''}
-                            ${volume.mal_id ? `
-                                <div>
-                                    <strong>MAL:</strong>
-                                    <a href="https://myanimelist.net/manga/${volume.mal_id}" target="_blank" style="color:var(--accent);">
-                                        ${volume.mal_id}
-                                    </a>
-                                </div>
-                            ` : ''}
                             ${volume.start_year ? `<div><strong>Рік початку:</strong> ${volume.start_year}</div>` : ''}
                             ${volume.publisher || volume.publisher_name ? `
                                     <div>
@@ -167,6 +184,11 @@ export async function renderVolumeDetail(params) {
                         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                             <button class="btn btn-secondary" onclick="editVolumeDetail(${volume.id})">Редагувати том</button>
                             <button class="btn btn-primary" onclick="openAddToSeriesModal(${volume.id}, 'volume')">+ Додати до серії</button>
+                            ${isMangaVolume && isCollectionVolume && volume.hikka_slug ? `
+                                <button class="btn btn-primary" onclick="createMangaSourceVolume(${volume.id}, '${volume.hikka_slug}', '${(volume.name || '').replace(/'/g, "\\'")}', ${volume.mal_id || 'null'})">
+                                    📖 Створити том манґи
+                                </button>
+                            ` : ''}
                             ${!isMagazineVolume ? `
                                 ${!translationParent && translations.length === 0 && magazineParents.length === 0 ? `
                                     <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id})">🌐 Додати до першоджерела</button>
@@ -174,26 +196,28 @@ export async function renderVolumeDetail(params) {
                                 ${magazineParents.length === 0 && !translationParent ? `
                                     <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
                                 ` : ''}
-                                ${isCollectionVolume ? `
-                                    ${issuesResult.data.length > 0 ? `
-                                        <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
-                                            📚 Конвертувати всі випуски (${issuesResult.data.length}) → збірники
-                                        </button>
-                                    ` : ''}
-                                    ${volCollections.length > 0 ? `
-                                        <button class="btn btn-danger" onclick="convertAllCollectionsToIssues(${volume.id}, ${volCollections.length})">
-                                            🔄 Повернути всі збірники (${volCollections.length}) → випуски
-                                        </button>
-                                    ` : ''}
-                                ` : `
-                                    ${issuesResult.data.length > 0 ? `
-                                        <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
-                                            📚 Конвертувати всі (${issuesResult.data.length}) у збірники
-                                        </button>
-                                    ` : ''}
-                                `}
+                                ${!isMangaSourceVolume ? `
+                                    ${isCollectionVolume ? `
+                                        ${issuesResult.data.length > 0 ? `
+                                            <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
+                                                📚 Конвертувати всі випуски (${issuesResult.data.length}) → збірники
+                                            </button>
+                                        ` : ''}
+                                        ${volCollections.length > 0 ? `
+                                            <button class="btn btn-danger" onclick="convertAllCollectionsToIssues(${volume.id}, ${volCollections.length})">
+                                                🔄 Повернути всі збірники (${volCollections.length}) → випуски
+                                            </button>
+                                        ` : ''}
+                                    ` : `
+                                        ${issuesResult.data.length > 0 ? `
+                                            <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
+                                                📚 Конвертувати всі (${issuesResult.data.length}) у збірники
+                                            </button>
+                                        ` : ''}
+                                    `}
+                                ` : ''}
                             ` : ''}
-                            ${volume.hikka_slug ? `
+                            ${volume.hikka_slug && !isCollectionVolume ? `
                                 <button class="btn btn-primary" id="gen-chapters-btn"
                                         onclick="generateChapters(${volume.id}, '${volume.hikka_slug}')">
                                     ⚡ Згенерувати розділи
@@ -205,7 +229,7 @@ export async function renderVolumeDetail(params) {
 
                 <!-- ── Переклади: список дочірніх (цей том — оригінал) ───── -->
                 
-                ${!isMagazineVolume ? `
+                ${!isMagazineVolume && !isMangaSourceVolume ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
                             <h2 style="font-size:1.25rem; margin:0;">🌐 Переклади (${translations.length})</h2>
@@ -231,7 +255,7 @@ export async function renderVolumeDetail(params) {
                 ` : ''}
 
                 <!-- ── Оригінал (цей том — переклад) ────────────────────── -->
-                ${translationParent ? `
+                ${translationParent && !isMangaSourceVolume ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
                             <h2 style="font-size:1.25rem; margin:0;">📖 Оригінал</h2>
@@ -308,7 +332,7 @@ export async function renderVolumeDetail(params) {
                 ` : ''}
 
                 <!-- ── Хронологія та зв'язки ──────────────────────────── -->
-                <div id="volume-relations-mount"></div>
+                ${!isMangaSourceVolume ? `<div id="volume-relations-mount"></div>` : ''}
 
                 <!-- ── Збірники (collections-from-issues) ────────────────── -->
                 ${!isCollectionVolume && volCollectionsFromIssues.length > 0 ? `
@@ -344,10 +368,10 @@ export async function renderVolumeDetail(params) {
                 ${isCollectionVolume ? '<div id="collections-block"></div>' : ''}
 
                 <!-- ── Випуски манґи ────────────────────────────────────────────── -->
-                ${volume.hikka_slug ? `<div id="chapters-block" style="margin-top:2rem;"></div>` : ''}
+                ${volume.hikka_slug && !isCollectionVolume ? `<div id="chapters-block" style="margin-top:2rem;"></div>` : ''}
 
                 <!-- ── Випуски ────────────────────────────────────────────── -->
-                ${issuesResult && issuesResult.data.length > 0 ? '<div id="issues-block"></div>' : ''}
+                ${!isMangaSourceVolume && issuesResult && issuesResult.data.length > 0 ? '<div id="issues-block"></div>' : ''}
 
                 ${renderAddToSeriesModal()}
 
@@ -375,7 +399,7 @@ export async function renderVolumeDetail(params) {
         // ── Ініціалізація блоку випусків з пагінацією ──────────────────────
         _issuesPage = 0;
         _issuesSort = { key: 'issue_number', dir: 'desc' };
-        if (issuesResult && issuesResult.data.length > 0) {
+        if (!isMangaSourceVolume && issuesResult && issuesResult.data.length > 0) {
             renderIssuesBlock(issuesResult.data, 0);
         }
         _collectionsPage = 0;
@@ -385,14 +409,16 @@ export async function renderVolumeDetail(params) {
         }
 
         // Монтуємо компонент зв'язків
-        await mountVolumeRelations(
-            volumeId,
-            'volume-relations-mount',
-            () => renderVolumeDetail(params),
-        );
+        if (!isMangaSourceVolume) {
+            await mountVolumeRelations(
+                volumeId,
+                'volume-relations-mount',
+                () => renderVolumeDetail(params),
+            );
+        }
 
         // Якщо це манґа-том — завантажуємо розділи
-        if (volume.hikka_slug) {
+        if (volume.hikka_slug && !isCollectionVolume) {
             await loadChapters(volume.id);
         }
 
@@ -1293,6 +1319,51 @@ window._confirmVolumePickerSelection = async (selectedId) => {
     window.closeVolumePickerModal();
     const id = new URL(window.location).searchParams.get('id');
     if (id) renderVolumeDetail({ id });
+};
+
+// ===== СТВОРЕННЯ ТОМУ МАНҐИ ==============================================
+
+window.createMangaSourceVolume = async function(collectionVolumeId, hikkaSlug, volumeName, malId) {
+    // Перевіряємо чи вже існує том з таким hikka_slug
+    try {
+        const checkResp = await fetch(`${API_BASE}/volumes?hikka_slug=${encodeURIComponent(hikkaSlug)}`);
+        // Не блокуємо — просто передаємо далі, бекенд сам перевірить дублікат
+    } catch (_) {}
+
+    const confirmed = confirm(
+        `Створити том манґи для "${volumeName}"?\n\n` +
+        `Hikka slug: ${hikkaSlug}\n\n` +
+        `Назва, постер, рік та опис будуть підтягнуті автоматично з Hikka.`
+    );
+    if (!confirmed) return;
+
+    try {
+        const resp = await fetch(`${API_BASE}/volumes/manga-volume`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                hikka_slug: hikkaSlug,
+                mal_id: malId || null,   // передаємо як підказку, але Hikka може перезаписати
+            }),
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+            if (data.id) {
+                // Том вже існує — пропонуємо перейти
+                if (confirm(`Том з таким hikka_slug вже існує (id: ${data.id}).\nПерейти до нього?`)) {
+                    navigate('volume-detail', { id: data.id });
+                }
+            } else {
+                alert(`Помилка: ${data.error}`);
+            }
+            return;
+        }
+
+        navigate('volume-detail', { id: data.id });
+    } catch (err) {
+        alert(`Помилка: ${err.message}`);
+    }
 };
 
 // ===== KEYBOARD SHORTCUTS ================================================

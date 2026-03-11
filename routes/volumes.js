@@ -5,7 +5,7 @@ const { runQuery, getAll, getOne, rawRun, saveDatabase } = require('../db');
 const COLLECTION_THEME_ID = 44; // Collection
 const TRANSLATED_THEME_ID = 51; // Translated
 const MAGAZINE_THEME_ID   = 35; // Magazine
-
+const MANGA_THEME_ID = 36;
 const router = Router();
 
 router.get('/', (req, res) => {
@@ -642,40 +642,88 @@ router.delete('/:id/relations/:relId', (req, res) => {
 
 // POST /volumes/manga-volume — створити том манґи (без CV, з hikka_slug + mal_id)
 // Автоматично прив'язується до збірника через collection_id (опційно)
-router.post('/manga-volume', (req, res) => {
-  const { name, hikka_slug, mal_id, cv_img, publisher, start_year, description, collection_id } = req.body;
-  if (!name)        return res.status(400).json({ error: 'name обов\'язковий' });
-  if (!hikka_slug)  return res.status(400).json({ error: 'hikka_slug обов\'язковий' });
+router.post('/manga-volume', async (req, res) => {
+  const { name, name_uk, hikka_slug, mal_id, publisher, start_year, description } = req.body;
+  if (!hikka_slug) return res.status(400).json({ error: 'hikka_slug обов\'язковий' });
 
   try {
     const { rawDb } = require('../db');
 
-    // Перевірка дублікату по hikka_slug
-    const existing = getOne('SELECT id FROM volumes WHERE hikka_slug = ?', [hikka_slug]);
-    if (existing) return res.status(400).json({ error: 'Том з таким hikka_slug вже існує', id: existing.id });
+    // Перевірка дублікату
+    const existing = getOne(`
+      SELECT v.id FROM volumes v
+      WHERE v.hikka_slug = ?
+        AND NOT EXISTS (
+          SELECT 1 FROM volume_themes vt WHERE vt.volume_id = v.id AND vt.theme_id = ?
+        )
+    `, [hikka_slug, COLLECTION_THEME_ID]);
+    if (existing) return res.status(400).json({ error: 'Том-джерело розділів з таким hikka_slug вже існує', id: existing.id });
 
+    // ── Запит до Hikka API ────────────────────────────────────────────────
+    let hikkaName        = name || null;
+    let hikkaImg         = null;
+    let hikkaStartYear   = start_year || null;
+    let hikkaDescription = description || null;
+    let hikkaMalId       = mal_id || null;
+    let hikkaNameUk      = null;
+
+    try {
+      const hikkaRes = await fetch(`https://api.hikka.io/manga/${hikka_slug}`);
+      if (hikkaRes.ok) {
+        const hikkaData = await hikkaRes.json();
+
+        if (!hikkaName) {
+          hikkaName   = hikkaData.title_original || null;
+        }
+        hikkaNameUk   = hikkaData.title_ua || null;
+        hikkaImg = hikkaData.image || null;
+
+        // Рік початку
+        if (!hikkaStartYear && hikkaData.start_date) {
+          hikkaStartYear = new Date(hikkaData.start_date).getFullYear() || null;
+        } else if (!hikkaStartYear && hikkaData.year) {
+          hikkaStartYear = hikkaData.year;
+        }
+
+        // Опис
+        if (!hikkaDescription && hikkaData.synopsis_ua) {
+          hikkaDescription = hikkaData.synopsis_ua;
+        } else if (!hikkaDescription && hikkaData.synopsis_en) {
+          hikkaDescription = hikkaData.synopsis_en;
+        }
+
+        // MAL ID
+        if (!hikkaMalId && hikkaData.mal_id) {
+          hikkaMalId = hikkaData.mal_id;
+        }
+      }
+    } catch (hikkaErr) {
+      // Hikka недоступна — продовжуємо з тим що є
+      console.warn('Hikka API недоступна:', hikkaErr.message);
+    }
+
+    if (!hikkaName) return res.status(400).json({ error: 'name обов\'язковий (Hikka також не повернула назву)' });
+
+    // ── Вставка в БД ──────────────────────────────────────────────────────
     const result = rawDb.prepare(
-      `INSERT INTO volumes (cv_id, cv_slug, name, hikka_slug, mal_id, cv_img, publisher, start_year, description, lang)
-       VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, 'ja')`
-    ).run([name, hikka_slug, mal_id || null, cv_img || null, publisher || null, start_year || null, description || null]);
+      `INSERT INTO volumes (cv_id, cv_slug, name, name_uk, hikka_slug, mal_id, hikka_img, publisher, start_year, description, lang)
+       VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?, 'ja')`
+    ).run([hikkaName, hikkaNameUk || null, hikka_slug, hikkaMalId || null, hikkaImg || null, publisher || null, hikkaStartYear || null, hikkaDescription || null]);
 
     const newId = result.lastInsertRowid;
 
-    // Додаємо тему Manga (MANGA_THEME_ID = 36) через db_id тому
-    // volume_themes.cv_vol_id — посилається на volumes.cv_id, якого у нас немає.
-    // Тому використовуємо окрему таблицю або фіктивний від'ємний cv_vol_id = -newId
-    // Поки що записуємо в volume_themes з фіктивним cv_vol_id = -newId
+    // Додаємо тему Manga (36)
     rawRun(
-      'INSERT OR IGNORE INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)',
-      [-newId, MANGA_THEME_ID]
+      'INSERT OR IGNORE INTO volume_themes (volume_id, theme_id) VALUES (?, ?)',
+      [newId, MANGA_THEME_ID]
     );
 
-    // Якщо передано collection_id — прив'язати збірник до цього тому
-    if (collection_id) {
-      runQuery('UPDATE collections SET cv_vol_id = ? WHERE id = ?', [-newId, collection_id]);
-    }
-
-    res.json({ message: 'Том манґи створено', id: newId });
+    res.json({
+      message: 'Том манґи створено',
+      id: newId,
+      name: hikkaName,
+      hikka_img: hikkaImg,
+    });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
@@ -702,7 +750,7 @@ router.post('/:id/generate-chapters', async (req, res) => {
       if (!hikkaRes.ok) return res.status(502).json({ error: `Hikka API: ${hikkaRes.status}` });
       const hikkaData = await hikkaRes.json();
 
-      totalChapters = hikkaData.chapters_released || hikkaData.chapters_total || null;
+      totalChapters = hikkaData.chapters || null;
       if (!totalChapters) {
         // Hikka не знає кількість → повертаємо сигнал фронту
         return res.json({ needsManualCount: true, manga_name: hikkaData.title_ua || hikkaData.title_en });
