@@ -59,12 +59,16 @@ function ensureModal() {
           <input type="text" id="aim-number" placeholder="#..." style="width:100%;">
         </div>
         <div class="form-group" style="margin:0;">
-          <label class="aim-label">CV ID випуску</label>
-          <input type="number" id="aim-issue-cvid" placeholder="CV ID..." style="width:100%;">
+          <label class="aim-label">DS ID (БД)</label>
+          <input type="number" id="aim-ds-id" placeholder="DS ID..." style="width:100%;">
         </div>
         <div class="form-group" style="margin:0;">
           <label class="aim-label">CV ID тому</label>
           <input type="number" id="aim-cvvolid" placeholder="CV Vol ID..." style="width:100%;">
+        </div>
+        <div class="form-group" style="margin:0;">
+          <label class="aim-label">Hikka Slug тому</label>
+          <input type="text" id="aim-hikka-slug" placeholder="напр. berserk" style="width:100%;">
         </div>
         <div style="display:flex; flex-direction:column; gap:0.25rem;">
           <label class="aim-label" style="color:var(--text-secondary);">Точна назва</label>
@@ -135,7 +139,7 @@ function ensureModal() {
   });
 
   // Пошук
-  ['aim-name', 'aim-volume', 'aim-number', 'aim-issue-cvid', 'aim-cvvolid'].forEach(id => {
+  ['aim-name', 'aim-volume', 'aim-number', 'aim-ds-id', 'aim-cvvolid', 'aim-hikka-slug'].forEach(id => {
     document.getElementById(id).addEventListener('input', scheduleSearch);
   });
   document.getElementById('aim-exact').addEventListener('change', scheduleSearch);
@@ -163,7 +167,7 @@ export function openAddIssueModal(config) {
   document.getElementById('aim-name').placeholder =
     config.namePlaceholder ?? 'Назва...';
 
-  ['aim-name', 'aim-volume', 'aim-number', 'aim-issue-cvid', 'aim-cvvolid'].forEach(id => {
+  ['aim-name', 'aim-volume', 'aim-number', 'aim-ds-id', 'aim-cvvolid', 'aim-hikka-slug'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('aim-exact').checked = false;
@@ -197,16 +201,17 @@ function scheduleSearch() {
 async function runSearch() {
   if (!_config) return;
 
-  const name      = document.getElementById('aim-name').value.trim();
+const name      = document.getElementById('aim-name').value.trim();
   const volume    = document.getElementById('aim-volume').value.trim();
   const number    = document.getElementById('aim-number').value.trim();
-  const issueCvId = document.getElementById('aim-issue-cvid').value.trim();
+  const dsId      = document.getElementById('aim-ds-id').value.trim();
   const cvVolId   = document.getElementById('aim-cvvolid').value.trim();
+  const hikkaSlug = document.getElementById('aim-hikka-slug').value.trim();
   const exact     = document.getElementById('aim-exact').checked;
 
   const el = document.getElementById('aim-results');
 
-  if (!name && !volume && !number && !issueCvId && !cvVolId) {
+  if (!name && !volume && !number && !dsId && !cvVolId && !hikkaSlug) {
     el.innerHTML = '';
     updateSelectAllRow([]);
     return;
@@ -214,18 +219,39 @@ async function runSearch() {
 
   el.innerHTML = '<div class="aim-empty">Пошук...</div>';
 
+  // Якщо введено Hikka Slug — резолвимо том щоб дістати ds_vol_id
+  let resolvedDsVolId = null;
+  if (hikkaSlug) {
+    try {
+      const volRes = await fetch(`${_config.apiBase}/volumes?hikka_slug=${encodeURIComponent(hikkaSlug)}&limit=1`);
+      const volData = await volRes.json();
+      const vol = volData.data?.[0];
+      if (vol) {
+        resolvedDsVolId = vol.id;
+      } else {
+        el.innerHTML = '<div class="aim-empty">Том з таким Hikka Slug не знайдено</div>';
+        updateSelectAllRow([]);
+        return;
+      }
+    } catch {
+      el.innerHTML = '<div class="aim-empty" style="color:var(--danger);">Помилка резолву Hikka Slug</div>';
+      updateSelectAllRow([]);
+      return;
+    }
+  }
+
   const searchParams = new URLSearchParams({ limit: 60 });
-  if (name)       searchParams.set('name', name);
-  if (volume)     searchParams.set('volume_name', volume);
-  if (number)     searchParams.set('issue_number', number);
-  if (issueCvId)  searchParams.set('cv_id', issueCvId);
-  if (cvVolId)    searchParams.set(_config.cvVolIdParam ?? 'volume_id', cvVolId);
-  if (exact)   searchParams.set('exact', 'true');
+  if (name)            searchParams.set('name', name);
+  if (volume)          searchParams.set('volume_name', volume);
+  if (number)          searchParams.set('issue_number', number);
+  if (dsId)            searchParams.set('ds_id', dsId);
+  if (cvVolId)         searchParams.set(_config.cvVolIdParam ?? 'volume_id', cvVolId);
+  if (resolvedDsVolId) searchParams.set('ds_vol_id', resolvedDsVolId);
+  if (exact)           searchParams.set('exact', 'true');
 
   try {
     const endpoint = _config.searchEndpoint ?? `${_config.apiBase}/issues`;
-    const res = await fetch(`${endpoint}?${searchParams}`);
-    const result = await res.json();
+    const res = await fetch(`${endpoint}?${searchParams}`);    const result = await res.json();
     const data = result.data || [];
 
     if (!data.length) {
@@ -390,7 +416,7 @@ function injectStyles() {
     }
     .aim-filters {
       display: grid;
-      grid-template-columns: 2fr 2fr 1fr 1fr 1fr auto;
+      grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr auto;
       gap: 0.9rem;
       margin-bottom: 1.25rem;
       align-items: flex-end;
@@ -474,7 +500,7 @@ function injectStyles() {
     }
     .aim-card-placeholder {
       aspect-ratio: 2 / 3;
-      background: linear-gradient(145deg, #1e1e1e, #111);
+      background: linear-gradient(145deg, #ecececff, #bebebeff);
       display: flex;
       align-items: center;
       justify-content: center;

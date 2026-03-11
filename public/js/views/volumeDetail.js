@@ -10,9 +10,12 @@ import { navigate } from '../utils/router.js';
 
 let _issuesPage = 0;
 let _collectionsPage = 0;
+let _chaptersPage = 0;
 const ISSUES_PAGE_SIZE = 100;
 let _issuesSort = { key: 'issue_number', dir: 'desc' };
 let _collectionsSort = { key: 'issue_number', dir: 'desc' };
+let _chaptersSort = { key: 'issue_number', dir: 'asc' };  // key: 'issue_number' | 'release_date'
+let _allChapters = [];
 
 // ===== МОВНА МАПА =========================================================
 
@@ -1139,31 +1142,153 @@ window.loadChapters = async function(volumeId) {
         const { data, total } = await resp.json();
 
         if (!data || !data.length) {
-            block.innerHTML = `<p style="color:var(--text-secondary);">Розділів ще немає. Натисніть "Згенерувати розділи".</p>`;
+            block.innerHTML = `
+                <div style="background:var(--bg-primary); padding:1.5rem; border-radius:8px;
+                            border:1px solid var(--border-color); margin-bottom:1.5rem;">
+                    <h2 style="font-size:1.5rem; margin-bottom:1rem;">Розділи (0)</h2>
+                    <p style="color:var(--text-secondary);">Розділів ще немає. Натисніть "Згенерувати розділи".</p>
+                </div>`;
             return;
         }
 
-        // Оновлюємо назву кнопки
+        // Оновлюємо назву кнопки генерації
         const btn = document.getElementById('gen-chapters-btn');
         if (btn) btn.textContent = '🔄 Оновити розділи';
 
-        block.innerHTML = `
-            <h3 style="margin-bottom:1rem;">Розділи (${total})</h3>
-            <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
-                ${data.map(ch => `
-                    <span class="theme-badge"
-                          style="cursor:pointer; ${ch.in_collections_count > 0 ? 'background:#dcfce7;color:#166534;border-color:#bbf7d0;' : ''}"
-                          title="Розділ #${ch.issue_number}${ch.in_collections_count > 0 ? ' (у збірнику)' : ''}"
-                          onclick="navigate('issue-detail', { id: ${ch.id} })">
-                        #${ch.issue_number}
-                    </span>
-                `).join('')}
-            </div>
-        `;
+        _allChapters = data;
+        _chaptersPage = 0;
+        renderChaptersBlock(_allChapters, 0);
     } catch (err) {
         console.error('loadChapters error:', err);
     }
 };
+
+function renderChaptersBlock(allChapters, page) {
+    const block = document.getElementById('chapters-block');
+    if (!block) return;
+
+    // ── Сортування ────────────────────────────────────────────
+    const sorted = [...allChapters].sort((a, b) => {
+        let va, vb;
+        if (_chaptersSort.key === 'release_date') {
+            va = a.release_date || '';
+            vb = b.release_date || '';
+        } else {
+            va = parseFloat(a.issue_number) || -Infinity;
+            vb = parseFloat(b.issue_number) || -Infinity;
+        }
+        if (va < vb) return _chaptersSort.dir === 'asc' ? -1 : 1;
+        if (va > vb) return _chaptersSort.dir === 'asc' ? 1 : -1;
+        return 0;
+    });
+
+    const total = sorted.length;
+    const pages = Math.ceil(total / ISSUES_PAGE_SIZE);
+    const start = page * ISSUES_PAGE_SIZE;
+    const slice = sorted.slice(start, start + ISSUES_PAGE_SIZE);
+
+    // ── Пагінація ─────────────────────────────────────────────
+    const paginationHtml = total > ISSUES_PAGE_SIZE ? `
+        <div style="display:inline-flex; align-items:center; gap:0.4rem;">
+            <button
+                id="chapters-prev-btn"
+                class="btn btn-secondary btn-small"
+                ${page === 0 ? 'disabled' : ''}
+                style="padding:0.2rem 0.55rem; font-size:0.85rem; line-height:1;"
+            >←</button>
+            <span style="font-size:0.85rem; color:var(--text-secondary); white-space:nowrap;">
+                ${page + 1} / ${pages}
+            </span>
+            <button
+                id="chapters-next-btn"
+                class="btn btn-secondary btn-small"
+                ${page >= pages - 1 ? 'disabled' : ''}
+                style="padding:0.2rem 0.55rem; font-size:0.85rem; line-height:1;"
+            >→</button>
+        </div>
+    ` : '';
+
+    block.innerHTML = `
+        <div style="background:var(--bg-primary); padding:1.5rem; border-radius:8px;
+                    border:1px solid var(--border-color); margin-bottom:1.5rem;">
+            <h2 style="font-size:1.5rem; margin-bottom:1rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
+                    <span>Розділи (${total})</span>
+                    <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                        ${paginationHtml}
+                    </div>
+                </div>
+            </h2>
+            <div class="table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th id="chapters-sort-issue_number" style="cursor:pointer; user-select:none;">
+                                Розділ${_chaptersSort.key === 'issue_number' ? (_chaptersSort.dir === 'asc' ? ' ↑' : ' ↓') : ' ↕'}
+                            </th>
+                            <th>Назва</th>
+                            <th id="chapters-sort-release_date" style="cursor:pointer; user-select:none;">
+                                Реліз${_chaptersSort.key === 'release_date' ? (_chaptersSort.dir === 'asc' ? ' ↑' : ' ↓') : ' ↕'}
+                            </th>
+                            <th>У збірнику</th>
+                            <th>Дії</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${slice.map(ch => `
+                            <tr onclick="navigate('issue-detail', { id: ${ch.id} })" style="cursor:pointer;">
+                                <td><strong>#${ch.issue_number || '?'}</strong></td>
+                                <td>${ch.name || '—'}</td>
+                                <td>${formatReleaseDate(ch.release_date)}</td>
+                                <td style="text-align:center;">
+                                    ${ch.in_collections_count > 0
+                                        ? `<span style="color:#166534; font-weight:600;">✓ ${ch.in_collections_count > 1 ? ch.in_collections_count : ''}</span>`
+                                        : '<span style="color:var(--text-secondary);">—</span>'}
+                                </td>
+                                <td onclick="event.stopPropagation()">
+                                    <button class="btn btn-secondary btn-small"
+                                            onclick="editIssueFromVolume(${ch.id})">Редагувати</button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+
+    // ── Обробники пагінації ───────────────────────────────────
+    document.getElementById('chapters-prev-btn')?.addEventListener('click', () => {
+        _chaptersPage--;
+        renderChaptersBlock(_allChapters, _chaptersPage);
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    document.getElementById('chapters-next-btn')?.addEventListener('click', () => {
+        _chaptersPage++;
+        renderChaptersBlock(_allChapters, _chaptersPage);
+        block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    // ── Обробники сортування ──────────────────────────────────
+    document.getElementById('chapters-sort-issue_number')?.addEventListener('click', () => {
+        if (_chaptersSort.key === 'issue_number') {
+            _chaptersSort.dir = _chaptersSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            _chaptersSort = { key: 'issue_number', dir: 'asc' };
+        }
+        _chaptersPage = 0;
+        renderChaptersBlock(_allChapters, 0);
+    });
+    document.getElementById('chapters-sort-release_date')?.addEventListener('click', () => {
+        if (_chaptersSort.key === 'release_date') {
+            _chaptersSort.dir = _chaptersSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            _chaptersSort = { key: 'release_date', dir: 'desc' };
+        }
+        _chaptersPage = 0;
+        renderChaptersBlock(_allChapters, 0);
+    });
+}
 
 // ===== ПЕРЕКЛАДИ =========================================================
 

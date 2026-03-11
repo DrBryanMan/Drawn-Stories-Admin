@@ -9,7 +9,7 @@ const MANGA_THEME_ID = 36;
 const router = Router();
 
 router.get('/', (req, res) => {
-  const { search, exact, cv_id, limit = 50, offset = 0, publisher_ids, theme_ids } = req.query;
+  const { search, exact, cv_id, hikka_slug, mal_id, limit = 50, offset = 0, publisher_ids, theme_ids } = req.query;
   const isExact = exact === 'true';
 
   const pubIds = publisher_ids
@@ -30,6 +30,18 @@ router.get('/', (req, res) => {
   if (cv_id) {
     conditions.push('v.cv_id = ?');
     searchParams.push(parseInt(cv_id));
+  }
+  if (hikka_slug) {
+    conditions.push('v.hikka_slug = ?');
+    searchParams.push(hikka_slug);
+  }
+  if (mal_id) {
+    conditions.push('v.mal_id = ?');
+    searchParams.push(parseInt(mal_id));
+  }
+  if (pubIds.length) {
+    conditions.push(`v.publisher IN (${pubIds.map(() => '?').join(',')})`);
+    searchParams.push(...pubIds);
   }
   if (pubIds.length) {
     conditions.push(`v.publisher IN (${pubIds.map(() => '?').join(',')})`);
@@ -778,7 +790,7 @@ router.post('/:id/generate-chapters', async (req, res) => {
     const insertMany = rawDb.transaction(() => {
       for (let ch = 1; ch <= totalChapters; ch++) {
         if (existingNums.has(ch)) continue;
-        insert.run([`Chapter ${ch}`, volumeId, String(ch)]);
+        insert.run([`Розділ ${ch}`, volumeId, String(ch)]);
         created++;
       }
     });

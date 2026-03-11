@@ -27,7 +27,7 @@ function getNextFreeId() {
 
 router.get('/', (req, res) => {
   const {
-    search, exact, cv_id, volume_id, name, volume_name,
+    search, exact, cv_id, ds_id, volume_id, ds_vol_id, name, volume_name,
     issue_number, limit, offset = 0,
     publisher_ids, theme_ids,
   } = req.query;
@@ -42,20 +42,33 @@ router.get('/', (req, res) => {
     ? theme_ids.split(',').map(Number).filter(Boolean)
     : [];
 
-  let query = `SELECT i.*, v.name as volume_name FROM issues i LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id`;
+  let query = `
+    SELECT i.*,
+           COALESCE(v.name, mv.name) as volume_name
+    FROM issues i
+    LEFT JOIN volumes v  ON i.cv_vol_id = v.cv_id
+    LEFT JOIN volumes mv ON i.ds_vol_id = mv.id
+  `;
   let params = [], conditions = [];
 
   if (search) {
     conditions.push(isExact
-      ? 'LOWER(i.name) = LOWER(?) OR LOWER(v.name) = LOWER(?)'
-      : '(i.name LIKE ? OR i.cv_slug LIKE ? OR i.issue_number LIKE ? OR v.name LIKE ?)');
-    params.push(...(isExact ? [search, search] : [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`]));
+      ? '(LOWER(i.name) = LOWER(?) OR LOWER(COALESCE(v.name, mv.name)) = LOWER(?))'
+      : '(i.name LIKE ? OR i.cv_slug LIKE ? OR i.issue_number LIKE ? OR v.name LIKE ? OR mv.name LIKE ?)');
+    params.push(...(isExact ? [search, search] : [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`]));
   }
   if (name)         { conditions.push(isExact ? 'LOWER(i.name) = LOWER(?)' : 'i.name LIKE ?'); params.push(isExact ? name : `%${name}%`); }
-  if (volume_name)  { conditions.push(isExact ? 'LOWER(v.name) = LOWER(?)' : 'v.name LIKE ?'); params.push(isExact ? volume_name : `%${volume_name}%`); }
+  if (volume_name) {
+    conditions.push(isExact
+      ? 'LOWER(COALESCE(v.name, mv.name)) = LOWER(?)'
+      : '(v.name LIKE ? OR mv.name LIKE ?)');
+    params.push(...(isExact ? [volume_name] : [`%${volume_name}%`, `%${volume_name}%`]));
+  }
   if (issue_number) { conditions.push('i.issue_number LIKE ?'); params.push(`%${issue_number}%`); }
   if (volume_id)    { conditions.push('i.cv_vol_id = ?'); params.push(parseInt(volume_id)); }
+  if (ds_vol_id)    { conditions.push('i.ds_vol_id = ?'); params.push(parseInt(ds_vol_id)); }
   if (cv_id)        { conditions.push('i.cv_id = ?'); params.push(parseInt(cv_id)); }
+  if (ds_id)        { conditions.push('i.id = ?'); params.push(parseInt(ds_id)); }
 
   // Фільтр за видавцем тому (через volumes.publisher)
   if (pubIds.length) {
@@ -80,7 +93,7 @@ router.get('/', (req, res) => {
   }
 
   const issues = getAll(query, params);
-  let countQuery = `SELECT COUNT(*) as count FROM issues i LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id`;
+  let countQuery = `SELECT COUNT(*) as count FROM issues i LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id LEFT JOIN volumes mv ON i.ds_vol_id = mv.id`;
   if (conditions.length) countQuery += ' WHERE ' + conditions.join(' AND ');
   const total = getOne(countQuery, countParams);
   res.json({ data: issues, total: total?.count || 0 });
