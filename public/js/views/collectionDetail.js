@@ -51,6 +51,10 @@ function renderPage(collection, seriesList = []) {
     currentIssues = collection.issues || [];
     currentCollectionId = collection.id;
 
+    const MANGA_THEME_ID = 36;
+    const isMangaCollection = (collection.themes || []).some(t => t.id === MANGA_THEME_ID);
+
+
     // Скасовуємо старі обробники
     if (handlersAbortController) handlersAbortController.abort();
     handlersAbortController = new AbortController();
@@ -137,6 +141,11 @@ function renderPage(collection, seriesList = []) {
                         <button class="btn btn-primary" onclick="openCollectionAddToSeriesModal(${collection.id})">+ Додати до серії</button>
                         ${collection.cv_id && collection.cv_slug ? `
                             <button class="btn btn-warning" onclick="makeIssueFromCollection(${collection.id})">🔄 Перетворити на випуск</button>
+                        ` : ''}
+                        ${isMangaCollection ? `
+                            <button class="btn btn-secondary" onclick="createMangaVolume(${collection.id}, '${collection.name?.replace(/'/g, "\\'")}')">
+                                📖 Створити том манґи
+                            </button>
                         ` : ''}
                     </div>
                 </div>
@@ -686,6 +695,42 @@ window.addCollectionToSeriesFromDetail = async (seriesId) => {
         fetch(`${API_BASE}/collections/${colAddToSeriesId}/series`).then(r => r.json())
     ]);
     renderPage(collection, seriesData.data || []);
+};
+
+window.createMangaVolume = async function(collectionId, collectionName) {
+    const hikkaSlug = prompt(`Hikka slug для манґи "${collectionName}":\n(напр. berserk-ek0mv)`);
+    if (!hikkaSlug || !hikkaSlug.trim()) return;
+
+    const malId = prompt('MAL ID (необов\'язково, Enter щоб пропустити):');
+
+    try {
+        const resp = await fetch(`${API_BASE}/volumes/manga-volume`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name: collectionName,
+                hikka_slug: hikkaSlug.trim(),
+                mal_id: malId ? parseInt(malId) : null,
+                collection_id: collectionId,
+            }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+            // Якщо том вже існує — пропонуємо перейти до нього
+            if (data.id) {
+                if (confirm(`Том вже існує (id: ${data.id}). Перейти до нього?`)) {
+                    navigate('volume-detail', { id: data.id });
+                }
+            } else {
+                alert(`Помилка: ${data.error}`);
+            }
+            return;
+        }
+        alert(`Том манґи створено! (id: ${data.id})`);
+        navigate('volume-detail', { id: data.id });
+    } catch (err) {
+        alert(`Помилка: ${err.message}`);
+    }
 };
 
 // ===== НАВІГАЦІЯ =====

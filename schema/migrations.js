@@ -240,6 +240,87 @@ const MIGRATIONS = [
       db.run(`CREATE INDEX IF NOT EXISTS idx_vrel_to   ON volume_relations(to_vol_id)`);
     },
   },
+  // ── M015: manga volumes support ──────────────────────────────────────────
+  //   • volumes  — hikka_slug, mal_id
+  //   • issues   — ds_vol_id (посилання на внутрішній том з нашої БД)
+  {
+    id: 'M015_manga_volumes',
+    up(db) {
+      db.run(`ALTER TABLE volumes ADD COLUMN hikka_slug TEXT`);
+      db.run(`ALTER TABLE volumes ADD COLUMN mal_id     INTEGER`);
+
+      db.run(`ALTER TABLE issues ADD COLUMN ds_vol_id INTEGER REFERENCES volumes(id) ON DELETE SET NULL`);
+
+      db.run(`CREATE INDEX IF NOT EXISTS idx_volumes_hikka_slug ON volumes(hikka_slug)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_volumes_mal_id     ON volumes(mal_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_issues_ds_vol_id   ON issues(ds_vol_id)`);
+    },
+  },
+  // ── M016: volume_themes — додаємо volume_id (внутрішній PK тому) ─────────
+  //   Раніше cv_vol_id посилався на volumes.cv_id (зовнішній ідентифікатор CV).
+  //   Манґа-томи не мають cv_id, тому переходимо на volume_id → volumes.id.
+  //   Стара колонка cv_vol_id лишається для зворотної сумісності (не видаляємо).
+  {
+    id: 'M016_volume_themes_volume_id',
+    up(db) {
+      // 1. Додаємо нову колонку
+      db.run(`ALTER TABLE volume_themes ADD COLUMN volume_id INTEGER REFERENCES volumes(id) ON DELETE CASCADE`);
+
+      // 2. Заповнюємо для всіх існуючих записів через JOIN
+      db.run(`
+        UPDATE volume_themes
+        SET volume_id = (
+          SELECT v.id FROM volumes v WHERE v.cv_id = volume_themes.cv_vol_id
+        )
+        WHERE volume_id IS NULL
+      `);
+
+      // 3. Індекс для швидкого пошуку + унікальність по новій парі
+      db.run(`CREATE INDEX IF NOT EXISTS idx_vthemes_volume_id ON volume_themes(volume_id)`);
+      db.run(`CREATE UNIQUE INDEX IF NOT EXISTS idx_vthemes_volume_theme ON volume_themes(volume_id, theme_id)`);
+    },
+  },
+  // ── M017: volume_themes — пересоздання таблиці ───────────────────────────
+  //   Проблема: cv_vol_id було оголошено як REFERENCES volumes(id), але
+  //   реально зберігає volumes.cv_id → SQLite падає при UPDATE volumes.
+  //   Рішення: пересоздати таблицю без хибного FK на cv_vol_id.
+  //   volume_id (додано в M016) — єдиний коректний FK → volumes(id).
+  {
+    id: 'M017_volume_themes_recreate',
+    up(db) {
+      // 1. Копіюємо дані у тимчасову таблицю
+      db.run(`CREATE TABLE IF NOT EXISTS _vt_backup AS SELECT * FROM volume_themes`);
+
+      // 2. Дропаємо стару таблицю (разом з усіма її індексами і FK)
+      db.run(`DROP TABLE IF EXISTS volume_themes`);
+
+      // 3. Створюємо нову — cv_vol_id лишається як просте INTEGER (без FK),
+      //    volume_id має коректний FK → volumes(id)
+      db.run(`
+        CREATE TABLE volume_themes (
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          cv_vol_id  INTEGER,
+          volume_id  INTEGER REFERENCES volumes(id) ON DELETE CASCADE,
+          theme_id   INTEGER NOT NULL REFERENCES themes(id) ON DELETE CASCADE,
+          UNIQUE(volume_id, theme_id)
+        )
+      `);
+
+      // 4. Відновлюємо дані з бекапу
+      db.run(`
+        INSERT INTO volume_themes (id, cv_vol_id, volume_id, theme_id)
+        SELECT id, cv_vol_id, volume_id, theme_id FROM _vt_backup
+      `);
+
+      // 5. Видаляємо тимчасову таблицю
+      db.run(`DROP TABLE IF EXISTS _vt_backup`);
+
+      // 6. Індекси
+      db.run(`CREATE INDEX IF NOT EXISTS idx_vthemes_volume_id    ON volume_themes(volume_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_vthemes_theme_id     ON volume_themes(theme_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_vthemes_cv_vol_id    ON volume_themes(cv_vol_id)`);
+    },
+  },
 
 ];
 

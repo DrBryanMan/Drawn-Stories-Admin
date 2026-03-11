@@ -127,12 +127,4 @@ function closeDatabase() {
   }
 }
 
-module.exports = {
-  initDatabase,
-  saveDatabase,
-  closeDatabase,
-  runQuery,
-  getAll,
-  getOne,
-  rawRun,
-};
+module.exports = { initDatabase, closeDatabase, saveDatabase, getAll, getOne, runQuery, rawRun, get rawDb() { return db; } };

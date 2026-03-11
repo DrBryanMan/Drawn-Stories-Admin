@@ -123,6 +123,22 @@ export async function renderVolumeDetail(params) {
                     <div style="flex: 1;">
                         <h1 style="font-size: 2rem; margin-bottom: 1rem;">${volume.name || 'Без назви'}</h1>
                         <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
+                            ${volume.hikka_slug ? `
+                                <div>
+                                    <strong>Hikka:</strong>
+                                    <a href="https://hikka.io/manga/${volume.hikka_slug}" target="_blank" style="color:var(--accent);">
+                                        ${volume.hikka_slug}
+                                    </a>
+                                </div>
+                            ` : ''}
+                            ${volume.mal_id ? `
+                                <div>
+                                    <strong>MAL:</strong>
+                                    <a href="https://myanimelist.net/manga/${volume.mal_id}" target="_blank" style="color:var(--accent);">
+                                        ${volume.mal_id}
+                                    </a>
+                                </div>
+                            ` : ''}
                             ${volume.start_year ? `<div><strong>Рік початку:</strong> ${volume.start_year}</div>` : ''}
                             ${volume.publisher || volume.publisher_name ? `
                                     <div>
@@ -176,6 +192,12 @@ export async function renderVolumeDetail(params) {
                                         </button>
                                     ` : ''}
                                 `}
+                            ` : ''}
+                            ${volume.hikka_slug ? `
+                                <button class="btn btn-primary" id="gen-chapters-btn"
+                                        onclick="generateChapters(${volume.id}, '${volume.hikka_slug}')">
+                                    ⚡ Згенерувати розділи
+                                </button>
                             ` : ''}
                         </div>
                     </div>
@@ -321,6 +343,9 @@ export async function renderVolumeDetail(params) {
                 <!-- ── Збірники тому (якщо Collection-том) ───────────────── -->
                 ${isCollectionVolume ? '<div id="collections-block"></div>' : ''}
 
+                <!-- ── Випуски манґи ────────────────────────────────────────────── -->
+                ${volume.hikka_slug ? `<div id="chapters-block" style="margin-top:2rem;"></div>` : ''}
+
                 <!-- ── Випуски ────────────────────────────────────────────── -->
                 ${issuesResult && issuesResult.data.length > 0 ? '<div id="issues-block"></div>' : ''}
 
@@ -365,6 +390,11 @@ export async function renderVolumeDetail(params) {
             'volume-relations-mount',
             () => renderVolumeDetail(params),
         );
+
+        // Якщо це манґа-том — завантажуємо розділи
+        if (volume.hikka_slug) {
+            await loadChapters(volume.id);
+        }
 
     } catch (error) {
         console.error('Помилка завантаження тому:', error);
@@ -776,11 +806,28 @@ async function getVolumeFormHTML(volume = null) {
 
     return `
         <form id="edit-form">
-            <div class="form-row">
+            <div class="form-row form-row-2">
                 <div class="form-group"><label>CV ID</label><input type="number" name="cv_id" value="${volume?.cv_id || ''}"></div>
                 <div class="form-group"><label>CV Slug</label><input type="text" name="cv_slug" value="${volume?.cv_slug || ''}"></div>
             </div>
-            <div class="form-group"><label>Назва</label><input type="text" name="name" value="${volume?.name || ''}"></div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label>Hikka Slug</label>
+                    <input type="text" name="hikka_slug" value="${volume?.hikka_slug || ''}" placeholder="напр. berserk-ek0mv">
+                </div>
+                <div class="form-group">
+                    <label>MAL ID</label>
+                    <input type="number" name="mal_id" value="${volume?.mal_id || ''}">
+                </div>
+            </div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <div class="form-group"><label>Назва</label><input type="text" name="name" value="${volume?.name || ''}"></div>
+                </div>
+                <div class="form-group">
+                    <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}"></div>
+                </div>
+            </div>
             <div class="form-group">
                 <label>Опис</label>
                 <textarea name="description" rows="4" style="width:100%; resize:vertical;">${volume?.description || ''}</textarea>
@@ -799,9 +846,8 @@ async function getVolumeFormHTML(volume = null) {
                         ).join('')}
                     </div>
                 </div>
-                <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}"></div>
             </div>
-            <div class="form-row">
+            <div class="form-row form-row-2">
                 <div class="form-group"><label>LocG ID</label><input type="number" name="locg_id" value="${volume?.locg_id || ''}"></div>
                 <div class="form-group"><label>LocG Slug</label><input type="text" name="locg_slug" value="${volume?.locg_slug || ''}"></div>
             </div>
@@ -899,6 +945,8 @@ window.editVolumeDetail = async (id) => {
                 publisher: publisherId ? parseInt(publisherId) : null,
                 locg_id: data.locg_id ? parseInt(data.locg_id) : null,
                 start_year: data.start_year ? parseInt(data.start_year) : null,
+                mal_id: data.mal_id ? parseInt(data.mal_id) : null,
+                hikka_slug: data.hikka_slug?.trim() || null,
             })
         });
         await renderVolumeDetail({ id });
@@ -1006,6 +1054,88 @@ window.convertAllCollectionsToIssues = async (volumeId, count) => {
         await window.updateStats();
     } catch (e) {
         alert('Помилка під час конвертації');
+    }
+};
+
+// ===== ГЕНЕРАЦІЯ РОЗДІЛІВ ==================================================
+window.generateChapters = async function(volumeId, hikkaSlug) {
+    const btn = document.getElementById('gen-chapters-btn');
+    if (btn) btn.disabled = true;
+
+    try {
+        // Спочатку пробуємо без ручного вводу — бекенд сам запитує Hikka
+        let resp = await fetch(`${API_BASE}/volumes/${volumeId}/generate-chapters`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+        let data = await resp.json();
+
+        // Hikka не знає кількість — питаємо юзера
+        if (data.needsManualCount) {
+            const input = prompt(
+                `Hikka не знає кількість розділів для "${data.manga_name || hikkaSlug}".\n` +
+                `Введіть відому кількість розділів (або 0 щоб скасувати):`
+            );
+            if (!input || parseInt(input) === 0) {
+                if (btn) btn.disabled = false;
+                return;
+            }
+            resp = await fetch(`${API_BASE}/volumes/${volumeId}/generate-chapters`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ count: parseInt(input) }),
+            });
+            data = await resp.json();
+        }
+
+        if (!resp.ok) {
+            alert(`Помилка: ${data.error}`);
+        } else {
+            alert(data.message);
+            await loadChapters(volumeId);
+            // Оновлюємо текст кнопки після першої генерації
+            if (btn) btn.textContent = '🔄 Оновити розділи';
+        }
+    } catch (err) {
+        alert(`Помилка: ${err.message}`);
+    } finally {
+        if (btn) btn.disabled = false;
+    }
+};
+
+window.loadChapters = async function(volumeId) {
+    const block = document.getElementById('chapters-block');
+    if (!block) return;
+
+    try {
+        const resp = await fetch(`${API_BASE}/volumes/${volumeId}/chapters`);
+        const { data, total } = await resp.json();
+
+        if (!data || !data.length) {
+            block.innerHTML = `<p style="color:var(--text-secondary);">Розділів ще немає. Натисніть "Згенерувати розділи".</p>`;
+            return;
+        }
+
+        // Оновлюємо назву кнопки
+        const btn = document.getElementById('gen-chapters-btn');
+        if (btn) btn.textContent = '🔄 Оновити розділи';
+
+        block.innerHTML = `
+            <h3 style="margin-bottom:1rem;">Розділи (${total})</h3>
+            <div style="display:flex; flex-wrap:wrap; gap:0.4rem;">
+                ${data.map(ch => `
+                    <span class="theme-badge"
+                          style="cursor:pointer; ${ch.in_collections_count > 0 ? 'background:#dcfce7;color:#166534;border-color:#bbf7d0;' : ''}"
+                          title="Розділ #${ch.issue_number}${ch.in_collections_count > 0 ? ' (у збірнику)' : ''}"
+                          onclick="navigate('issue-detail', { id: ${ch.id} })">
+                        #${ch.issue_number}
+                    </span>
+                `).join('')}
+            </div>
+        `;
+    } catch (err) {
+        console.error('loadChapters error:', err);
     }
 };
 

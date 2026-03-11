@@ -37,7 +37,7 @@ router.get('/', (req, res) => {
   }
   // Кожна тема — окрема умова AND (том повинен мати ВСІ обрані теми)
   themeIds.forEach(tid => {
-    conditions.push('EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.cv_vol_id = v.cv_id AND _vt.theme_id = ?)');
+    conditions.push('EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.volume_id = v.id AND _vt.theme_id = ?)');
     searchParams.push(tid);
   });
 
@@ -67,11 +67,10 @@ router.get('/by-cv-id/:cv_id', (req, res) => {
 });
 
 router.get('/:id/themes', (req, res) => {
-  const vol = getOne('SELECT cv_id FROM volumes WHERE id = ?', [req.params.id]);
-  if (!vol) return res.json({ data: [] });
+  const volumeId = parseInt(req.params.id);
   const data = getAll(
-    `SELECT t.* FROM themes t JOIN volume_themes vt ON t.id = vt.theme_id WHERE vt.cv_vol_id = ?`,
-    [vol.cv_id]
+    `SELECT t.* FROM themes t JOIN volume_themes vt ON t.id = vt.theme_id WHERE vt.volume_id = ?`,
+    [volumeId]
   );
   res.json({ data });
 });
@@ -100,38 +99,40 @@ router.get('/:id', (req, res) => {
 router.post('/', (req, res) => {
   const { cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year, description } = req.body;
   try {
-    runQuery(
-      'INSERT INTO volumes (cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null, description || null]
-    );
+    const { rawDb } = require('../db');
+    const result = rawDb.prepare(
+      'INSERT INTO volumes (cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    ).run([cv_id || null, cv_slug || null, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null, description || null]);
+
     if (lang) {
       rawRun(
-        'INSERT OR IGNORE INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)',
-        [cv_id, TRANSLATED_THEME_ID]
+        'INSERT OR IGNORE INTO volume_themes (volume_id, theme_id) VALUES (?, ?)',
+        [newId, TRANSLATED_THEME_ID]
       );
     }
-    res.json({ message: 'Том створено' });
+    res.json({ message: 'Том створено', id: newId });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
 router.put('/:id', (req, res) => {
-  const { cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year, description, theme_ids } = req.body;
+  const { cv_id, cv_slug, name, cv_img, lang, locg_id, locg_slug, publisher, start_year, description, hikka_slug, mal_id, theme_ids } = req.body;
   try {
     runQuery(
-      'UPDATE volumes SET cv_id = ?, cv_slug = ?, name = ?, cv_img = ?, lang = ?, locg_id = ?, locg_slug = ?, publisher = ?, start_year = ?, description = ? WHERE id = ?',
-      [cv_id, cv_slug, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null, description || null, req.params.id]
+      'UPDATE volumes SET cv_id = ?, cv_slug = ?, name = ?, cv_img = ?, lang = ?, locg_id = ?, locg_slug = ?, publisher = ?, start_year = ?, description = ?, hikka_slug = ?, mal_id = ? WHERE id = ?',
+      [cv_id || null, cv_slug || null, name, cv_img || null, lang || null, locg_id || null, locg_slug || null, publisher || null, start_year || null, description || null, hikka_slug || null, mal_id || null, req.params.id]
     );
-    if (Array.isArray(theme_ids) && cv_id) {
-      rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ?', [cv_id]);
+    if (Array.isArray(theme_ids)) {
+      const volumeId = parseInt(req.params.id);
+      rawRun('DELETE FROM volume_themes WHERE volume_id = ?', [volumeId]);
       theme_ids.forEach(themeId =>
-        rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [cv_id, themeId])
+        rawRun('INSERT OR IGNORE INTO volume_themes (volume_id, theme_id) VALUES (?, ?)', [volumeId, themeId])
       );
     }
-
     saveDatabase();
     res.json({ message: 'Том оновлено' });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
+
 
 // Збірники, до яких входять випуски цього тому
 router.get('/:id/collections-from-issues', (req, res) => {
@@ -192,15 +193,12 @@ router.post('/:id/convert-all-to-collections', (req, res) => {
     });
 
     // Додаємо тему Collection до тому якщо ще немає
-    const themeExists = getOne('SELECT id FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?', [volume.cv_id, COLLECTION_THEME_ID]);
-    if (!themeExists) {
-      rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [volume.cv_id, COLLECTION_THEME_ID]);
-    }
+    rawRun('INSERT OR IGNORE INTO volume_themes (volume_id, theme_id) VALUES (?, ?)', [volumeId, COLLECTION_THEME_ID]);
 
     // Якщо том належить до журналу — прибираємо тему Translated
     const hasMagazineParent = getOne('SELECT id FROM volume_magazines WHERE child_id = ?', [volumeId]);
     if (hasMagazineParent) {
-      rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?', [volume.cv_id, TRANSLATED_THEME_ID]);
+      rawRun('DELETE FROM volume_themes WHERE volume_id = ? AND theme_id = ?', [volumeId, TRANSLATED_THEME_ID]);
       if (!volume.lang || volume.lang === '') {
         rawRun("UPDATE volumes SET lang = 'ja' WHERE id = ?", [volumeId]);
       }
@@ -243,7 +241,7 @@ router.post('/:id/convert-all-collections-to-issues', (req, res) => {
     });
 
     // Видаляємо тему Collection з тому
-    rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?', [volume.cv_id, COLLECTION_THEME_ID]);
+    rawRun('DELETE FROM volume_themes WHERE volume_id = ? AND theme_id = ?', [volumeId, COLLECTION_THEME_ID]);
 
     saveDatabase();
     res.json({ message: `Конвертовано: ${converted}, пропущено: ${skipped}`, converted, skipped });
@@ -254,11 +252,12 @@ router.put('/:id/themes', (req, res) => {
   const { theme_ids } = req.body;
   if (!Array.isArray(theme_ids)) return res.status(400).json({ error: 'theme_ids має бути масивом' });
   try {
-    const vol = getOne('SELECT cv_id FROM volumes WHERE id = ?', [req.params.id]);
+    const volumeId = parseInt(req.params.id);
+    const vol = getOne('SELECT id FROM volumes WHERE id = ?', [volumeId]);
     if (!vol) return res.status(404).json({ error: 'Том не знайдено' });
-    rawRun('DELETE FROM volume_themes WHERE cv_vol_id = ?', [vol.cv_id]);
+    rawRun('DELETE FROM volume_themes WHERE volume_id = ?', [volumeId]);
     theme_ids.forEach(themeId =>
-      rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [vol.cv_id, themeId])
+      rawRun('INSERT OR IGNORE INTO volume_themes (volume_id, theme_id) VALUES (?, ?)', [volumeId, themeId])
     );
     saveDatabase();
     res.json({ message: 'Теми оновлено' });
@@ -273,18 +272,10 @@ router.delete('/:id', (req, res) => {
 });
 
 function ensureVolumeTheme(volumeDbId, themeId) {
-  const vol = getOne('SELECT cv_id FROM volumes WHERE id = ?', [volumeDbId]);
-  if (!vol) return;
-  const has = getOne(
-    'SELECT id FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?',
-    [vol.cv_id, themeId]
+  rawRun(
+    'INSERT OR IGNORE INTO volume_themes (volume_id, theme_id) VALUES (?, ?)',
+    [volumeDbId, themeId]
   );
-  if (!has) {
-    rawRun(
-      'INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)',
-      [vol.cv_id, themeId]
-    );
-  }
 }
 
 // ── Переклади ─────────────────────────────────────────────────────────────
@@ -647,6 +638,127 @@ router.delete('/:id/relations/:relId', (req, res) => {
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
+});
+
+// POST /volumes/manga-volume — створити том манґи (без CV, з hikka_slug + mal_id)
+// Автоматично прив'язується до збірника через collection_id (опційно)
+router.post('/manga-volume', (req, res) => {
+  const { name, hikka_slug, mal_id, cv_img, publisher, start_year, description, collection_id } = req.body;
+  if (!name)        return res.status(400).json({ error: 'name обов\'язковий' });
+  if (!hikka_slug)  return res.status(400).json({ error: 'hikka_slug обов\'язковий' });
+
+  try {
+    const { rawDb } = require('../db');
+
+    // Перевірка дублікату по hikka_slug
+    const existing = getOne('SELECT id FROM volumes WHERE hikka_slug = ?', [hikka_slug]);
+    if (existing) return res.status(400).json({ error: 'Том з таким hikka_slug вже існує', id: existing.id });
+
+    const result = rawDb.prepare(
+      `INSERT INTO volumes (cv_id, cv_slug, name, hikka_slug, mal_id, cv_img, publisher, start_year, description, lang)
+       VALUES (NULL, NULL, ?, ?, ?, ?, ?, ?, ?, 'ja')`
+    ).run([name, hikka_slug, mal_id || null, cv_img || null, publisher || null, start_year || null, description || null]);
+
+    const newId = result.lastInsertRowid;
+
+    // Додаємо тему Manga (MANGA_THEME_ID = 36) через db_id тому
+    // volume_themes.cv_vol_id — посилається на volumes.cv_id, якого у нас немає.
+    // Тому використовуємо окрему таблицю або фіктивний від'ємний cv_vol_id = -newId
+    // Поки що записуємо в volume_themes з фіктивним cv_vol_id = -newId
+    rawRun(
+      'INSERT OR IGNORE INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)',
+      [-newId, MANGA_THEME_ID]
+    );
+
+    // Якщо передано collection_id — прив'язати збірник до цього тому
+    if (collection_id) {
+      runQuery('UPDATE collections SET cv_vol_id = ? WHERE id = ?', [-newId, collection_id]);
+    }
+
+    res.json({ message: 'Том манґи створено', id: newId });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+// POST /volumes/:id/generate-chapters
+// Генерує (або догенеровує) розділи манґи для тому.
+// Якщо count передано явно — використовуємо його (онгоінг / ручний режим).
+// Якщо не передано — запитуємо Hikka API і беремо chapters_released.
+// Відповідь { needsManualCount: true } означає що Hikka не знає кількість → фронт питає юзера.
+router.post('/:id/generate-chapters', async (req, res) => {
+  const volumeId = parseInt(req.params.id);
+  const { count: manualCount } = req.body;
+
+  try {
+    const volume = getOne('SELECT * FROM volumes WHERE id = ?', [volumeId]);
+    if (!volume)           return res.status(404).json({ error: 'Том не знайдено' });
+    if (!volume.hikka_slug) return res.status(400).json({ error: 'Том не має hikka_slug' });
+
+    // ── Визначаємо кількість розділів ─────────────────────────────────────
+    let totalChapters = manualCount ? parseInt(manualCount) : null;
+
+    if (!totalChapters) {
+      // Запит до Hikka API
+      const hikkaRes = await fetch(`https://api.hikka.io/manga/${volume.hikka_slug}`);
+      if (!hikkaRes.ok) return res.status(502).json({ error: `Hikka API: ${hikkaRes.status}` });
+      const hikkaData = await hikkaRes.json();
+
+      totalChapters = hikkaData.chapters_released || hikkaData.chapters_total || null;
+      if (!totalChapters) {
+        // Hikka не знає кількість → повертаємо сигнал фронту
+        return res.json({ needsManualCount: true, manga_name: hikkaData.title_ua || hikkaData.title_en });
+      }
+    }
+
+    if (totalChapters < 1 || totalChapters > 5000) {
+      return res.status(400).json({ error: 'Некоректна кількість розділів' });
+    }
+
+    // ── Знаходимо вже існуючі номери розділів для цього тому ──────────────
+    const existingNums = new Set(
+      getAll('SELECT issue_number FROM issues WHERE ds_vol_id = ?', [volumeId])
+        .map(r => parseInt(r.issue_number))
+        .filter(n => !isNaN(n))
+    );
+
+    // ── Генеруємо тільки відсутні розділи ─────────────────────────────────
+    const { rawDb } = require('../db');
+    const insert = rawDb.prepare(
+      `INSERT INTO issues (cv_id, cv_slug, name, ds_vol_id, issue_number) VALUES (NULL, NULL, ?, ?, ?)`
+    );
+
+    let created = 0;
+    const insertMany = rawDb.transaction(() => {
+      for (let ch = 1; ch <= totalChapters; ch++) {
+        if (existingNums.has(ch)) continue;
+        insert.run([`Chapter ${ch}`, volumeId, String(ch)]);
+        created++;
+      }
+    });
+    insertMany();
+
+    res.json({
+      message: `Готово. Створено: ${created}, вже існувало: ${existingNums.size}`,
+      created,
+      existed: existingNums.size,
+      total: totalChapters,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /volumes/:id/chapters — розділи манґа-тому (issues з ds_vol_id)
+router.get('/:id/chapters', (req, res) => {
+  const volumeId = parseInt(req.params.id);
+  const chapters = getAll(
+    `SELECT i.id, i.issue_number, i.name, i.release_date, i.cv_img,
+            (SELECT COUNT(*) FROM collection_issues ci WHERE ci.issue_id = i.id) as in_collections_count
+     FROM issues i
+     WHERE i.ds_vol_id = ?
+     ORDER BY CAST(i.issue_number AS REAL) ASC`,
+    [volumeId]
+  );
+  res.json({ data: chapters, total: chapters.length });
 });
 
 module.exports = router;

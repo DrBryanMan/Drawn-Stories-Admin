@@ -408,7 +408,7 @@ mangaRouter.get('/', (req, res) => {
       issueParams.push(...pubIds);
     }
     themeIds.forEach(tid => {
-      issueWhere += ' AND EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.cv_vol_id = v.cv_id AND _vt.theme_id = ?)';
+      issueWhere += ' AND EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.volume_id = v.id AND _vt.theme_id = ?)';
       issueParams.push(tid);
     });
 
@@ -418,7 +418,7 @@ mangaRouter.get('/', (req, res) => {
                       v.name as volume_name, 'issue' as _type
       FROM issues i
       JOIN volumes v ON i.cv_vol_id = v.cv_id
-      JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
+      JOIN volume_themes vt ON v.id = vt.volume_id
       ${issueWhere}
       ORDER BY i.created_at DESC
     `, issueParams);
@@ -439,9 +439,11 @@ mangaRouter.get('/', (req, res) => {
       colParams.push(...pubIds);
     }
     themeIds.forEach(tid => {
-      colConds.push('EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.cv_vol_id = c.cv_vol_id AND _vt.theme_id = ?)');
+      colConds.push('EXISTS (SELECT 1 FROM volume_themes _vt JOIN volumes _v ON _v.id = _vt.volume_id WHERE _v.cv_id = c.cv_vol_id AND _vt.theme_id = ?)');
       colParams.push(tid);
     });
+
+
 
     const colWhere = colConds.length ? 'WHERE ' + colConds.join(' AND ') : '';
     colItems = getAll(`
