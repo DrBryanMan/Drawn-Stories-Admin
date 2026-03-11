@@ -59,6 +59,10 @@ function ensureModal() {
           <input type="text" id="aim-number" placeholder="#..." style="width:100%;">
         </div>
         <div class="form-group" style="margin:0;">
+          <label class="aim-label">CV ID випуску</label>
+          <input type="number" id="aim-issue-cvid" placeholder="CV ID..." style="width:100%;">
+        </div>
+        <div class="form-group" style="margin:0;">
           <label class="aim-label">CV ID тому</label>
           <input type="number" id="aim-cvvolid" placeholder="CV Vol ID..." style="width:100%;">
         </div>
@@ -131,7 +135,7 @@ function ensureModal() {
   });
 
   // Пошук
-  ['aim-name', 'aim-volume', 'aim-number', 'aim-cvvolid'].forEach(id => {
+  ['aim-name', 'aim-volume', 'aim-number', 'aim-issue-cvid', 'aim-cvvolid'].forEach(id => {
     document.getElementById(id).addEventListener('input', scheduleSearch);
   });
   document.getElementById('aim-exact').addEventListener('change', scheduleSearch);
@@ -159,7 +163,7 @@ export function openAddIssueModal(config) {
   document.getElementById('aim-name').placeholder =
     config.namePlaceholder ?? 'Назва...';
 
-  ['aim-name', 'aim-volume', 'aim-number', 'aim-cvvolid'].forEach(id => {
+  ['aim-name', 'aim-volume', 'aim-number', 'aim-issue-cvid', 'aim-cvvolid'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('aim-exact').checked = false;
@@ -193,15 +197,16 @@ function scheduleSearch() {
 async function runSearch() {
   if (!_config) return;
 
-  const name    = document.getElementById('aim-name').value.trim();
-  const volume  = document.getElementById('aim-volume').value.trim();
-  const number  = document.getElementById('aim-number').value.trim();
-  const cvVolId = document.getElementById('aim-cvvolid').value.trim();
-  const exact   = document.getElementById('aim-exact').checked;
+  const name      = document.getElementById('aim-name').value.trim();
+  const volume    = document.getElementById('aim-volume').value.trim();
+  const number    = document.getElementById('aim-number').value.trim();
+  const issueCvId = document.getElementById('aim-issue-cvid').value.trim();
+  const cvVolId   = document.getElementById('aim-cvvolid').value.trim();
+  const exact     = document.getElementById('aim-exact').checked;
 
   const el = document.getElementById('aim-results');
 
-  if (!name && !volume && !number && !cvVolId) {
+  if (!name && !volume && !number && !issueCvId && !cvVolId) {
     el.innerHTML = '';
     updateSelectAllRow([]);
     return;
@@ -210,10 +215,11 @@ async function runSearch() {
   el.innerHTML = '<div class="aim-empty">Пошук...</div>';
 
   const searchParams = new URLSearchParams({ limit: 60 });
-  if (name)    searchParams.set('name', name);
-  if (volume)  searchParams.set('volume_name', volume);
-  if (number)  searchParams.set('issue_number', number);
-  if (cvVolId) searchParams.set(_config.cvVolIdParam ?? 'volume_id', cvVolId);
+  if (name)       searchParams.set('name', name);
+  if (volume)     searchParams.set('volume_name', volume);
+  if (number)     searchParams.set('issue_number', number);
+  if (issueCvId)  searchParams.set('cv_id', issueCvId);
+  if (cvVolId)    searchParams.set(_config.cvVolIdParam ?? 'volume_id', cvVolId);
   if (exact)   searchParams.set('exact', 'true');
 
   try {
@@ -228,7 +234,13 @@ async function runSearch() {
       return;
     }
 
-    el.innerHTML = data.map(issue => {
+    const sortedData = [...data].sort((a, b) => {
+      const v = (a.volume_name || '').localeCompare(b.volume_name || '', 'uk');
+      if (v !== 0) return v;
+      return (parseFloat(b.issue_number) || 0) - (parseFloat(a.issue_number) || 0);
+    });
+
+    el.innerHTML = sortedData.map(issue => {
       const imgSrc = issue.cv_img
         ? `${_config.cvImgPathSmall}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}`
         : null;
@@ -244,7 +256,8 @@ async function runSearch() {
             : `<div class="aim-card-placeholder">${_config.cardIcon ?? '📖'}</div>`}
           <div class="aim-card-info">
             <div class="aim-card-name">${issue.name || 'Без назви'}</div>
-            <div class="aim-card-meta">${issue.volume_name || ''}${issue.issue_number ? ' #' + issue.issue_number : ''}</div>
+            <div class="aim-card-meta">${issue.volume_name || ''}</div>
+            <div class="aim-card-name">${issue.issue_number || 'Без номеру'}</div>
           </div>
         </div>
       `;
@@ -377,7 +390,7 @@ function injectStyles() {
     }
     .aim-filters {
       display: grid;
-      grid-template-columns: 2fr 2fr 1fr 1fr auto;
+      grid-template-columns: 2fr 2fr 1fr 1fr 1fr auto;
       gap: 0.9rem;
       margin-bottom: 1.25rem;
       align-items: flex-end;

@@ -126,11 +126,11 @@ function renderPage(collection, seriesList = []) {
                                     : `cv_id: ${collection.publisher}`}
                             </div>
                         ` : ''}
-                        ${collection.description ? `<div><strong>Опис:</strong> ${collection.description}</div>` : ''}
                         <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
                             ${buildThemeChipsViewHTML(collection.themes)}
                         </div>
                         <div><strong>Дата додавання:</strong> ${formatDate(collection.created_at)}</div>
+                        ${collection.description ? `${collection.description}` : ''}
                     </div>
                     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                         <button class="btn btn-secondary" onclick="openEditCollectionModal(${collection.id})">Редагувати збірник</button>

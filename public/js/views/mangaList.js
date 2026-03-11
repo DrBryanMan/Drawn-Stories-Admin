@@ -147,7 +147,7 @@ function renderItems(items) {
         const type = card.dataset.itemType;
         const page = type === 'collection' ? 'collection-detail' : 'issue-detail';
         window.open(buildUrl(page, { id }), '_blank');
-    });
+    }, { signal: ctrl.signal });
 }
 
 function updatePagination(total) {

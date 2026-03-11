@@ -127,21 +127,6 @@ router.put('/:id', (req, res) => {
         rawRun('INSERT INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)', [cv_id, themeId])
       );
     }
-    const isChild = getOne(
-      'SELECT id FROM volume_translations WHERE child_id = (SELECT id FROM volumes WHERE cv_id = ?)',
-      [cv_id]
-    );
-    if (isChild) {
-      rawRun(
-        'INSERT OR IGNORE INTO volume_themes (cv_vol_id, theme_id) VALUES (?, ?)',
-        [cv_id, TRANSLATED_THEME_ID]
-      );
-    } else {
-      rawRun(
-        'DELETE FROM volume_themes WHERE cv_vol_id = ? AND theme_id = ?',
-        [cv_id, TRANSLATED_THEME_ID]
-      );
-    }
 
     saveDatabase();
     res.json({ message: 'Том оновлено' });

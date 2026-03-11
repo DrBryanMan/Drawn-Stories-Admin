@@ -1,7 +1,8 @@
-import { fetchItem, updateItem } from '../api/api.js';
 import { cv_logo_svg, cv_img_path_original, cv_img_path_small, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
-import { navigate } from '../utils/router.js';
+import { openSearchPickerModal, closeSearchPickerModal } from '../components/searchPickerModal.js';
+import { fetchItem, updateItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
+import { navigate } from '../utils/router.js';
 
 const API_BASE = 'http://localhost:7000/api';
 
@@ -54,9 +55,9 @@ export async function renderIssueDetail(params) {
                                     <a href="#" onclick="navigateToVolumeFromIssue(${issue.cv_vol_id})"
                                     style="color: var(--accent); text-decoration: none;">
                                         ${issue.volume_name}
-                                    </a> <span style="color: var(--text-secondary); font-size: 0.85rem;">(id: ${issue.cv_vol_id})</span>
+                                    </a> <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${issue.cv_vol_id})</span>
                                 </div>
-                            ` : `id: ${issue.cv_vol_id}`}
+                            ` : `cv_id: ${issue.cv_vol_id}`}
                             <div><strong>Публікація:</strong> ${formatCoverDate(issue.cover_date)}</div>
                             <div><strong>Реліз:</strong> ${formatReleaseDate(issue.release_date)}</div>
                             <div><strong>Дата створення:</strong> ${formatDate(issue.created_at)}</div>
@@ -105,35 +106,6 @@ export async function renderIssueDetail(params) {
                 </div>
             </div>
 
-            <!-- Модалка: змінити том -->
-            <div id="issue-add-volume-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-                <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:500px; max-width:90vw;">
-                    <h3 style="margin-bottom:1rem;">Змінити том</h3>
-                    <p style="color:var(--text-secondary); font-size:0.875rem; margin-bottom:1rem;">Знайдіть том і клікніть для підтвердження.</p>
-                    <div class="form-group">
-                        <input type="text" id="iv-volume-search" placeholder="Введіть назву тому..." style="width:100%;">
-                    </div>
-                    <div id="iv-volume-results" style="max-height:320px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; margin-bottom:1rem; min-height:48px;"></div>
-                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-                        <button class="btn btn-secondary" onclick="closeIssueAddToVolumeModal()">Скасувати</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Модалка: додати до збірника -->
-            <div id="issue-add-collection-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-                <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:500px; max-width:90vw;">
-                    <h3 style="margin-bottom:1rem;">Додати до збірника</h3>
-                    <div class="form-group">
-                        <input type="text" id="ic-collection-search" placeholder="Введіть назву збірника..." style="width:100%;">
-                    </div>
-                    <div id="ic-collection-results" style="max-height:320px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; margin-bottom:1rem; min-height:48px;"></div>
-                    <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
-                        <button class="btn btn-secondary" onclick="closeIssueAddToCollectionModal()">Скасувати</button>
-                    </div>
-                </div>
-            </div>
-
             <!-- Модалка: додати до хронології -->
             <div id="issue-add-ro-modal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
                 <div style="background:var(--bg-primary); border-radius:8px; padding:1.5rem; width:500px; max-width:90vw;">
@@ -161,7 +133,15 @@ export async function renderIssueDetail(params) {
                     </div>
                 </div>
             </div>
+
+            <!-- Навігація між випусками тому -->
+            <div id="issue-volume-nav" style="margin-top: 1.5rem;"></div>
         `;
+
+        // Монтуємо навігацію між випусками тому
+        if (issue.cv_vol_id) {
+            mountIssueVolumeNav(issue);
+        }
 
     } catch (error) {
         console.error('Помилка завантаження випуску:', error);
@@ -224,106 +204,98 @@ window.navigateToVolumeFromIssue = async (volumeCvId) => {
 };
 
 // ===== ЗМІНИТИ ТОМ =====
-let ivSearchTimeout = null;
 
 window.openIssueAddToVolumeModal = (issueId) => {
-    document.getElementById('issue-add-volume-modal').style.display = 'flex';
-    const input = document.getElementById('iv-volume-search');
-    input.value = '';
-    document.getElementById('iv-volume-results').innerHTML = '';
-    input.oninput = (e) => {
-        clearTimeout(ivSearchTimeout);
-        ivSearchTimeout = setTimeout(() => searchVolumesForIssue(e.target.value, issueId), 300);
-    };
-    input.focus();
-};
-
-window.closeIssueAddToVolumeModal = () => {
-    document.getElementById('issue-add-volume-modal').style.display = 'none';
-};
-
-async function searchVolumesForIssue(query, issueId) {
-    if (!query.trim()) { document.getElementById('iv-volume-results').innerHTML = ''; return; }
-    const res = await fetch(`${API_BASE}/volumes?search=${encodeURIComponent(query)}&limit=20`);
-    const result = await res.json();
-    const el = document.getElementById('iv-volume-results');
-    if (!result.data?.length) { el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary);">Нічого не знайдено</div>'; return; }
-    el.innerHTML = result.data.map(vol => `
-        <div onclick="changeIssueVolume(${issueId}, ${vol.cv_id}, '${(vol.name || '').replace(/'/g, "\\'")}')"
-             style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
-             onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
-            ${vol.cv_img
-                ? `<img src="${cv_img_path_small}${vol.cv_img.startsWith('/') ? '' : '/'}${vol.cv_img}" style="width:40px; height:60px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
-                : '<div style="width:40px; height:60px; background:var(--bg-secondary); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">📚</div>'}
-            <div>
-                <div style="font-weight:500;">${vol.name}</div>
-                <div style="font-size:0.8rem; color:var(--text-secondary);">CV ID: ${vol.cv_id}</div>
+    openSearchPickerModal({
+        title: 'Змінити том',
+        hint:  'Знайдіть том і клікніть для підтвердження.',
+        inputs: [
+            { id: 'name',  label: 'Назва тому', placeholder: 'Введіть назву...' },
+            { id: 'cv_id', label: 'CV ID тому',  placeholder: 'CV ID...', type: 'number' },
+        ],
+        searchFn: async ({ name, cv_id }) => {
+            const params = new URLSearchParams({ limit: 20 });
+            if (name)  params.set('search', name);
+            if (cv_id) params.set('cv_id', cv_id);
+            if (!name && !cv_id) return [];
+            const res = await fetch(`${API_BASE}/volumes?${params}`);
+            const data = await res.json();
+            return data.data || [];
+        },
+        renderItem: (vol, idx) => `
+            <div data-spm-item="${idx}"
+                 style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; border-bottom:1px solid var(--border-color);">
+                ${vol.cv_img
+                    ? `<img src="${cv_img_path_small}${vol.cv_img.startsWith('/') ? '' : '/'}${vol.cv_img}"
+                            style="width:40px; height:60px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
+                    : '<div style="width:40px; height:60px; background:var(--bg-secondary); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">📚</div>'}
+                <div>
+                    <div style="font-weight:500;">${vol.name}</div>
+                    <div style="font-size:0.8rem; color:var(--text-secondary);">CV ID: ${vol.cv_id}</div>
+                </div>
             </div>
-        </div>
-    `).join('');
-}
-
-window.changeIssueVolume = async (issueId, volumeCvId, volumeName) => {
-    if (!confirm(`Змінити том цього випуску на "${volumeName}"?`)) return;
-    const issue = await fetch(`${API_BASE}/issues/${issueId}`).then(r => r.json());
-    const res = await fetch(`${API_BASE}/issues/${issueId}`, {
-        method: 'PUT', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...issue, cv_vol_id: volumeCvId })
+        `,
+        onSelect: async (vol) => {
+            if (!confirm(`Змінити том цього випуску на "${vol.name}"?`)) return;
+            const issue = await fetch(`${API_BASE}/issues/${issueId}`).then(r => r.json());
+            const res = await fetch(`${API_BASE}/issues/${issueId}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...issue, cv_vol_id: vol.cv_id }),
+            });
+            if (!res.ok) { alert('Помилка збереження'); return; }
+            await renderIssueDetail({ id: issueId });
+        },
     });
-    if (!res.ok) { alert('Помилка збереження'); return; }
-    window.closeIssueAddToVolumeModal();
-    await renderIssueDetail({ id: issueId });
 };
+
+// Зворотна сумісність
+window.closeIssueAddToVolumeModal = () => closeSearchPickerModal();
 
 // ===== ДОДАТИ ДО ЗБІРНИКА =====
-let icSearchTimeout = null;
 
 window.openIssueAddToCollectionModal = (issueId) => {
-    document.getElementById('issue-add-collection-modal').style.display = 'flex';
-    const input = document.getElementById('ic-collection-search');
-    input.value = '';
-    document.getElementById('ic-collection-results').innerHTML = '';
-    input.oninput = (e) => {
-        clearTimeout(icSearchTimeout);
-        icSearchTimeout = setTimeout(() => searchCollectionsForIssue(e.target.value, issueId), 300);
-    };
-    input.focus();
-};
-
-window.closeIssueAddToCollectionModal = () => {
-    document.getElementById('issue-add-collection-modal').style.display = 'none';
-};
-
-async function searchCollectionsForIssue(query, issueId) {
-    if (!query.trim()) { document.getElementById('ic-collection-results').innerHTML = ''; return; }
-    const res = await fetch(`${API_BASE}/collections/search?search=${encodeURIComponent(query)}&limit=20`);
-    const result = await res.json();
-    const el = document.getElementById('ic-collection-results');
-    if (!result.data?.length) { el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary);">Нічого не знайдено</div>'; return; }
-    el.innerHTML = result.data.map(col => `
-        <div onclick="addIssueToCollectionFromDetail(${issueId}, ${col.id})"
-             style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
-             onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
-            ${col.cv_img
-                ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" style="width:40px; height:60px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
-                : '<div style="width:40px; height:60px; background:var(--bg-secondary); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">📗</div>'}
-            <div>
-                <div style="font-weight:500;">${col.name}</div>
-                ${col.volume_name ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${col.volume_name}</div>` : ''}
+    openSearchPickerModal({
+        title: 'Додати до збірника',
+        inputs: [
+            { id: 'name',  label: 'Назва збірника', placeholder: 'Введіть назву...' },
+            { id: 'cv_id', label: 'CV ID збірника',  placeholder: 'CV ID...', type: 'number' },
+        ],
+        searchFn: async ({ name, cv_id }) => {
+            const params = new URLSearchParams({ limit: 20 });
+            if (name)  params.set('name', name);
+            if (cv_id) params.set('cv_id', cv_id);
+            if (!name && !cv_id) return [];
+            const res = await fetch(`${API_BASE}/collections/search?${params}`);
+            const data = await res.json();
+            return data.data || [];
+        },
+        renderItem: (col, idx) => `
+            <div data-spm-item="${idx}"
+                 style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; border-bottom:1px solid var(--border-color);">
+                ${col.cv_img
+                    ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}"
+                            style="width:40px; height:60px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
+                    : '<div style="width:40px; height:60px; background:var(--bg-secondary); border-radius:3px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">📗</div>'}
+                <div>
+                    <div style="font-weight:500;">${col.name}</div>
+                    ${col.volume_name ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${col.volume_name}</div>` : ''}
+                    ${col.cv_id ? `<div style="font-size:0.75rem; color:var(--text-tertiary);">CV ID: ${col.cv_id}</div>` : ''}
+                </div>
             </div>
-        </div>
-    `).join('');
-}
-
-window.addIssueToCollectionFromDetail = async (issueId, collectionId) => {
-    const res = await fetch(`${API_BASE}/collections/${collectionId}/issues`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ issue_id: issueId })
+        `,
+        onSelect: async (col) => {
+            const res = await fetch(`${API_BASE}/collections/${col.id}/issues`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ issue_id: issueId }),
+            });
+            if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+            await renderIssueDetail({ id: issueId });
+        },
     });
-    if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
-    window.closeIssueAddToCollectionModal();
-    await renderIssueDetail({ id: issueId });
 };
+
+// Зворотна сумісність
+window.closeIssueAddToCollectionModal = () => closeSearchPickerModal();
 
 // ===== ДОДАТИ ДО ХРОНОЛОГІЇ =====
 let iroSelectedOrderId = null;
@@ -394,5 +366,208 @@ window.confirmAddToRO = async () => {
     window.closeIssueAddToROModal();
     await renderIssueDetail({ id: iroCurrentIssueId });
 };
+
+// ═══════════════════════════════════════════════════════════════
+// НАВІГАЦІЯ МІЖ ВИПУСКАМИ ТОМУ
+// ═══════════════════════════════════════════════════════════════
+
+const ISSUE_NAV_PAGE_SIZE = 20;
+let _inav_issues   = [];
+let _inav_page     = 0;
+let _inav_current  = null; // id поточного випуску
+
+function _inavInjectCSS() {
+    if (document.getElementById('issue-nav-style')) return;
+    const s = document.createElement('style');
+    s.id = 'issue-nav-style';
+    s.textContent = `
+        .inav {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .inav__header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-primary);
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+        .inav__label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            white-space: nowrap;
+        }
+        .inav__vol {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+        .inav__pager {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            margin-left: auto;
+        }
+        .inav__pager-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 4px;
+            padding: 0.2rem 0.55rem;
+            font-size: 0.8rem;
+            cursor: pointer;
+            line-height: 1.5;
+            transition: background 0.12s, border-color 0.12s;
+        }
+        .inav__pager-btn:hover:not(:disabled) {
+            background: var(--bg-tertiary, #0f3460);
+            border-color: var(--accent);
+        }
+        .inav__pager-btn:disabled { opacity: 0.35; cursor: default; }
+        .inav__pager-info {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .inav__grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            padding: 0.75rem 1rem;
+        }
+        .inav__btn {
+            min-width: 3rem;
+            height: 2.2rem;
+            padding: 0 0.45rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            color: var(--text-secondary);
+            font-size: 0.76rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.1s, border-color 0.1s, color 0.1s, transform 0.1s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .inav__btn:hover {
+            background: var(--bg-secondary);
+            border-color: var(--accent);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+        .inav__btn.inav__btn--current {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+            font-weight: 700;
+            cursor: default;
+            transform: none;
+            box-shadow: 0 2px 8px rgba(26,136,193,0.35);
+        }
+    `;
+    document.head.appendChild(s);
+}
+
+function _inavRender() {
+    const container = document.getElementById('issue-volume-nav');
+    if (!container) return;
+
+    const total      = _inav_issues.length;
+    const totalPages = Math.ceil(total / ISSUE_NAV_PAGE_SIZE);
+    const start      = _inav_page * ISSUE_NAV_PAGE_SIZE;
+    const slice      = _inav_issues.slice(start, start + ISSUE_NAV_PAGE_SIZE);
+    const needsPager = total > ISSUE_NAV_PAGE_SIZE;
+
+    const pagerHTML = needsPager ? `
+        <div class="inav__pager">
+            <button class="inav__pager-btn" id="inav-prev" ${_inav_page === 0 ? 'disabled' : ''}>‹</button>
+            <span class="inav__pager-info">${_inav_page + 1} / ${totalPages}</span>
+            <button class="inav__pager-btn" id="inav-next" ${_inav_page >= totalPages - 1 ? 'disabled' : ''}>›</button>
+        </div>
+    ` : '';
+
+    container.innerHTML = `
+        <div class="inav">
+            <div class="inav__header">
+                <span class="inav__label">Випуски тому</span>
+                <span class="inav__vol">${_inav_issues._volName || ''}</span>
+                <span class="inav__label">(${total})</span>
+                ${pagerHTML}
+            </div>
+            <div class="inav__grid">
+                ${slice.map(iss => `
+                    <button
+                        class="inav__btn${iss.id === _inav_current ? ' inav__btn--current' : ''}"
+                        data-issue-id="${iss.id}"
+                        title="${iss.name || ''} #${iss.issue_number}"
+                    >#${iss.issue_number}</button>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
+    // Пагінація
+    container.querySelector('#inav-prev')?.addEventListener('click', () => {
+        if (_inav_page > 0) { _inav_page--; _inavRender(); }
+    });
+    container.querySelector('#inav-next')?.addEventListener('click', () => {
+        if (_inav_page < totalPages - 1) { _inav_page++; _inavRender(); }
+    });
+
+    // Навігація по кнопках випусків
+    container.querySelectorAll('.inav__btn:not(.inav__btn--current)').forEach(btn => {
+        btn.addEventListener('click', () => {
+            navigate('issue-detail', { id: parseInt(btn.dataset.issueId) });
+        });
+    });
+}
+
+export async function mountIssueVolumeNav(issue) {
+    _inavInjectCSS();
+    _inav_current = issue.id;
+
+    const container = document.getElementById('issue-volume-nav');
+    if (!container) return;
+    container.innerHTML = '<div style="padding:0.75rem 1rem; color:var(--text-secondary); font-size:0.82rem;">Завантаження…</div>';
+
+    try {
+        const res  = await fetch(`${API_BASE}/issues?cv_vol_id=${issue.cv_vol_id}&limit=9999`);
+        const data = await res.json();
+        const all  = data.data || [];
+
+        // Сортуємо за issue_number як float (0, 0.5, 1, 2, …, 1000000)
+        all.sort((a, b) => {
+            const na = parseFloat(a.issue_number);
+            const nb = parseFloat(b.issue_number);
+            if (isNaN(na) && isNaN(nb)) return 0;
+            if (isNaN(na)) return 1;
+            if (isNaN(nb)) return -1;
+            return na - nb;
+        });
+
+        _inav_issues = all;
+        _inav_issues._volName = issue.volume_name || '';
+
+        // Визначаємо сторінку поточного випуску
+        const idx = all.findIndex(i => i.id === issue.id);
+        _inav_page = idx >= 0 ? Math.floor(idx / ISSUE_NAV_PAGE_SIZE) : 0;
+
+        _inavRender();
+    } catch (e) {
+        console.error('issue-volume-nav: помилка завантаження', e);
+        if (container) container.innerHTML = '';
+    }
+}
 
 window.navigateTo = (type, id) => navigate(type, { id: id });
