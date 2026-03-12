@@ -354,7 +354,7 @@ export async function renderVolumeDetail(params) {
                                     ? col.release_date.substring(0, 4)
                                     : null;
                             return `
-                                <div onclick="navigateToCollection(${col.id})"
+                                <div onclick="navigateToCollection(event, ${col.id})"
                                     style="display:flex; flex-direction:column; align-items:center; cursor:pointer;
                                         background:var(--bg-secondary); border:1px solid var(--border-color);
                                         border-radius:8px; padding:.2em;
@@ -1304,8 +1304,25 @@ function renderChaptersBlock(allChapters, page) {
                         ${slice.map(ch => `
                             <tr onclick="navigate('issue-detail', { id: ${ch.id} })" style="cursor:pointer;">
                                 <td><strong>#${ch.issue_number || '?'}</strong></td>
-                                <td>${ch.name || '—'}</td>
-                                <td>${formatReleaseDate(ch.release_date)}</td>
+                                <td onclick="event.stopPropagation()">
+                                    <input class="chapter-name-input"
+                                        data-issue-id="${ch.id}"
+                                        data-field="name"
+                                        value="${(ch.name || '').replace(/"/g, '&quot;')}"
+                                        placeholder="Назва розділу"
+                                        style="width:100%; background:transparent; border:1px solid transparent; border-radius:4px;
+                                            padding:2px 4px; font-size:0.9rem; color:var(--accent); cursor:text;"
+                                        onclick="event.stopPropagation()">
+                                </td>
+                                <td onclick="event.stopPropagation()">
+                                    <input type="date" class="chapter-date-input"
+                                        data-issue-id="${ch.id}"
+                                        data-field="release_date"
+                                        value="${ch.release_date || ''}"
+                                        style="background:transparent; border:1px solid transparent; border-radius:4px;
+                                            padding:2px 4px; font-size:0.85rem; color:var(--accent); cursor:pointer;"
+                                        onclick="event.stopPropagation()">
+                                </td>
                                 <td style="text-align:center;">
                                     ${ch.in_collections_count > 0
                                         ? `<span style="color:#166534; font-weight:600;">✓ ${ch.in_collections_count > 1 ? ch.in_collections_count : ''}</span>`
@@ -1313,7 +1330,7 @@ function renderChaptersBlock(allChapters, page) {
                                 </td>
                                 <td onclick="event.stopPropagation()">
                                     <button class="btn btn-secondary btn-small"
-                                            onclick="editIssueFromVolume(${ch.id})">Редагувати</button>
+                                            onclick="editIssueFromVolume(${ch.id})">Ред.</button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -1354,6 +1371,61 @@ function renderChaptersBlock(allChapters, page) {
         _chaptersPage = 0;
         renderChaptersBlock(_allChapters, 0);
     });
+
+    // ── Inline-редагування назви та дати розділу ──────────────────────────
+    const chaptersTableBody = block.querySelector('tbody');
+    if (chaptersTableBody) {
+        const hoverStyle = (el, on) => {
+            el.style.borderColor = on ? 'var(--border-color)' : 'transparent';
+            el.style.background  = on ? 'var(--bg-secondary)' : 'transparent';
+        };
+
+        chaptersTableBody.addEventListener('mouseover', (e) => {
+            const inp = e.target.closest('.chapter-name-input, .chapter-date-input');
+            if (inp) hoverStyle(inp, true);
+        });
+        chaptersTableBody.addEventListener('mouseout', (e) => {
+            const inp = e.target.closest('.chapter-name-input, .chapter-date-input');
+            if (inp && document.activeElement !== inp) hoverStyle(inp, false);
+        });
+        chaptersTableBody.addEventListener('focus', (e) => {
+            const inp = e.target.closest('.chapter-name-input, .chapter-date-input');
+            if (inp) hoverStyle(inp, true);
+        }, true);
+        chaptersTableBody.addEventListener('blur', async (e) => {
+            const inp = e.target.closest('.chapter-name-input, .chapter-date-input');
+            if (!inp) return;
+            hoverStyle(inp, false);
+            const issueId = parseInt(inp.dataset.issueId);
+            const field   = inp.dataset.field;
+            const value   = inp.value.trim() || null;
+
+            try {
+                await fetch(`${API_BASE}/issues/${issueId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ [field]: value }),
+                });
+                // Оновлюємо локальний масив щоб сортування працювало актуально
+                const ch = _allChapters.find(c => c.id === issueId);
+                if (ch) ch[field] = value;
+            } catch (err) {
+                console.error('Помилка збереження поля розділу:', err);
+            }
+        }, true);
+
+        chaptersTableBody.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') e.target.blur();
+            if (e.key === 'Escape') {
+                // Відновити старе значення з масиву
+                const inp = e.target.closest('.chapter-name-input, .chapter-date-input');
+                if (!inp) return;
+                const ch = _allChapters.find(c => c.id === parseInt(inp.dataset.issueId));
+                if (ch) inp.value = ch[inp.dataset.field] || '';
+                inp.blur();
+            }
+        });
+    }
 }
 
 // ===== ПЕРЕКЛАДИ =========================================================
@@ -1581,7 +1653,7 @@ window.createMangaSourceVolume = async function(collectionVolumeId, hikkaSlug, v
 
 window.openAddChapterModal = function(volumeId) {
     openModal('Додати розділ манґи', `
-        <form id="add-chapter-form">
+        <form id="edit-form">
             <div class="form-row">
                 <div class="form-group">
                     <label>Номер розділу *</label>

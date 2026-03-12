@@ -3,6 +3,7 @@ import { API_BASE, cv_logo_svg, cv_img_path_small, cv_img_path_original, formatD
 import { navigate, navigateToParent } from '../utils/router.js';
 import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
+import { openModal } from '../components/modal.js';
 import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList, buildThemeChipsViewHTML } from '../utils/themeChips.js';
 import {
     buildVolumesMap,
@@ -16,6 +17,7 @@ let currentCollectionIssueIds = new Set();
 let currentIssues = [];
 let currentCollectionId = null;
 let currentSortOrder = 'order'; // 'order' | 'series' | 'date' | 'name'
+let currentIsMangaCollection = false;
 
 // Контролер для скасування старих event listeners при кожному renderPage
 let handlersAbortController = null;
@@ -170,7 +172,8 @@ function renderPage(collection, seriesList = []) {
     currentCollectionId = collection.id;
 
     const MANGA_THEME_ID = 36;
-    const isMangaCollection = (collection.themes || []).some(t => t.id === MANGA_THEME_ID);
+    const isMangaCollection = (collection.volume_themes || []).some(t => t.id === MANGA_THEME_ID);
+    currentIsMangaCollection = isMangaCollection;
 
     // Скасовуємо старі обробники
     if (handlersAbortController) handlersAbortController.abort();
@@ -295,10 +298,14 @@ function renderPage(collection, seriesList = []) {
                         <thead>
                             <tr>
                                 <th id="col-th-order" style="${currentSortOrder === 'order' ? '' : 'display:none;'}">#</th>
-                                <th>Обкладинка</th>
-                                <th>Назва</th>
-                                <th>Том</th>
-                                <th>Номер</th>
+                                ${isMangaCollection ? `
+                                    <th>Розділ</th>
+                                    <th>Назва</th>
+                                ` : `
+                                    <th>Обкладинка</th>
+                                    <th>Назва</th>
+                                    <th>Номер</th>
+                                `}
                                 <th>Дата</th>
                                 <th>Дії</th>
                             </tr>
@@ -382,6 +389,46 @@ function renderPage(collection, seriesList = []) {
 
             await moveCollectionIssue(currentCollectionId, issueId, newNum);
         }, { signal });
+
+        // ── Inline-редагування дати релізу (манґа-розділи) ───────────────────
+        tbody.addEventListener('change', async (e) => {
+            const input = e.target;
+            if (!input.classList.contains('col-date-input')) return;
+            e.stopPropagation();
+
+            const issueId = parseInt(input.dataset.issueId);
+            const value   = input.value || null;
+
+            try {
+                const res = await fetch(`${API_BASE}/issues/${issueId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ release_date: value }),
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    alert(err.error || 'Помилка збереження дати');
+                } else {
+                    const issue = currentIssues.find(i => i.id === issueId);
+                    if (issue) issue.release_date = value;
+                }
+            } catch (err) {
+                console.error('Помилка збереження дати:', err);
+            }
+        }, { signal });
+
+        tbody.addEventListener('mouseover', (e) => {
+            const inp = e.target.closest('.col-date-input');
+            if (inp) { inp.style.borderColor = 'var(--border-color)'; inp.style.background = 'var(--bg-secondary)'; }
+        }, { signal });
+
+        tbody.addEventListener('mouseout', (e) => {
+            const inp = e.target.closest('.col-date-input');
+            if (inp && document.activeElement !== inp) {
+                inp.style.borderColor = 'transparent';
+                inp.style.background  = 'transparent';
+            }
+        }, { signal });
     }
 }
 
@@ -400,6 +447,8 @@ function rerenderTable() {
 
 function renderIssueRows(issues, collectionId) {
     const showOrder = currentSortOrder === 'order';
+    const isManga   = currentIsMangaCollection;
+
     return issues.map((issue, idx) => `
         <tr onclick="window.navigateToIssue(${issue.id})" style="cursor: pointer;">
             ${showOrder ? `
@@ -416,23 +465,46 @@ function renderIssueRows(issues, collectionId) {
                     onclick="event.stopPropagation()">
             </td>
             ` : ''}
+
+            ${isManga ? `
+            <td onclick="event.stopPropagation()" style="text-align:center; width:60px;">
+                <strong style="font-size:0.95rem;">#${issue.issue_number || '?'}</strong>
+            </td>
+            <td onclick="event.stopPropagation()">
+                <input class="chapter-name-input"
+                    data-issue-id="${issue.id}"
+                    data-field="name"
+                    value="${(issue.chapter_title || issue.name || '—').replace(/"/g, '&quot;')}"
+                    placeholder="Назва розділу"
+                    style="width:100%; background:transparent; border:1px solid transparent; border-radius:4px;
+                        padding:2px 4px; font-size:0.9rem; color:var(--accent); cursor:text;"
+                    onclick="event.stopPropagation()"
+                    onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''"
+                >
+            </td>
+            ` : `
             <td>
                 ${issue.cv_img
                     ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}">`
                     : '&#128214;'}
             </td>
-            <td>
-                ${issue.ds_vol_id
-                    ? `<span style="cursor:pointer; color:var(--accent);"
-                            onclick="event.stopPropagation(); editChapterTitle(${collectionId}, ${issue.id}, this)"
-                            title="Клік для редагування">${issue.chapter_title || '<i style="color:var(--text-secondary);">—</i>'}</span>`
-                : ''}
-            </td>
-            <td style="color: var(--text-secondary); font-size: 0.85rem;">${issue.volume_name || '—'}</td>
+            <td>${issue.name || '—'}</td>
             <td>${issue.issue_number || '—'}</td>
-            <td>${formatDate(issue.release_date)}</td>
+            `}
+
             <td onclick="event.stopPropagation()">
-                <button class="btn btn-secondary btn-small" onclick="window.navigateToIssue(${issue.id})">Переглянути</button>
+                ${isManga ? `
+                <input type="date"
+                    class="col-date-input"
+                    data-issue-id="${issue.id}"
+                    value="${issue.release_date || ''}"
+                    style="background:transparent; border:1px solid transparent; border-radius:4px;
+                           padding:2px 4px; font-size:0.85rem; color:var(--text-primary); cursor:pointer;"
+                    onclick="event.stopPropagation()">
+                ` : formatDate(issue.release_date)}
+            </td>
+            <td onclick="event.stopPropagation()">
+                <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); editIssueFromCollection(${issue.id})">Редагувати</button>
                 <button class="btn btn-danger btn-small" onclick="removeIssueFromCollection(${collectionId}, ${issue.id})">Видалити</button>
             </td>
         </tr>
@@ -538,6 +610,40 @@ window.removeIssueFromCollection = async (collectionId, issueId) => {
         alert('Помилка видалення випуску');
     }
 };
+
+// ===== РЕДАГУВАННЯ ВИПУСКУ =====
+
+window.editIssueFromCollection = async (issueId) => {
+    const issue = await fetch(`${API_BASE}/issues/${issueId}`).then(r => r.json());
+    const isManga = !issue.cv_id && !!issue.ds_vol_id;
+    const formHTML = `
+        <form id="edit-form">
+            ${!isManga ? `
+            <div class="form-row">
+                <div class="form-group"><label>CV ID</label><input type="number" name="cv_id" value="${issue.cv_id || ''}"></div>
+                <div class="form-group"><label>CV Slug</label><input type="text" name="cv_slug" value="${issue.cv_slug || ''}"></div>
+            </div>` : ''}
+            <div class="form-group"><label>Назва</label><input type="text" name="name" value="${issue.name || ''}"></div>
+            <div class="form-row">
+                <div class="form-group"><label>Номер</label><input type="text" name="issue_number" value="${issue.issue_number || ''}"></div>
+                <div class="form-group"><label>Дата релізу</label><input type="date" name="release_date" value="${issue.release_date || ''}"></div>
+            </div>
+            ${!isManga ? `
+            <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${issue.cv_img || ''}"></div>` : ''}
+        </form>
+    `;
+    openModal('Редагувати випуск', formHTML, async (data) => {
+        await fetch(`${API_BASE}/issues/${issueId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        // Оновити у currentIssues без повного ререндеру
+        const idx = currentIssues.findIndex(i => i.id === issueId);
+        if (idx !== -1) Object.assign(currentIssues[idx], data);
+        rerenderTable();
+    });
+}
 
 // ===== РЕДАГУВАННЯ ЗБІРНИКА =====
 
