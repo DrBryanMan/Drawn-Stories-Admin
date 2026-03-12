@@ -122,11 +122,15 @@ router.get('/:id/reading-orders', (req, res) => {
 router.get('/:id/collections-membership', (req, res) => {
   try {
     const data = getAll(`
-      SELECT c.id, c.name, c.cv_img, c.cover_date, c.release_date, ci.order_num
+      SELECT c.id, c.name, c.cv_img, c.cv_vol_id, c.issue_number, c.cover_date, c.release_date, ci.order_num,
+        pv.id   AS parent_vol_id,
+        pv.name AS parent_vol_name,
+        pv.lang AS parent_vol_lang
       FROM collections c
       JOIN collection_issues ci ON c.id = ci.collection_id
+      LEFT JOIN volumes pv ON c.cv_vol_id = pv.cv_id
       WHERE ci.issue_id = ?
-      ORDER BY c.name ASC
+      ORDER BY pv.name ASC, CAST(c.issue_number AS REAL) ASC, c.name ASC
     `, [req.params.id]);
     res.json({ data });
   } catch (e) { res.json({ data: [] }); }

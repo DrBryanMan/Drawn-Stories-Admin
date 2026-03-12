@@ -1,4 +1,4 @@
-import { cv_logo_svg, cv_img_path_original, cv_img_path_small, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
+import { cv_logo_svg, cv_img_path_original, cv_img_path_small, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage, langDisplay } from '../utils/helpers.js';
 import { openSearchPickerModal, closeSearchPickerModal } from '../components/searchPickerModal.js';
 import { fetchItem, updateItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
@@ -141,44 +141,89 @@ export async function renderIssueDetail(params) {
             <!-- Навігація між випусками тому -->
             <div id="issue-volume-nav" style="display: flex; margin-top: 1.5rem; justify-content: center;"></div>
 
-            ${collectionMemberships.length > 0 ? `
-                <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 1.5rem;">
-                    <h2 style="font-size: 1.2rem; margin-bottom: 1rem;">📚 У збірниках (${collectionMemberships.length})</h2>
-                    <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
-                        ${collectionMemberships.map(c => {
-                            const imgUrl = c.cv_img
-                                ? (c.cv_img.startsWith('https') ? c.cv_img
-                                    : c.cv_img.startsWith('/') ? cv_img_path_small + c.cv_img
-                                    : cv_img_path_small + '/' + c.cv_img)
+            ${collectionMemberships.length > 0 ? (() => {
+                // Групуємо за батьківським томом
+                const groups = [];
+                const groupMap = new Map();
+                for (const c of collectionMemberships) {
+                    const key = c.parent_vol_id ?? `__no_vol__${c.cv_vol_id}`;
+                    if (!groupMap.has(key)) {
+                        groupMap.set(key, {
+                            vol_id:   c.parent_vol_id,
+                            vol_name: c.parent_vol_name || c.cv_vol_id || '—',
+                            vol_lang: c.parent_vol_lang || null,
+                            cols: [],
+                        });
+                        groups.push(groupMap.get(key));
+                    }
+                    groupMap.get(key).cols.push(c);
+                }
+
+                const groupsHtml = groups.map(group => {
+                    const langLabel = group.vol_lang ? langDisplay(group.vol_lang) : '';
+                    const volClick = group.vol_id
+                        ? `onclick="navigate('volume-detail', { id: ${group.vol_id} })"`
+                        : '';
+
+                    const cards = group.cols.map(c => {
+                        const imgUrl = c.cv_img
+                            ? (c.cv_img.startsWith('https') ? c.cv_img
+                                : c.cv_img.startsWith('/') ? cv_img_path_small + c.cv_img
+                                : cv_img_path_small + '/' + c.cv_img)
+                            : null;
+                        const year = c.cover_date
+                            ? c.cover_date.substring(0, 4)
+                            : c.release_date
+                                ? c.release_date.substring(0, 4)
                                 : null;
-                            const year = c.cover_date
-                                ? c.cover_date.substring(0, 4)
-                                : c.release_date
-                                    ? c.release_date.substring(0, 4)
-                                    : null;
-                            return `
-                                <div onclick="navigateTo('collection-detail', ${c.id})"
-                                     style="display:flex; flex-direction:column; align-items:center; cursor:pointer; background:var(--bg-secondary);
-                                            border:1px solid var(--border-color); border-radius:8px; transition:box-shadow 0.15s; padding: .3em;"
-                                     onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.18)'"
-                                     onmouseout="this.style.boxShadow='none'">
-                                    ${imgUrl
-                                        ? `<img src="${imgUrl}" alt=""
-                                               style="width:100px; height:160px; object-fit:cover; border-radius:5px; flex-shrink:0;">`
-                                        : `<div style="width:72px; height:108px; background:var(--bg-tertiary); border-radius:5px;
-                                                       display:flex; align-items:center; justify-content:center; font-size:2rem;">📚</div>`
-                                    }
-                                    <div style="font-size:0.78rem; font-weight:500; text-align:center; line-height:1.3;
-                                                color:var(--text-primary); word-break:break-word;">
-                                        ${c.name || 'Без назви'}
-                                    </div>
-                                    ${year ? `<div style="font-size:0.72rem; color:var(--text-secondary);">${year}</div>` : ''}
+                        return `
+                            <div onclick="navigateTo('collection-detail', ${c.id})"
+                                style="display:flex; flex-direction:column; align-items:center; cursor:pointer;
+                                        background:var(--bg-secondary); border:1px solid var(--border-color);
+                                        border-radius:8px; padding:.2em;
+                                        transition:box-shadow 0.15s;"
+                                onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.18)'"
+                                onmouseout="this.style.boxShadow='none'">
+                                ${imgUrl
+                                    ? `<img src="${imgUrl}" style="width:100px;height:160px;object-fit:cover;border-radius:4px;margin-bottom:.25rem;">`
+                                    : `<div style="width:100px;height:160px;background:var(--bg-tertiary);border-radius:4px;
+                                                display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:.25rem;">📗</div>`}
+                                <div style="font-size:0.75rem; font-weight:600; text-align:center; line-height:1.2;">
+                                    ${c.name || '—'}
                                 </div>
-                            `;
-                        }).join('')}
-                    </div>
-                </div>
-            ` : ''}
+                                ${year ? `<div style="font-size:0.7rem; color:var(--text-secondary);">${year}</div>` : ''}
+                            </div>`;
+                    }).join('');
+
+                    return `
+                        <div style="margin-bottom:1.25rem;">
+                            <div style="display:flex; align-items:center; gap: .1em; margin-bottom:0.5rem;">
+                                <span style="font-size:0.95rem; font-weight:600;
+                                            cursor:${group.vol_id ? 'pointer' : 'default'};
+                                            color:var(--text-primary);" ${volClick}>
+                                    ${group.vol_name}
+                                </span>
+                                ${langLabel ? `
+                                    <span style="font-size: .75rem; background: var(--bg-tertiary); padding: .1em 0.4em; color: var(--text-secondary);">
+                                        ${langLabel}
+                                    </span>
+                                ` : ''}
+                            </div>
+                            <div style="display:flex; flex-wrap:wrap; gap: .6em;">
+                                ${cards}
+                            </div>
+                        </div>`;
+                }).join('');
+
+                return `
+                    <div style="background:var(--bg-primary); padding:1.5rem; border-radius:8px;
+                                border:1px solid var(--border-color); margin-top:1.5rem;">
+                        <h2 style="font-size:1.2rem; margin-bottom:1rem;">
+                            📚 У збірниках (${collectionMemberships.length})
+                        </h2>
+                        ${groupsHtml}
+                    </div>`;
+            })() : ''}
         `;
 
         // Монтуємо навігацію між випусками тому

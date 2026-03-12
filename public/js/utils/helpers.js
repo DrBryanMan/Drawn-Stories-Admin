@@ -113,3 +113,39 @@ export function showLoading() {
         </div>
     `;
 }
+
+// ===== МОВНА МАПА =========================================================
+
+export const LANG_MAP = {
+    ja:      { label: 'Японська',               flag: '🇯🇵' },
+    en:      { label: 'Американська',           flag: '🇺🇸' },
+    gb:      { label: 'Британська',             flag: '🇬🇧' },
+    fr:      { label: 'Французька',             flag: '🇫🇷' },
+    de:      { label: 'Німецька',               flag: '🇩🇪' },
+    it:      { label: 'Італійська',             flag: '🇮🇹' },
+    es:      { label: 'Іспанська',              flag: '🇪🇸' },
+    'es-AR': { label: 'Іспанська (Аргентина)',  flag: '🇦🇷' },
+    be:      { label: 'Бельгійська',            flag: '🇧🇪' },
+    el:      { label: 'Грецька',                flag: '🇬🇷' },
+    da:      { label: 'Данська',                flag: '🇩🇰' },
+    id:      { label: 'Індонезійська',          flag: '🇮🇩' },
+    nb:      { label: 'Норвезька Букмол',       flag: '🇳🇴' },
+    nl:      { label: 'Нідерландська',          flag: '🇳🇱' },
+    no:      { label: 'Норвезька',              flag: '🇳🇴' },
+    pl:      { label: 'Польська',               flag: '🇵🇱' },
+    pt:      { label: 'Португальська',          flag: '🇵🇹' },
+    sr:      { label: 'Сербська',               flag: '🇷🇸' },
+    tr:      { label: 'Турецька',               flag: '🇹🇷' },
+    fi:      { label: 'Фінська',                flag: '🇫🇮' },
+    sv:      { label: 'Шведська',               flag: '🇸🇪' },
+    uk:      { label: 'Українська',             flag: '🇺🇦' },
+    zh:      { label: 'Китайська',              flag: '🇨🇳' },
+    ko:      { label: 'Корейська',              flag: '🇰🇷' },
+    ru:      { label: 'Російська',              flag: '🇷🇺' },
+};
+
+export function langDisplay(code) {
+    if (!code) return '';
+    const entry = LANG_MAP[code];
+    return entry ? `${entry.flag} ${entry.label}` : code;
+}

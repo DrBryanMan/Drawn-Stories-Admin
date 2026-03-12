@@ -1,4 +1,4 @@
-import { API_BASE, locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
+import { API_BASE, locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage, LANG_MAP, langDisplay } from '../utils/helpers.js';
 import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList, buildThemeChipsViewHTML } from '../utils/themeChips.js';
 import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../utils/publisherSearch.js';
 import { fetchItem, fetchItems } from '../api/api.js';
@@ -17,43 +17,6 @@ let _allChapters = [];
 let _issuesSort = { key: 'issue_number', dir: 'desc' };
 let _chaptersSort = { key: 'issue_number', dir: 'asc' };
 let _collectionsSort = { key: 'issue_number', dir: 'desc' };
-
-// ===== МОВНА МАПА =========================================================
-
-const LANG_MAP = {
-    ja:    { label: 'Японська',               flag: '🇯🇵' },
-    en:    { label: 'Американська',           flag: '🇺🇸' },
-    gb:    { label: 'Британська',             flag: '🇬🇧' },
-    fr:    { label: 'Французька',             flag: '🇫🇷' },
-    de:    { label: 'Німецька',               flag: '🇩🇪' },
-    it:    { label: 'Італійська',             flag: '🇮🇹' },
-    es:    { label: 'Іспанська',              flag: '🇪🇸' },
-'es-AR':   { label: 'Іспанська (Аргентина)',  flag: '🇦🇷' },
-    be:    { label: 'Бельгійська',            flag: '🇧🇪' },
-    el:    { label: 'Грецька',                flag: '🇬🇷' },
-    da:    { label: 'Данська',                flag: '🇩🇰' },
-    id:    { label: 'Індонезійська',          flag: '🇮🇩' },
-    nb:    { label: 'Норвезька Букмол',       flag: '🇳🇴' },
-    nl:    { label: 'Нідерландська',          flag: '🇳🇱' },
-    no:    { label: 'Норвезька',              flag: '🇳🇴' },
-    pl:    { label: 'Польська',               flag: '🇵🇱' },
-    pt:    { label: 'Португальська',          flag: '🇵🇹' },
-    sr:    { label: 'Сербська',               flag: '🇷🇸' },
-    tr:    { label: 'Турецька',               flag: '🇹🇷' },
-    fi:    { label: 'Фінська',                flag: '🇫🇮' },
-    sv:    { label: 'Шведська',               flag: '🇸🇪' },
-    uk:    { label: 'Українська',             flag: '🇺🇦' },
-    zh:    { label: 'Китайська',              flag: '🇨🇳' },
-    ko:    { label: 'Корейська',              flag: '🇰🇷' },
-    ru:    { label: 'Російська',              flag: '🇷🇺' },
-};
-
-function langDisplay(code) {
-    if (!code) return '';
-    const entry = LANG_MAP[code];
-    return entry ? `${entry.flag} ${entry.label}` : code;
-    // return entry ? `${entry.flag} ${entry.label} (${code})` : code;
-}
 
 export async function renderVolumeDetail(params) {
     const volumeId = params.id;
@@ -356,35 +319,89 @@ export async function renderVolumeDetail(params) {
                 ${!isMangaSourceVolume ? `<div id="volume-relations-mount"></div>` : ''}
 
                 <!-- ── Збірники (collections-from-issues) ────────────────── -->
-                ${!isCollectionVolume && volCollectionsFromIssues.length > 0 ? `
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                        <h2 style="font-size: 1.2rem; margin-bottom: 1rem;">Входить у збірники (${volCollectionsFromIssues.length})</h2>
-                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                        ${volCollectionsFromIssues.map(col => {
-                                const range = col.issue_numbers ? formatIssueRanges(col.issue_numbers.split(',')) : null;
-                                const year = col.cover_date
-                                    ? col.cover_date.substring(0, 4)
-                                    : col.release_date
-                                        ? col.release_date.substring(0, 4)
-                                        : null;
-                                return `
-                                    <div onclick="navigateToCollection(${col.id})" style="display:flex; flex-direction: column; align-items:center; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding: .3em; cursor:pointer;">
-                                        ${col.cv_img ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" style="width: 100px; height: 160px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
-                                        <div style="font-size:0.9rem; font-weight:500;">${col.name || 'Без назви'}</div>
-                                        ${range ? `
-                                                <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.25rem;">
-                                                    📖 ${range}
-                                                </div>
-                                            ` : ''
-                                        }
-                                        ${year ? `<div style="font-size: 0.75rem; color: var(--text-secondary);">${year}</div>` : ''}
-                                    </div>
-                                `; 
-                            }).join('')}
-                        </div>
-                    </div>
-                ` : ''}
+                ${!isCollectionVolume && volCollectionsFromIssues.length > 0 ? (() => {
+                    // Групуємо за батьківським томом збірника
+                    const groups = [];
+                    const groupMap = new Map();
+                    for (const col of volCollectionsFromIssues) {
+                        const key = col.parent_vol_id ?? `__no_vol__${col.cv_vol_id}`;
+                        if (!groupMap.has(key)) {
+                            groupMap.set(key, {
+                                vol_id:   col.parent_vol_id,
+                                vol_name: col.parent_vol_name || col.cv_vol_id || '—',
+                                vol_lang: col.parent_vol_lang || null,
+                                cols: [],
+                            });
+                            groups.push(groupMap.get(key));
+                        }
+                        groupMap.get(key).cols.push(col);
+                    }
 
+                    const groupsHtml = groups.map(group => {
+                        const langLabel = group.vol_lang ? langDisplay(group.vol_lang) : '';
+                        const volLink = group.vol_id
+                            ? `onclick="navigate('volume-detail', { id: ${group.vol_id} })"`
+                            : '';
+                        const colCards = group.cols.map(col => {
+                            const range = col.volume_issue_numbers
+                                ? formatIssueRanges(typeof col.volume_issue_numbers === 'string'
+                                    ? col.volume_issue_numbers.split(',')
+                                    : col.volume_issue_numbers)
+                                : null;
+                            const year = col.cover_date
+                                ? col.cover_date.substring(0, 4)
+                                : col.release_date
+                                    ? col.release_date.substring(0, 4)
+                                    : null;
+                            return `
+                                <div onclick="navigateToCollection(${col.id})"
+                                    style="display:flex; flex-direction:column; align-items:center; cursor:pointer;
+                                        background:var(--bg-secondary); border:1px solid var(--border-color);
+                                        border-radius:8px; padding:.2em;
+                                        transition:box-shadow 0.15s;"
+                                    onmouseover="this.style.boxShadow='0 2px 8px rgba(0,0,0,0.18)'"
+                                    onmouseout="this.style.boxShadow='none'">
+                                    ${col.cv_img
+                                        ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}"
+                                            style="width: 100px; height: 160px; object-fit:cover;border-radius:4px;margin-bottom:.25rem;">`
+                                        : `<div style="width:100px;height:160px;background:var(--bg-tertiary);border-radius:4px;
+                                                    display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:.25rem;">📗</div>`}
+                                    <div style="font-size:0.75rem; font-weight:600; text-align:center; line-height:1.2;">
+                                        #${col.issue_number || '?'}
+                                    </div>
+                                    ${year ? `<div style="font-size:0.7rem; color:var(--text-secondary);">${year}</div>` : ''}
+                                    ${range ? `<div style="font-size:0.65rem; color:var(--text-secondary); text-align:center;">${range}</div>` : ''}
+                                </div>`;
+                        }).join('');
+
+                        return `
+                            <div style="margin-bottom:1.25rem;">
+                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                                    <span style="font-size:0.95rem; font-weight:600; cursor:${group.vol_id ? 'pointer' : 'default'};
+                                                color:var(--text-primary);" ${volLink}>
+                                        ${group.vol_name}
+                                    </span>
+                                    ${langLabel ? `
+                                        <span style="font-size: .75rem; background: var(--bg-tertiary); padding: .1em .4em; color: var(--text-secondary);">
+                                            ${langLabel}
+                                        </span>
+                                    ` : ''}
+                                </div>
+                                <div style="display:flex; flex-wrap:wrap; gap: .6em;">
+                                    ${colCards}
+                                </div>
+                            </div>`;
+                    }).join('');
+
+                    return `
+                        <div style="background:var(--bg-primary); padding: 1em; border-radius:8px;
+                                    border:1px solid var(--border-color); margin-bottom:1.5rem;">
+                            <h2 style="font-size:1.2rem; margin-bottom:1rem;">
+                                Входить у збірники (${volCollectionsFromIssues.length})
+                            </h2>
+                            ${groupsHtml}
+                        </div>`;
+                })() : ''}
                 <!-- ── Збірники тому (якщо Collection-том) ───────────────── -->
                 ${isCollectionVolume ? '<div id="collections-block"></div>' : ''}
 

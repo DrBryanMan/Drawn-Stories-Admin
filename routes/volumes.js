@@ -164,20 +164,28 @@ router.get('/:id/collections-from-issues', (req, res) => {
     const isMangaVol = !volume.cv_id && !!volume.hikka_slug;
     const collections = isMangaVol
       ? getAll(`
-          SELECT DISTINCT c.*
+          SELECT DISTINCT c.*,
+            pv.id   AS parent_vol_id,
+            pv.name AS parent_vol_name,
+            pv.lang AS parent_vol_lang
           FROM collections c
           JOIN collection_issues ci ON c.id = ci.collection_id
           JOIN issues i ON ci.issue_id = i.id
+          LEFT JOIN volumes pv ON c.cv_vol_id = pv.cv_id
           WHERE i.ds_vol_id = ?
-          ORDER BY CAST(c.issue_number AS REAL) ASC, c.name ASC
+          ORDER BY pv.name ASC, CAST(c.issue_number AS REAL) ASC, c.name ASC
         `, [volume.id])
       : getAll(`
-          SELECT DISTINCT c.*
+          SELECT DISTINCT c.*,
+            pv.id   AS parent_vol_id,
+            pv.name AS parent_vol_name,
+            pv.lang AS parent_vol_lang
           FROM collections c
           JOIN collection_issues ci ON c.id = ci.collection_id
           JOIN issues i ON ci.issue_id = i.id
+          LEFT JOIN volumes pv ON c.cv_vol_id = pv.cv_id
           WHERE i.cv_vol_id = ?
-          ORDER BY CAST(c.issue_number AS REAL) ASC, c.name ASC
+          ORDER BY pv.name ASC, CAST(c.issue_number AS REAL) ASC, c.name ASC
         `, [volume.cv_id]);
 
     // Для кожного збірника визначаємо номери розділів/випусків з цього тому
