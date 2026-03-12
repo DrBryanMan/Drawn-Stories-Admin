@@ -9,71 +9,11 @@
 </head>
 <body>
     <div class="container">
-        <nav class="sidebar">
+        <header class="top-header">
             <div class="sidebar-logo">
                 <h1>📚 Comics</h1>
-                <a href="/wanted">Wanted -></a>
+                <a href="/wanted">Wanted →</a>
             </div>
-            
-            <div class="stats" id="stats">
-                <div class="stat-item">
-                    <span class="stat-label">Серії</span>
-                    <span class="stat-value" id="stat-series">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Томи</span>
-                    <span class="stat-value" id="stat-volumes">0</span>
-                </div>
-                <div class="stat-item stat-sub">
-                    <span class="stat-label">· Комікси</span>
-                    <span class="stat-value" id="stat-volumes-comics">0</span>
-                </div>
-                <div class="stat-item stat-sub">
-                    <span class="stat-label">· Манґа</span>
-                    <span class="stat-value" id="stat-volumes-manga">0</span>
-                </div>
-                <div class="stat-item stat-sub">
-                    <span class="stat-label">· Збірники</span>
-                    <span class="stat-value" id="stat-volumes-collected">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Випуски</span>
-                    <span class="stat-value" id="stat-issues">0</span>
-                </div>
-                <div class="stat-item stat-sub">
-                    <span class="stat-label">· Комікси</span>
-                    <span class="stat-value" id="stat-issues-comics">0</span>
-                </div>
-                <div class="stat-item stat-sub">
-                    <span class="stat-label">· Манґа</span>
-                    <span class="stat-value" id="stat-issues-manga">0</span>
-                </div>
-                <div class="stat-item stat-sub">
-                    <span class="stat-label">· Збірники</span>
-                    <span class="stat-value" id="stat-issues-collected">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Збірники</span>
-                    <span class="stat-value" id="stat-collections">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Персонажі</span>
-                    <span class="stat-value" id="stat-characters">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Персонал</span>
-                    <span class="stat-value" id="stat-personnel">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Хронології</span>
-                    <span class="stat-value" id="stat-reading-orders">0</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Події</span>
-                    <span class="stat-value" id="stat-events">0</span>
-                </div>
-            </div>
-            
             <ul class="nav-menu">
                 <li><a href="#" data-page="series" class="nav-link">Серії</a></li>
                 <li><a href="#" data-page="volumes" class="nav-link active">Томи</a></li>
@@ -85,24 +25,90 @@
                 <li><a href="#" data-page="reading-orders" class="nav-link">Хронології</a></li>
                 <li><a href="#" data-page="events" class="nav-link">Події</a></li>
             </ul>
-        </nav>
-        
-        <main class="main-content">
-            <div class="page-header">
-                <h2 id="page-title">Томи</h2>
-            </div>
+        </header>
+        <div class="app-body">
+            <nav class="sidebar">
+                <div class="stats" id="stats">
+                    <div class="stat-item">
+                        <span class="stat-label">Серії</span>
+                        <span class="stat-value" id="stat-series">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Томи</span>
+                        <span class="stat-value" id="stat-volumes">0</span>
+                    </div>
+                    <div class="stat-item stat-sub">
+                        <span class="stat-label">· Комікси</span>
+                        <span class="stat-value" id="stat-volumes-comics">0</span>
+                    </div>
+                    <div class="stat-item stat-sub">
+                        <span class="stat-label">· Манґа</span>
+                        <span class="stat-value" id="stat-volumes-manga">0</span>
+                    </div>
+                    <div class="stat-item stat-sub">
+                        <span class="stat-label">· Збірники</span>
+                        <span class="stat-value" id="stat-volumes-collected">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Випуски</span>
+                        <span class="stat-value" id="stat-issues">0</span>
+                    </div>
+                    <div class="stat-item stat-sub">
+                        <span class="stat-label">· Комікси</span>
+                        <span class="stat-value" id="stat-issues-comics">0</span>
+                    </div>
+                    <div class="stat-item stat-sub">
+                        <span class="stat-label">· Манґа</span>
+                        <span class="stat-value" id="stat-issues-manga">0</span>
+                    </div>
+                    <div class="stat-item stat-sub">
+                        <span class="stat-label">· Розділи</span>
+                        <span class="stat-value" id="stat-chapters">0</span>
+                    </div>
+                    <div class="stat-item stat-sub">
+                        <span class="stat-label">· Збірники</span>
+                        <span class="stat-value" id="stat-issues-collected">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Збірники</span>
+                        <span class="stat-value" id="stat-collections">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Персонажі</span>
+                        <span class="stat-value" id="stat-characters">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Персонал</span>
+                        <span class="stat-value" id="stat-personnel">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Хронології</span>
+                        <span class="stat-value" id="stat-reading-orders">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Події</span>
+                        <span class="stat-value" id="stat-events">0</span>
+                    </div>
+                </div>
+            </nav>
+            
+            <main class="main-content">
+                <div class="page-header">
+                    <h2 id="page-title">Томи</h2>
+                </div>
 
-            <div id="filters-panel" class="filters-panel" style="display:none;"></div>
-            
-            <div id="content" class="content">
-            </div>
-            
-            <div class="pagination" id="pagination" style="display:none">
-                <button id="prev-btn" class="btn btn-secondary">← Назад</button>
-                <span id="page-info">Сторінка 1</span>
-                <button id="next-btn" class="btn btn-secondary">Далі →</button>
-            </div>
-        </main>
+                <div id="filters-panel" class="filters-panel" style="display:none;"></div>
+                
+                <div id="content" class="content">
+                </div>
+                
+                <div class="pagination" id="pagination" style="display:none">
+                    <button id="prev-btn" class="btn btn-secondary">← Назад</button>
+                    <span id="page-info">Сторінка 1</span>
+                    <button id="next-btn" class="btn btn-secondary">Далі →</button>
+                </div>
+            </main>
+        </div>
     </div>
     
     <!-- Модальне вікно -->

@@ -32,7 +32,74 @@ body {
 
 .container {
     display: flex;
+    flex-direction: column;
     height: 100vh;
+    overflow: hidden;
+}
+
+/* ── Top Header ── */
+.top-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0 1rem;
+    height: 48px;
+    flex-shrink: 0;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.top-header .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0;
+    border-bottom: none;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.top-header .sidebar-logo h1 {
+    font-size: 0.95rem;
+}
+
+.top-header .nav-menu {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.15rem;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow-x: auto;
+}
+
+.top-header .nav-menu li a {
+    display: block;
+    padding: .2rem .4rem;
+    border-radius: 6px;
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.15s, color 0.15s;
+}
+
+.top-header .nav-menu li a:hover {
+    background: var(--bg-primary);
+    color: var(--accent);
+}
+
+.top-header .nav-menu li a.active {
+    background: var(--accent-color);
+    color: var(--accent);
+}
+
+/* ── App Body (sidebar + main) ── */
+.app-body {
+    display: flex;
+    flex: 1;
     overflow: hidden;
 }
 
@@ -43,15 +110,14 @@ body {
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    /* padding: 1.5rem 0; */
-    overflow-y: scroll;
+    overflow-y: auto;
 }
 
 .sidebar-logo {
     padding: 1rem;
     border-bottom: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
+    /* display: flex;
+    flex-direction: column; */
     gap: .3rem;
 }
 .sidebar-logo h1 { font-size: 1.2rem; font-weight: 700; }
@@ -97,6 +163,7 @@ text-decoration: none;
     transition: all 0.2s;
     font-weight: 500;
     font-size: .85rem;
+	position: relative;
 }
 
 .nav-link:hover {
@@ -107,7 +174,29 @@ text-decoration: none;
 .nav-link.active {
     background: var(--bg-hover);
     color: var(--accent);
-    border-left: 3px solid var(--accent);
+}
+
+.nav-link.active:after {
+	content: '';
+	background: var(--accent);
+	width: 50%;
+	height: 3px;
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	transform: translate(-50%);
+	border-radius: 4px;
+}
+.nav-link:not(.active):hover:after {
+	content: '';
+	background: var(--accent);
+	width: 20%;
+	height: 3px;
+	position: absolute;
+	bottom: 0;
+	left: 50%;
+	transform: translate(-50%);
+	border-radius: 4px;
 }
 
 /* Main Content */

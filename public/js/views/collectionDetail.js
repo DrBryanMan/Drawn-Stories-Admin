@@ -75,7 +75,7 @@ function _cnavRender() {
             <div class="inav__grid" style="${gridStyle}">
                 ${slice.map(col => `
                     <button
-                        class="inav__btn${col.id === _cnav_current ? ' cnav__btn--current' : ''}"
+                        class="inav__btn${col.id === _cnav_current ? ' inav__btn--current' : ''}"
                         data-col-id="${col.id}"
                         title="${col.name || ''} #${col.issue_number}"
                     >#${col.issue_number || '?'}</button>
@@ -84,19 +84,19 @@ function _cnavRender() {
         </div>
     `;
 
-    container.querySelector('#cnav-prev')?.addEventListener('click', () => {
+    container.querySelector('#inav-prev')?.addEventListener('click', () => {
         if (_cnav_page > 0) { _cnav_page--; _cnavRender(); }
     });
-    container.querySelector('#cnav-next')?.addEventListener('click', () => {
+    container.querySelector('#inav-next')?.addEventListener('click', () => {
         if (_cnav_page < totalPages - 1) { _cnav_page++; _cnavRender(); }
     });
-    container.querySelector('#cnav-goto')?.addEventListener('change', (e) => {
+    container.querySelector('#inav-goto')?.addEventListener('change', (e) => {
         const p = parseInt(e.target.value) - 1;
         if (!isNaN(p) && p >= 0 && p < totalPages) { _cnav_page = p; _cnavRender(); }
         else e.target.value = '';
     });
 
-    container.querySelectorAll('.cnav__btn:not(.cnav__btn--current)').forEach(btn => {
+    container.querySelectorAll('.inav__btn:not(.inav__btn--current)').forEach(btn => {
         btn.addEventListener('click', () => {
             navigate('collection-detail', { id: parseInt(btn.dataset.colId) });
         });
@@ -256,6 +256,7 @@ function renderPage(collection, seriesList = []) {
                         <div><strong>Дата додавання:</strong> ${formatDate(collection.created_at)}</div>
                         ${collection.description ? `${collection.description}` : ''}
                     </div>
+                    ${volumesHtml}
                     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                         <button class="btn btn-secondary" onclick="openEditCollectionModal(${collection.id})">Редагувати збірник</button>
                         <button class="btn btn-primary" onclick="openCollectionAddToSeriesModal(${collection.id})">+ Додати до серії</button>
@@ -271,7 +272,6 @@ function renderPage(collection, seriesList = []) {
                 </div>
             </div>
 
-            ${volumesHtml}
             <div id="collection-volume-nav" style="display: flex; margin-top: 1.5rem; justify-content: center;"></div>
 
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">

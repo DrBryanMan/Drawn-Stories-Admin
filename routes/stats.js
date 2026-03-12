@@ -60,6 +60,15 @@ function countIssuesComics() {
   } catch(e) { return 0; }
 }
 
+function countChapters() {
+  try {
+    return getOne(
+      `SELECT COUNT(*) as count FROM issues WHERE ds_vol_id IS NOT NULL`,
+      []
+    )?.count || 0;
+  } catch(e) { return 0; }
+}
+
 router.get('/', (req, res) => {
   res.json({
     volumes:          safeCount('volumes'),
@@ -71,6 +80,7 @@ router.get('/', (req, res) => {
     issuesComics:     countIssuesComics(),
     issuesManga:      countIssuesByVolumeTheme(MANGA_THEME_ID),
     issuesCollected:  countIssuesByVolumeTheme(COLLECTED_THEME_ID),
+    chapters:         countChapters(),
 
     characters:    safeCount('characters'),
     collections:   safeCount('collections'),

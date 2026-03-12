@@ -63,11 +63,11 @@ function ensureModal() {
           <input type="number" id="aim-ds-id" placeholder="DS ID..." style="width:100%;">
         </div>
         <div class="form-group" style="margin:0;">
-          <label class="aim-label">CV ID тому</label>
+          <label class="aim-label">CV ID</label>
           <input type="number" id="aim-cvvolid" placeholder="CV Vol ID..." style="width:100%;">
         </div>
         <div class="form-group" style="margin:0;">
-          <label class="aim-label">Hikka Slug тому</label>
+          <label class="aim-label">x-slug</label>
           <input type="text" id="aim-hikka-slug" placeholder="напр. berserk" style="width:100%;">
         </div>
         <div style="display:flex; flex-direction:column; gap:0.25rem;">
@@ -240,7 +240,7 @@ const name      = document.getElementById('aim-name').value.trim();
     }
   }
 
-  const searchParams = new URLSearchParams({ limit: 60 });
+  const searchParams = new URLSearchParams({ limit: 50 });
   if (name)            searchParams.set('name', name);
   if (volume)          searchParams.set('volume_name', volume);
   if (number)          searchParams.set('issue_number', number);

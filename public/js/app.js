@@ -74,6 +74,7 @@ async function updateStats() {
             'stat-issues-comics':     stats.issuesComics ?? 0,
             'stat-issues-manga':      stats.issuesManga ?? 0,
             'stat-issues-collected':  stats.issuesCollected ?? 0,
+            'stat-chapters':          stats.chapters ?? 0,
             'stat-collections':       stats.collections,
             'stat-characters':        stats.characters,
             'stat-personnel':         stats.personnel ?? 0,
