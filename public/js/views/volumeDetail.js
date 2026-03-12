@@ -246,7 +246,7 @@ export async function renderVolumeDetail(params) {
 
                 <!-- ── Переклади: список дочірніх (цей том — оригінал) ───── -->
                 
-                ${!isMagazineVolume && !translationParent ? `
+                ${!isMagazineVolume && (translations.length > 0 || !translationParent) ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
                             <h2 style="font-size:1.25rem; margin:0;">🌐 Переклади (${translations.length})</h2>
