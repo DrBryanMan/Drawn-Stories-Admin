@@ -1,6 +1,9 @@
 @import url('./styles.css');
 @import url('./filters-panel.css');
 
+/* Компоненти */
+@import url('./components/issues_navbar.css');
+
 .stat-item.stat-sub {
     padding-top: 1px;
     padding-bottom: 1px;

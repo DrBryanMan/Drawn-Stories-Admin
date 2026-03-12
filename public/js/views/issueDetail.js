@@ -433,114 +433,6 @@ function _inavInjectCSS() {
     if (document.getElementById('issue-nav-style')) return;
     const s = document.createElement('style');
     s.id = 'issue-nav-style';
-    s.textContent = `
-        .inav {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            overflow: hidden;
-        }
-        .inav__header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.6rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--bg-primary);
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-        .inav__label {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-            white-space: nowrap;
-        }
-        .inav__vol {
-            font-size: 0.85rem;
-            color: var(--text-primary);
-            font-weight: 500;
-        }
-        .inav__pager {
-            display: flex;
-            align-items: center;
-            gap: 0.35rem;
-            margin-left: auto;
-        }
-        .inav__pager-btn {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 4px;
-            padding: 0.2rem 0.55rem;
-            font-size: 0.8rem;
-            cursor: pointer;
-            line-height: 1.5;
-            transition: background 0.12s, border-color 0.12s;
-        }
-        .inav__pager-btn:hover:not(:disabled) {
-            background: var(--border-color);
-        }
-        .inav__pager-btn:disabled { opacity: 0.35; cursor: default; }
-        .inav__pager-info {
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            white-space: nowrap;
-        }
-
-        .inav__pager-input {
-            padding: .2rem .5rem;
-            font-size: .75rem;
-            text-align: center;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-        }
-        .inav__pager-input::-webkit-inner-spin-button,
-        .inav__pager-input::-webkit-outer-spin-button { -webkit-appearance: none; }
-
-        .inav__grid {
-            display: grid;
-            grid-template-columns: repeat(20, 1fr);
-            gap: 0.35rem;
-            padding: 0.75rem 1rem;
-        }
-        .inav__btn {
-            min-width: 3rem;
-            height: 2.2rem;
-            padding: 0 0.45rem;
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            color: var(--text-secondary);
-            font-size: 0.76rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.1s, border-color 0.1s, color 0.1s, transform 0.1s;
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .inav__btn:hover {
-            background: var(--bg-secondary);
-            border-color: var(--accent);
-            color: var(--text-primary);
-            transform: translateY(-1px);
-        }
-        .inav__btn.inav__btn--current {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-            font-weight: 700;
-            cursor: default;
-            transform: none;
-            box-shadow: 0 2px 8px rgba(26,136,193,0.35);
-        }
-    `;
     document.head.appendChild(s);
 }
 
@@ -553,6 +445,12 @@ function _inavRender() {
     const start      = _inav_page * ISSUE_NAV_PAGE_SIZE;
     const slice      = _inav_issues.slice(start, start + ISSUE_NAV_PAGE_SIZE);
     const needsPager = total > ISSUE_NAV_PAGE_SIZE;
+    
+    let gridStyle = '';
+    if (slice.length > 0) {
+        const colCount = slice.length <= 20 ? slice.length : 20;
+        gridStyle = `grid-template-columns: repeat(${colCount}, 1fr) !important;`;
+    }
 
     const pagerHTML = needsPager ? `
         <div class="inav__pager">
@@ -570,7 +468,7 @@ function _inavRender() {
                 <span class="inav__label">(${total})</span>
                 ${pagerHTML}
             </div>
-            <div class="inav__grid">
+            <div class="inav__grid" style="${gridStyle}">
                 ${slice.map(iss => `
                     <button
                         class="inav__btn${iss.id === _inav_current ? ' inav__btn--current' : ''}"

@@ -1,0 +1,62 @@
+.inav {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+.inav__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-primary);
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.inav__label { font-size: 0.78rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+.inav__vol   { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
+.inav__grid  {
+    display: grid;
+    /* grid-template-columns: repeat(20, 1fr); */
+    gap: 0.35rem;
+    padding: 0.75rem 1rem;
+}
+.inav__btn {
+    min-width: 3rem;
+    height: 2.2rem;
+    padding: 0 0.45rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    color: var(--text-secondary);
+    font-size: 0.76rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s, color 0.1s, transform 0.1s;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.inav__btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+}
+.inav__btn.inav__btn--current {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    cursor: default;
+    transform: none;
+    box-shadow: 0 2px 8px rgba(26,136,193,0.35);
+}
+.inav__pager { display: flex; align-items: center; gap: 0.3rem; }
+.inav__pager-btn { background: none; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; color: var(--text-secondary); padding: 0.1rem 0.4rem; font-size: 0.9rem; }
+.inav__pager-btn:disabled { opacity: 0.35; cursor: default; }
+.inav__pager-input { width: 3rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 0.8rem; text-align: center; padding: 0.1rem 0.2rem; }
+.inav__pager-info  { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; }

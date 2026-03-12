@@ -35,70 +35,6 @@ function _cnavInjectCSS() {
     if (document.getElementById('col-nav-style')) return;
     const s = document.createElement('style');
     s.id = 'col-nav-style';
-    s.textContent = `
-        .cnav {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 1.5rem;
-        }
-        .cnav__header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0.6rem 1rem;
-            border-bottom: 1px solid var(--border-color);
-            background: var(--bg-primary);
-            gap: 0.5rem;
-            flex-wrap: wrap;
-        }
-        .cnav__label { font-size: 0.78rem; color: var(--text-secondary); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
-        .cnav__vol   { font-size: 0.85rem; font-weight: 600; color: var(--text-primary); }
-        .cnav__grid  {
-            display: grid;
-            grid-template-columns: repeat(20, 1fr);
-            gap: 0.35rem;
-            padding: 0.75rem 1rem;
-        }
-        .cnav__btn {
-            min-width: 3rem;
-            height: 2.2rem;
-            padding: 0 0.45rem;
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            color: var(--text-secondary);
-            font-size: 0.76rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background 0.1s, border-color 0.1s, color 0.1s, transform 0.1s;
-            white-space: nowrap;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .cnav__btn:hover {
-            background: var(--bg-secondary);
-            border-color: var(--accent);
-            color: var(--text-primary);
-            transform: translateY(-1px);
-        }
-        .cnav__btn.cnav__btn--current {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-            font-weight: 700;
-            cursor: default;
-            transform: none;
-            box-shadow: 0 2px 8px rgba(26,136,193,0.35);
-        }
-        .cnav__pager { display: flex; align-items: center; gap: 0.3rem; }
-        .cnav__pager-btn { background: none; border: 1px solid var(--border-color); border-radius: 4px; cursor: pointer; color: var(--text-secondary); padding: 0.1rem 0.4rem; font-size: 0.9rem; }
-        .cnav__pager-btn:disabled { opacity: 0.35; cursor: default; }
-        .cnav__pager-input { width: 3rem; border: 1px solid var(--border-color); border-radius: 4px; background: var(--bg-primary); color: var(--text-primary); font-size: 0.8rem; text-align: center; padding: 0.1rem 0.2rem; }
-        .cnav__pager-info  { font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap; }
-    `;
     document.head.appendChild(s);
 }
 
@@ -111,29 +47,35 @@ function _cnavRender() {
     const start      = _cnav_page * COL_NAV_PAGE_SIZE;
     const slice      = _cnav_items.slice(start, start + COL_NAV_PAGE_SIZE);
     const needsPager = total > COL_NAV_PAGE_SIZE;
+    
+    let gridStyle = '';
+    if (slice.length > 0) {
+        const colCount = slice.length <= 20 ? slice.length : 20;
+        gridStyle = `grid-template-columns: repeat(${colCount}, 1fr) !important;`;
+    }
 
     const pagerHTML = needsPager ? `
-        <div class="cnav__pager">
-            <button class="cnav__pager-btn" id="cnav-prev" ${_cnav_page === 0 ? 'disabled' : ''}>‹</button>
-            <input class="cnav__pager-input" id="cnav-goto" type="number" min="1" max="${totalPages}"
+        <div class="inav__pager">
+            <button class="inav__pager-btn" id="inav-prev" ${_cnav_page === 0 ? 'disabled' : ''}>‹</button>
+            <input class="inav__pager-input" id="inav-goto" type="number" min="1" max="${totalPages}"
                    placeholder="${_cnav_page + 1}" title="Перейти на сторінку">
-            <span class="cnav__pager-info"> / ${totalPages}</span>
-            <button class="cnav__pager-btn" id="cnav-next" ${_cnav_page >= totalPages - 1 ? 'disabled' : ''}>›</button>
+            <span class="inav__pager-info"> / ${totalPages}</span>
+            <button class="inav__pager-btn" id="inav-next" ${_cnav_page >= totalPages - 1 ? 'disabled' : ''}>›</button>
         </div>
     ` : '';
 
     container.innerHTML = `
-        <div class="cnav">
-            <div class="cnav__header">
-                <span class="cnav__label">Збірники тому</span>
-                <span class="cnav__vol">${_cnav_items._volName || ''}</span>
-                <span class="cnav__label">(${total})</span>
+        <div class="inav" style="width: fit-content;">
+            <div class="inav__header">
+                <span class="inav__label">Збірники тому</span>
+                <span class="inav__vol">${_cnav_items._volName || ''}</span>
+                <span class="inav__label">(${total})</span>
                 ${pagerHTML}
             </div>
-            <div class="cnav__grid">
+            <div class="inav__grid" style="${gridStyle}">
                 ${slice.map(col => `
                     <button
-                        class="cnav__btn${col.id === _cnav_current ? ' cnav__btn--current' : ''}"
+                        class="inav__btn${col.id === _cnav_current ? ' cnav__btn--current' : ''}"
                         data-col-id="${col.id}"
                         title="${col.name || ''} #${col.issue_number}"
                     >#${col.issue_number || '?'}</button>
@@ -237,9 +179,6 @@ function renderPage(collection, seriesList = []) {
     handlersAbortController = new AbortController();
     const { signal } = handlersAbortController;
 
-    // Навігація між збірниками тому
-    mountCollectionVolumeNav(collection)
-
     document.getElementById('page-title').innerHTML = `
         <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
             &larr; Збірники
@@ -264,7 +203,6 @@ function renderPage(collection, seriesList = []) {
     const content = document.getElementById('content');
     content.innerHTML = `
         <div style="max-width: 1200px;">
-            <div id="collection-volume-nav"></div>
             <div style="display: flex; gap: 2rem; margin-bottom: 2rem;">
                 <div style="flex-shrink: 0;">
                     ${collection.cv_img
@@ -334,6 +272,7 @@ function renderPage(collection, seriesList = []) {
             </div>
 
             ${volumesHtml}
+            <div id="collection-volume-nav" style="display: flex; margin-top: 1.5rem; justify-content: center;"></div>
 
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
                 <h2 style="font-size: 1.5rem; margin: 0;">Випуски (${collection.issues.length})</h2>
@@ -400,6 +339,9 @@ function renderPage(collection, seriesList = []) {
             </div>
         </div>
     `;
+
+    // Навігація між збірниками тому
+    mountCollectionVolumeNav(collection);
 
     // ── Сортування ────────────────────────────────────────────────────────────
     const sortSelect = document.getElementById('collection-sort-select');
