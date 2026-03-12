@@ -118,7 +118,7 @@ router.get('/', (req, res) => {
                       v.name as volume_name, 'issue' as _type
       FROM issues i
       JOIN volumes v ON i.cv_vol_id = v.cv_id
-      JOIN volume_themes vt ON v.cv_id = vt.cv_vol_id
+      JOIN volume_themes vt ON v.id = vt.volume_id
       ${issueWhere}
       ORDER BY i.created_at DESC
     `, issueParams);
@@ -139,7 +139,11 @@ router.get('/', (req, res) => {
       colParams.push(...pubIds);
     }
     themeIds.forEach(tid => {
-      colConds.push('EXISTS (SELECT 1 FROM volume_themes _vt WHERE _vt.cv_vol_id = c.cv_vol_id AND _vt.theme_id = ?)');
+      colConds.push(`EXISTS (
+          SELECT 1 FROM volume_themes _vt
+          JOIN volumes _v ON _v.id = _vt.volume_id
+          WHERE _v.cv_id = c.cv_vol_id AND _vt.theme_id = ?
+      )`);
       colParams.push(tid);
     });
 
@@ -189,10 +193,17 @@ router.get('/:id', (req, res) => {
 
   const collection = getOne(`
     SELECT c.*,
-           v.name as volume_name, v.id as volume_id,
+           COALESCE(v.name, mv.name) as volume_name,
+           COALESCE(v.id, mv.id)     as volume_id,
            p.name as publisher_name
     FROM collections c
-    LEFT JOIN volumes v ON c.cv_vol_id = v.cv_id
+    LEFT JOIN volumes v  ON c.cv_vol_id IS NOT NULL AND v.cv_id = c.cv_vol_id
+    LEFT JOIN volumes mv ON c.cv_vol_id IS NULL AND mv.id = (
+        SELECT ds_vol_id FROM issues i
+        JOIN collection_issues ci ON ci.issue_id = i.id
+        WHERE ci.collection_id = c.id AND i.ds_vol_id IS NOT NULL
+        LIMIT 1
+    )
     LEFT JOIN publishers p ON c.publisher = p.id
     WHERE c.id = ?
   `, [req.params.id]);

@@ -242,7 +242,7 @@ export async function renderVolumeDetail(params) {
 
                 <!-- ── Переклади: список дочірніх (цей том — оригінал) ───── -->
                 
-                ${!isMagazineVolume && !isMangaSourceVolume ? `
+                ${!isMagazineVolume ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
                             <h2 style="font-size:1.25rem; margin:0;">🌐 Переклади (${translations.length})</h2>
@@ -395,6 +395,9 @@ export async function renderVolumeDetail(params) {
                         <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
                             <div class="form-group" style="flex:1; margin:0;">
                                 <input type="text" id="volume-picker-search" placeholder="Пошук за назвою..." style="width:100%;">
+                            </div>
+                            <div class="form-group" style="width:110px; margin:0;">
+                                <input type="number" id="volume-picker-dbid" placeholder="DB ID" style="width:100%;">
                             </div>
                             <div class="form-group" style="width:130px; margin:0;">
                                 <input type="number" id="volume-picker-cvid" placeholder="CV ID" style="width:100%;">
@@ -862,18 +865,27 @@ async function getVolumeFormHTML(volume = null) {
                 </div>
             </div>
             <div class="form-row form-row-2">
+                <div class="form-group"><label>LocG ID</label><input type="number" name="locg_id" value="${volume?.locg_id || ''}"></div>
+                <div class="form-group"><label>LocG Slug</label><input type="text" name="locg_slug" value="${volume?.locg_slug || ''}"></div>
+            </div>
+            <hr style="margin: 0 0 1em; border-style: none; border-bottom: 1px solid var(--border-color);">
+            <div class="form-row form-row-2">
                 <div class="form-group">
                     <div class="form-group"><label>Назва</label><input type="text" name="name" value="${volume?.name || ''}"></div>
+                </div>
+                <div class="form-group">
+                    <div class="form-group"><label>Назва UA</label><input type="text" name="name_uk" value="${volume?.name_uk || ''}"></div>
+                </div>
+            </div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label>URL зображення</label>
+                    <input type="text" name="cv_img" value="${volume?.cv_img || ''}">
                 </div>
                 <div class="form-group">
                     <div class="form-group"><label>Рік початку</label><input type="number" name="start_year" value="${volume?.start_year || ''}"></div>
                 </div>
             </div>
-            <div class="form-group">
-                <label>Опис</label>
-                <textarea name="description" rows="4" style="width:100%; resize:vertical;">${volume?.description || ''}</textarea>
-            </div>
-            <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${volume?.cv_img || ''}"></div>
             <div class="form-row">
                 <div class="form-group">
                     <label>Мова</label>
@@ -888,12 +900,11 @@ async function getVolumeFormHTML(volume = null) {
                     </div>
                 </div>
             </div>
-            <div class="form-row form-row-2">
-                <div class="form-group"><label>LocG ID</label><input type="number" name="locg_id" value="${volume?.locg_id || ''}"></div>
-                <div class="form-group"><label>LocG Slug</label><input type="text" name="locg_slug" value="${volume?.locg_slug || ''}"></div>
+            <div class="form-group">
+                <label>Опис</label>
+                <textarea name="description" rows="4" style="width:100%; resize:vertical;">${volume?.description || ''}</textarea>
             </div>
-
-        ${publisherSearchHTML({
+            ${publisherSearchHTML({
                 publisherId: volume?.publisher || '',
                 publisherName,
                 inputId: 'vol-pub-input',
@@ -901,7 +912,6 @@ async function getVolumeFormHTML(volume = null) {
                 resultsId: 'vol-pub-results',
                 chipId: 'vol-pub-chip'
             })}
-
             <div class="form-group">
                 <label>Теми</label>
                 <div id="vol-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
@@ -1367,20 +1377,31 @@ window.openVolumePickerModal = (mode, refId) => {
     document.getElementById('volume-picker-results').innerHTML = '';
 
     const searchInput = document.getElementById('volume-picker-search');
+    const dbidInput   = document.getElementById('volume-picker-dbid');
     const cvidInput   = document.getElementById('volume-picker-cvid');
     searchInput.value = '';
+    dbidInput.value   = '';
     cvidInput.value   = '';
 
     document.getElementById('volume-picker-modal').style.display = 'flex';
 
     searchInput.oninput = (e) => {
+        dbidInput.value = '';
         cvidInput.value = '';
         clearTimeout(_volumePickerTimeout);
         _volumePickerTimeout = setTimeout(() => _searchVolumePicker({ name: e.target.value }), 300);
     };
 
+    dbidInput.oninput = (e) => {
+        searchInput.value = '';
+        cvidInput.value = '';
+        clearTimeout(_volumePickerTimeout);
+        _volumePickerTimeout = setTimeout(() => _searchVolumePicker({ db_id: e.target.value }), 300);
+    };
+
     cvidInput.oninput = (e) => {
         searchInput.value = '';
+        dbidInput.value = '';
         clearTimeout(_volumePickerTimeout);
         _volumePickerTimeout = setTimeout(() => _searchVolumePicker({ cv_id: e.target.value }), 300);
     };
@@ -1394,16 +1415,18 @@ window.closeVolumePickerModal = () => {
     _volumePickerRefId = null;
 };
 
-async function _searchVolumePicker({ name, cv_id } = {}) {
+async function _searchVolumePicker({ name, db_id, cv_id } = {}) {
     const el = document.getElementById('volume-picker-results');
 
-    if (!name?.trim() && !cv_id?.toString().trim()) {
+    if (!name?.trim() && !cv_id?.toString().trim() && !db_id?.toString().trim()) {
         el.innerHTML = '';
         return;
     }
 
     let url;
-    if (cv_id?.toString().trim()) {
+    if (db_id?.toString().trim()) {
+        url = `${API_BASE}/volumes?db_id=${encodeURIComponent(db_id.toString().trim())}&limit=5`;
+    } else if (cv_id?.toString().trim()) {
         url = `${API_BASE}/volumes?cv_id=${encodeURIComponent(cv_id.toString().trim())}&limit=5`;
     } else {
         url = `${API_BASE}/volumes?search=${encodeURIComponent(name.trim())}&limit=20`;
@@ -1416,19 +1439,26 @@ async function _searchVolumePicker({ name, cv_id } = {}) {
         el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary);">Нічого не знайдено</div>';
         return;
     }
-    el.innerHTML = result.data.map(vol => `
+    el.innerHTML = result.data.map(vol => {
+        const imgSrc = vol.cv_img
+            ? `${cv_img_path_small}${vol.cv_img.startsWith('/') ? '' : '/'}${vol.cv_img}`
+            : vol.hikka_img || null;
+        return `
         <div onclick="_confirmVolumePickerSelection(${vol.id})"
-             style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
-             onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
-        ${vol.cv_img
-                ? `<img src="${cv_img_path_small}${vol.cv_img.startsWith('/') ? '' : '/'}${vol.cv_img}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;">`
+            style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
+            onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
+            ${imgSrc
+                ? `<img src="${imgSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;">`
                 : '<div style="width:36px;height:36px;background:var(--bg-secondary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1rem;">📚</div>'}
             <div>
                 <div style="font-weight:500;">${vol.lang ? `<span style="color:var(--accent)">[${vol.lang}]</span> ` : ''}${vol.name}</div>
-                <div style="font-size:0.8rem; color:var(--text-secondary);">CV ID: ${vol.cv_id}${vol.publisher_name ? ` · ${vol.publisher_name}` : ''}</div>
+                ${vol.name_uk ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${vol.name_uk}</div>` : ''}
+                <div style="font-size:0.75rem; color:var(--text-secondary);">
+                    db: ${vol.id}${vol.cv_id ? ` · CV: ${vol.cv_id}` : ''}${vol.publisher_name ? ` · ${vol.publisher_name}` : ''}
+                </div>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 window._confirmVolumePickerSelection = async (selectedId) => {

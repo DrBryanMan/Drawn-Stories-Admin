@@ -177,10 +177,14 @@ function renderPage(collection, seriesList = []) {
     handlersAbortController = new AbortController();
     const { signal } = handlersAbortController;
 
+    const collectionLabel = collection.cv_id
+        ? `/${collection.cv_slug}/4000-${collection.cv_id}/`
+        : `${collection.name} (db:${collection.id})`;
+
     document.getElementById('page-title').innerHTML = `
         <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
             &larr; Збірники
-        </a> /${collection.cv_slug}/4000-${collection.cv_id}/
+        </a> ${collectionLabel}
     `;
 
     // ── Volume summary з проміжками номерів ──────────────────────────────────
@@ -420,7 +424,7 @@ function renderIssueRows(issues, collectionId) {
             <td>
                 ${issue.ds_vol_id
                     ? `<span style="cursor:pointer; color:var(--accent);"
-                            onclick="event.stopPropagation(); editChapterTitle(${collection.id}, ${issue.id}, this)"
+                            onclick="event.stopPropagation(); editChapterTitle(${collectionId}, ${issue.id}, this)"
                             title="Клік для редагування">${issue.chapter_title || '<i style="color:var(--text-secondary);">—</i>'}</span>`
                 : ''}
             </td>

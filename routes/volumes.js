@@ -24,8 +24,12 @@ router.get('/', (req, res) => {
   let conditions = [], searchParams = [], params = [];
 
   if (search) {
-    conditions.push(isExact ? 'LOWER(v.name) = LOWER(?)' : '(v.name LIKE ? OR v.cv_slug LIKE ?)');
-    searchParams = isExact ? [search] : [`%${search}%`, `%${search}%`];
+      conditions.push(isExact
+          ? '(LOWER(v.name) = LOWER(?) OR LOWER(v.name_uk) = LOWER(?))'
+          : '(v.name LIKE ? OR v.cv_slug LIKE ? OR v.name_uk LIKE ?)');
+      searchParams = isExact
+          ? [search, search]
+          : [`%${search}%`, `%${search}%`, `%${search}%`];
   }
   if (cv_id) {
     conditions.push('v.cv_id = ?');
@@ -38,6 +42,10 @@ router.get('/', (req, res) => {
   if (mal_id) {
     conditions.push('v.mal_id = ?');
     searchParams.push(parseInt(mal_id));
+  }
+  if (req.query.db_id) {
+    conditions.push('v.id = ?');
+    searchParams.push(parseInt(req.query.db_id));
   }
   if (pubIds.length) {
     conditions.push(`v.publisher IN (${pubIds.map(() => '?').join(',')})`);
@@ -192,7 +200,7 @@ router.get('/:id/collections-from-issues', (req, res) => {
 
       return { ...col, volume_issue_numbers: issueNumbers };
     });
-    
+
     res.json({ data: result });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });

@@ -6,11 +6,18 @@ const router = Router();
 
 function getCollectionIdForIssue(issueId) {
   try {
-    const row = getOne(
-      'SELECT id FROM collections WHERE cv_id = (SELECT cv_id FROM issues WHERE id = ?)',
+    // Спочатку шукаємо по cv_id (старий спосіб)
+    const byCV = getOne(
+      'SELECT id FROM collections WHERE cv_id IS NOT NULL AND cv_id = (SELECT cv_id FROM issues WHERE id = ? AND cv_id IS NOT NULL)',
       [issueId]
     );
-    return row ? row.id : null;
+    if (byCV) return byCV.id;
+    // Потім шукаємо чи цей випуск є у якомусь збірнику
+    const byMembership = getOne(
+      'SELECT collection_id as id FROM collection_issues WHERE issue_id = ? LIMIT 1',
+      [issueId]
+    );
+    return byMembership ? byMembership.id : null;
   } catch (e) { return null; }
 }
 
