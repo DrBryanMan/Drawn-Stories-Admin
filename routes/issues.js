@@ -167,11 +167,20 @@ router.post('/', (req, res) => {
 });
 
 router.put('/:id', (req, res) => {
-  const { cv_id, cv_slug, name, cv_img, cv_vol_id, ds_vol_id, issue_number, cover_date, release_date } = req.body;
+  const allowed = ['cv_id', 'cv_slug', 'name', 'cv_img', 'cv_vol_id', 'ds_vol_id', 'issue_number', 'cover_date', 'release_date'];
+  const fields = [];
+  const values = [];
+  for (const key of allowed) {
+    if (key in req.body) {
+      fields.push(`${key} = ?`);
+      values.push(req.body[key] === '' ? null : (req.body[key] ?? null));
+    }
+  }
+  if (!fields.length) return res.status(400).json({ error: 'Нема полів для оновлення' });
   try {
     runQuery(
-      'UPDATE issues SET cv_id=?, cv_slug=?, name=?, cv_img=?, cv_vol_id=?, ds_vol_id=?, issue_number=?, cover_date=?, release_date=? WHERE id=?',
-      [cv_id||null, cv_slug||null, name, cv_img||null, cv_vol_id||null, ds_vol_id||null, issue_number||null, cover_date||null, release_date||null, req.params.id]
+      `UPDATE issues SET ${fields.join(', ')} WHERE id = ?`,
+      [...values, req.params.id]
     );
     saveDatabase();
     res.json({ message: 'Випуск оновлено' });

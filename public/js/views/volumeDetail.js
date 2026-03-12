@@ -15,7 +15,7 @@ let _collectionsPage = 0;
 let _currentVolumeId = null;
 let _allChapters = [];
 let _issuesSort = { key: 'issue_number', dir: 'desc' };
-let _chaptersSort = { key: 'issue_number', dir: 'asc' };
+let _chaptersSort = { key: 'issue_number', dir: 'desc' };
 let _collectionsSort = { key: 'issue_number', dir: 'desc' };
 
 export async function renderVolumeDetail(params) {
@@ -959,8 +959,8 @@ function getIssueFormHTML(issue = null) {
     return `
         <form id="edit-form">
             <div class="form-row">
-                <div class="form-group"><label>CV ID *</label><input type="number" name="cv_id" value="${issue?.cv_id || ''}" required></div>
-                <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${issue?.cv_slug || ''}" required></div>
+                <div class="form-group"><label>CV ID *</label><input type="number" name="cv_id" value="${issue?.cv_id || ''}"></div>
+                <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${issue?.cv_slug || ''}"></div>
             </div>
             <div class="form-group"><label>Назва</label><input type="text" name="name" value="${issue?.name || ''}"></div>
             <div class="form-row">
@@ -1302,7 +1302,7 @@ function renderChaptersBlock(allChapters, page) {
                     </thead>
                     <tbody>
                         ${slice.map(ch => `
-                            <tr onclick="navigate('issue-detail', { id: ${ch.id} })" style="cursor:pointer;">
+                            <tr onclick="window.navigateToIssue(${issue.id})" style="cursor: pointer;">
                                 <td><strong>#${ch.issue_number || '?'}</strong></td>
                                 <td onclick="event.stopPropagation()">
                                     <input class="chapter-name-input"
