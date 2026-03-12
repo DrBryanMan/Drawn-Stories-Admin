@@ -87,15 +87,19 @@ export async function renderVolumeDetail(params) {
         let magazineParentData      = { data: null };
 
         if (isMangaSourceVolume) {
-            // Для манґа-тому завантажуємо тільки журнал і збірники
+            // Для манґа-тому завантажуємо журнал, збірники і переклади
             [
                 magazineChildrenData,
                 magazineParentData,
                 collectionsFromIssuesData,
+                translationsData,
+                translationParentData,
             ] = await Promise.all([
                 fetch(`${API_BASE}/volumes/${volumeId}/magazine-children`).then(r => r.ok ? r.json() : { data: [] }),
                 fetch(`${API_BASE}/volumes/${volumeId}/magazine-parent`).then(r => r.ok ? r.json() : { data: [] }),
                 fetch(`${API_BASE}/volumes/${volumeId}/collections-from-issues`).then(r => r.ok ? r.json() : { data: [] }),
+                fetch(`${API_BASE}/volumes/${volumeId}/translations`).then(r => r.ok ? r.json() : { data: [] }),
+                fetch(`${API_BASE}/volumes/${volumeId}/translation-parent`).then(r => r.ok ? r.json() : { data: null }),
             ]);
         } else {
             [
@@ -242,7 +246,7 @@ export async function renderVolumeDetail(params) {
 
                 <!-- ── Переклади: список дочірніх (цей том — оригінал) ───── -->
                 
-                ${!isMagazineVolume ? `
+                ${!isMagazineVolume && !translationParent ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
                             <h2 style="font-size:1.25rem; margin:0;">🌐 Переклади (${translations.length})</h2>
@@ -279,14 +283,18 @@ export async function renderVolumeDetail(params) {
                         </div>
                         <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
                              onclick="navigate('volume-detail', { id: ${translationParent.id} })">
-                        ${translationParent.cv_img
+                            ${translationParent.cv_img
                                 ? `<img src="${cv_img_path_small}${translationParent.cv_img.startsWith('/') ? '' : '/'}${translationParent.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
-                                : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📚</div>'}
-                            <div>
-                                <div style="font-weight:600;">${translationParent.lang ? `[${translationParent.lang}] ` : ''}${translationParent.name}</div>
-                            ${translationParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationParent.publisher_name}</div>` : ''}
-                            ${translationParent.collections_count ? `<div style="font-size:0.85rem; color:var(--text-secondary);">📚 ${translationParent.collections_count} збірн.</div>` : ''}
-                            </div>
+                                : translationParent.hikka_img
+                                    ? `<img src="${translationParent.hikka_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
+                                    : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📚</div>'}
+                                <div>
+                                    <div style="font-weight:600;">${translationParent.lang ? `[${translationParent.lang}] ` : ''}${translationParent.name}</div>
+                                    ${translationParent.name_uk ? `<div style="font-size:0.85rem; color:var(--text-secondary);">🇺🇦 ${translationParent.name_uk}</div>` : ''}
+                                    ${!translationParent.cv_id && translationParent.hikka_slug ? `<div style="font-size:0.85rem; color:var(--text-secondary);">hikka: ${translationParent.hikka_slug}</div>` : ''}
+                                ${translationParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationParent.publisher_name}</div>` : ''}
+                                ${translationParent.collections_count ? `<div style="font-size:0.85rem; color:var(--text-secondary);">📚 ${translationParent.collections_count} збірн.</div>` : ''}
+                                </div>
                         </div>
                     </div>
                 ` : ''}
