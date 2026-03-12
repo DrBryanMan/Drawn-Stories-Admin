@@ -8,14 +8,15 @@ import { navigate, buildUrl } from '../utils/router.js';
 
 // ===== ПАГІНАЦІЯ ВИПУСКІВ ================================================
 
-let _issuesPage = 0;
-let _collectionsPage = 0;
-let _chaptersPage = 0;
 const ISSUES_PAGE_SIZE = 100;
-let _issuesSort = { key: 'issue_number', dir: 'desc' };
-let _collectionsSort = { key: 'issue_number', dir: 'desc' };
-let _chaptersSort = { key: 'issue_number', dir: 'asc' };  // key: 'issue_number' | 'release_date'
+let _issuesPage = 0;
+let _chaptersPage = 0;
+let _collectionsPage = 0;
+let _currentVolumeId = null;
 let _allChapters = [];
+let _issuesSort = { key: 'issue_number', dir: 'desc' };
+let _chaptersSort = { key: 'issue_number', dir: 'asc' };
+let _collectionsSort = { key: 'issue_number', dir: 'desc' };
 
 // ===== МОВНА МАПА =========================================================
 
@@ -27,7 +28,7 @@ const LANG_MAP = {
     de:    { label: 'Німецька',               flag: '🇩🇪' },
     it:    { label: 'Італійська',             flag: '🇮🇹' },
     es:    { label: 'Іспанська',              flag: '🇪🇸' },
-    'es-AR': { label: 'Іспанська (Аргентина)',flag: '🇦🇷' },
+'es-AR':   { label: 'Іспанська (Аргентина)',  flag: '🇦🇷' },
     be:    { label: 'Бельгійська',            flag: '🇧🇪' },
     el:    { label: 'Грецька',                flag: '🇬🇷' },
     da:    { label: 'Данська',                flag: '🇩🇰' },
@@ -68,6 +69,7 @@ export async function renderVolumeDetail(params) {
             fetch(`${API_BASE}/volumes/${volumeId}/series`).then(r => r.json()),
         ]);
 
+        _currentVolumeId = volume.id;
         const volumeThemes = themesData.data || [];
         const volumeSeries = seriesData.data || [];
         const isCollectionVolume  = volumeThemes.some(t => t.id === 44);
@@ -1240,6 +1242,11 @@ function renderChaptersBlock(allChapters, page) {
                     <span>Розділи (${total})</span>
                     <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
                         ${paginationHtml}
+                        <button class="btn btn-primary btn-small"
+                                onclick="openAddChapterModal(${_currentVolumeId})"
+                                style="font-size:0.85rem;">
+                            + Додати розділ
+                        </button>
                     </div>
                 </div>
             </h2>
@@ -1513,6 +1520,56 @@ window.createMangaSourceVolume = async function(collectionVolumeId, hikkaSlug, v
     } catch (err) {
         alert(`Помилка: ${err.message}`);
     }
+};
+
+// ===== СТВОРЕННЯ РОЗДІЛУ МАНҐИ ==========================================
+
+window.openAddChapterModal = function(volumeId) {
+    openModal('Додати розділ манґи', `
+        <form id="add-chapter-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Номер розділу *</label>
+                    <input type="text" name="issue_number" placeholder="напр. 1, 1.5" required>
+                </div>
+                <div class="form-group">
+                    <label>Дата виходу</label>
+                    <input type="date" name="release_date">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Назва (мовою оригіналу)</label>
+                <input type="text" name="name" placeholder="напр. The Black Swordsman">
+            </div>
+            <div class="form-group">
+                <label>URL обкладинки</label>
+                <input type="text" name="cv_img" placeholder="https://...">
+            </div>
+        </form>
+    `, async (data) => {
+        if (!data.issue_number?.trim()) { alert('Введіть номер розділу'); return; }
+        try {
+            const resp = await fetch(`${API_BASE}/issues`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cv_id: null,
+                    cv_slug: null,
+                    ds_vol_id: volumeId,
+                    issue_number: data.issue_number.trim(),
+                    name: data.name?.trim() || null,
+                    release_date: data.release_date || null,
+                    cv_img: data.cv_img?.trim() || null,
+                }),
+            });
+            const result = await resp.json();
+            if (!resp.ok) { alert(result.error || 'Помилка'); return; }
+            await loadChapters(volumeId);
+            await window.updateStats();
+        } catch (err) {
+            alert(`Помилка: ${err.message}`);
+        }
+    });
 };
 
 // ===== KEYBOARD SHORTCUTS ================================================

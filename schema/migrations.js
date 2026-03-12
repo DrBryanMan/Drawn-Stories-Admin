@@ -328,6 +328,21 @@ const MIGRATIONS = [
       db.run(`ALTER TABLE volumes ADD COLUMN hikka_img TEXT`);
     },
   },
+  // ── M019: collection_issues — додаємо chapter_title ──────────────────────
+  {
+    id: 'M019_collection_issues_chapter_title',
+    up(db) {
+      db.run(`ALTER TABLE collection_issues ADD COLUMN chapter_title TEXT`);
+      // Заповнюємо з назви випуску для вже наявних записів
+      db.run(`
+        UPDATE collection_issues
+        SET chapter_title = (
+          SELECT i.name FROM issues i WHERE i.id = collection_issues.issue_id
+        )
+        WHERE chapter_title IS NULL
+      `);
+    },
+  },
 
 ];
 

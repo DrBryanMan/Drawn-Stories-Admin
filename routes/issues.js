@@ -144,11 +144,11 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', (req, res) => {
-  const { cv_id, cv_slug, name, cv_img, cv_vol_id, issue_number, cover_date, release_date, description } = req.body;
+  const { cv_id, cv_slug, name, cv_img, cv_vol_id, ds_vol_id, issue_number, cover_date, release_date, description } = req.body;
   try {
     runQuery(
-      'INSERT INTO issues (cv_id, cv_slug, name, cv_img, cv_vol_id, issue_number, cover_date, release_date, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [cv_id, cv_slug || null, name || null, cv_img || null, cv_vol_id || null, issue_number || null, cover_date || null, release_date || null, description || null]
+      'INSERT INTO issues (cv_id, cv_slug, name, cv_img, cv_vol_id, ds_vol_id, issue_number, cover_date, release_date, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [cv_id || null, cv_slug || null, name || null, cv_img || null, cv_vol_id || null, ds_vol_id || null, issue_number || null, cover_date || null, release_date || null, description || null]
     );
     saveDatabase();
     res.json({ message: 'Випуск створено' });

@@ -1,5 +1,5 @@
 import { fetchItem } from '../api/api.js';
-import { cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
+import { API_BASE, cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate, navigateToParent } from '../utils/router.js';
 import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
@@ -10,8 +10,6 @@ import {
     attachVolumeChipsHandlers,
     injectVolumeChipsStyles,
 } from '../components/volumeChips.js';
-
-const API_BASE = 'http://localhost:7000/api';
 
 // ID вже доданих випусків для фільтрації в пошуку
 let currentCollectionIssueIds = new Set();
@@ -419,9 +417,15 @@ function renderIssueRows(issues, collectionId) {
                     ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}">`
                     : '&#128214;'}
             </td>
-            <td>${issue.name || 'Без назви'}</td>
-            <td style="color: var(--text-secondary); font-size: 0.85rem;">${issue.volume_name || '-'}</td>
-            <td>${issue.issue_number || '-'}</td>
+            <td>
+                ${issue.ds_vol_id
+                    ? `<span style="cursor:pointer; color:var(--accent);"
+                            onclick="event.stopPropagation(); editChapterTitle(${collection.id}, ${issue.id}, this)"
+                            title="Клік для редагування">${issue.chapter_title || '<i style="color:var(--text-secondary);">—</i>'}</span>`
+                : ''}
+            </td>
+            <td style="color: var(--text-secondary); font-size: 0.85rem;">${issue.volume_name || '—'}</td>
+            <td>${issue.issue_number || '—'}</td>
             <td>${formatDate(issue.release_date)}</td>
             <td onclick="event.stopPropagation()">
                 <button class="btn btn-secondary btn-small" onclick="window.navigateToIssue(${issue.id})">Переглянути</button>
@@ -854,6 +858,23 @@ window.createMangaVolume = async function(collectionId, collectionName) {
         navigate('volume-detail', { id: data.id });
     } catch (err) {
         alert(`Помилка: ${err.message}`);
+    }
+};
+
+window.editChapterTitle = async function(collectionId, issueId, spanEl) {
+    const current = spanEl.textContent.trim() === '—' ? '' : spanEl.textContent.trim();
+    const newTitle = prompt('Назва розділу у збірнику (мовою збірника):', current);
+    if (newTitle === null) return; // скасовано
+    try {
+        const res = await fetch(`${API_BASE}/collections/${collectionId}/issues/${issueId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chapter_title: newTitle.trim() || null }),
+        });
+        if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+        spanEl.textContent = newTitle.trim() || '—';
+    } catch (e) {
+        alert('Помилка збереження');
     }
 };
 

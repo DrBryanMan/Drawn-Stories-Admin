@@ -205,7 +205,8 @@ const issues = getAll(`
     SELECT i.*,
            COALESCE(v.name, mv.name)   AS volume_name,
            COALESCE(v.id,   mv.id)     AS volume_db_id,
-           ci.order_num
+           ci.order_num,
+           ci.chapter_title
     FROM issues i
     JOIN collection_issues ci ON i.id = ci.issue_id
     LEFT JOIN volumes v  ON i.cv_vol_id = v.cv_id
@@ -297,13 +298,18 @@ router.delete('/:id', (req, res) => {
 // ── Додавання випуску до збірника ─────────────────────────────────────────
 
 router.post('/:id/issues', (req, res) => {
-  const { issue_id } = req.body;
+  const { issue_id, chapter_title } = req.body;
   try {
     const exists = getOne(
       'SELECT id FROM collection_issues WHERE collection_id = ? AND issue_id = ?',
       [req.params.id, issue_id]
     );
     if (exists) return res.status(400).json({ error: 'Випуск вже є у збірнику' });
+
+    // Заповнюємо chapter_title з назви випуску якщо не передано
+    const resolvedTitle = chapter_title ||
+      getOne('SELECT name FROM issues WHERE id = ?', [issue_id])?.name ||
+      null;
 
     // Призначаємо наступний order_num
     const totalRow = getOne(
@@ -313,11 +319,24 @@ router.post('/:id/issues', (req, res) => {
     const insertPos = (totalRow?.cnt || 0) + 1;
 
     rawRun(
-      'INSERT INTO collection_issues (collection_id, issue_id, order_num) VALUES (?, ?, ?)',
-      [req.params.id, issue_id, insertPos]
+      'INSERT INTO collection_issues (collection_id, issue_id, order_num, chapter_title) VALUES (?, ?, ?, ?)',
+      [req.params.id, issue_id, insertPos, resolvedTitle]
     );
     saveDatabase();
     res.json({ message: 'Випуск додано до збірника', order_num: insertPos });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+// ── Оновлення chapter_title запису у збірнику ─────────────────────────────
+router.patch('/:id/issues/:issueId', (req, res) => {
+  const { chapter_title } = req.body;
+  try {
+    rawRun(
+      'UPDATE collection_issues SET chapter_title = ? WHERE collection_id = ? AND issue_id = ?',
+      [chapter_title || null, req.params.id, req.params.issueId]
+    );
+    saveDatabase();
+    res.json({ message: 'chapter_title оновлено' });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
