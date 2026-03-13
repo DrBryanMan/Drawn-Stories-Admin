@@ -977,22 +977,59 @@ function getIssueFormHTML(issue = null) {
 }
 
 function getCollectionFormHTML(col = null) {
+    let safeReleaseDate   = '';
+    if (col.cover_date) {
+        const [y, m, d] = col.cover_date.split('-');
+        if (d === '00') {
+            safeReleaseDate = `${y}-${m}-01`;
+        }
+    }
     return `
         <form id="edit-form">
-            <div class="form-row">
-                <div class="form-group"><label>CV ID *</label><input type="number" name="cv_id" value="${col?.cv_id || ''}" required></div>
-                <div class="form-group"><label>CV Slug *</label><input type="text" name="cv_slug" value="${col?.cv_slug || ''}" required></div>
+            <div class="form-row form-row-3">
+                <div class="form-group">
+                    <label>CV ID</label>
+                    <input type="number" id="edit-col-cv_id" value="${col.cv_id || ''}">
+                </div>
+                <div class="form-group">
+                    <label>CV Slug</label>
+                    <input type="text" id="edit-col-cv_slug" value="${col.cv_slug || ''}">
+                </div>
+                <div class="form-group">
+                    <label>CV Vol ID (тому)</label>
+                    <input type="number" id="edit-col-cv_vol_id" value="${col.cv_vol_id || ''}">
+                </div>
             </div>
-            <div class="form-group"><label>Назва</label><input type="text" name="name" value="${col?.name || ''}"></div>
-            <div class="form-row">
-                <div class="form-group"><label>Номер</label><input type="text" name="issue_number" value="${col?.issue_number || ''}"></div>
-                <div class="form-group"><label>Volume CV ID</label><input type="number" name="cv_vol_id" value="${col?.cv_vol_id || ''}"></div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label>Номер випуску</label>
+                    <input type="text" id="edit-col-issue_number" value="${col.issue_number || ''}">
+                </div>
+                <div class="form-group">
+                    <label>ISBN</label>
+                    <input type="text" id="edit-col-isbn" value="${col.isbn || ''}">
+                </div>
             </div>
-            <div class="form-row">
-                <div class="form-group"><label>Дата обкладинки</label><input type="date" name="cover_date" value="${col?.cover_date || ''}"></div>
-                <div class="form-group"><label>Дата релізу</label><input type="date" name="release_date" value="${col?.release_date || ''}"></div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label>Назва *</label>
+                    <input type="text" id="edit-col-name" value="${col.name || ''}" required>
+                </div>
+                <div class="form-group">
+                    <label>URL зображення</label>
+                    <input type="text" id="edit-col-cv_img" value="${col.cv_img || ''}">
+                </div>
             </div>
-            <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${col?.cv_img || ''}"></div>
+            <div class="form-row form-row-2">
+                <div class="form-group">
+                    <label>Дата обкладинки</label>
+                    <input type="date" id="edit-col-cover_date" value="${safeReleaseDate || col.cover_date || ''}">
+                </div>
+                <div class="form-group">
+                    <label>Дата релізу</label>
+                    <input type="date" id="edit-col-release_date" value="${col.release_date || ''}">
+                </div>
+            </div>
         </form>
     `;
 }
@@ -1302,7 +1339,7 @@ function renderChaptersBlock(allChapters, page) {
                     </thead>
                     <tbody>
                         ${slice.map(ch => `
-                            <tr onclick="window.navigateToIssue(${issue.id})" style="cursor: pointer;">
+                            <tr onclick="window.navigateToIssue(${ch.id})" style="cursor: pointer;">
                                 <td><strong>#${ch.issue_number || '?'}</strong></td>
                                 <td onclick="event.stopPropagation()">
                                     <input class="chapter-name-input"

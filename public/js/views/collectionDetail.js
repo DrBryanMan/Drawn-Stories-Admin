@@ -467,7 +467,7 @@ function renderIssueRows(issues, collectionId) {
             ` : ''}
 
             ${isManga ? `
-            <td onclick="event.stopPropagation()" style="text-align:center; width:60px;">
+            <td style="text-align:center; width:60px;">
                 <strong style="font-size:0.95rem;">#${issue.issue_number || '?'}</strong>
             </td>
             <td onclick="event.stopPropagation()">

@@ -246,18 +246,25 @@ const themes = getAll(
 });
 
 router.put('/:id', (req, res) => {
-  const { name, cv_img, cv_id, cv_slug, cv_vol_id, publisher, issue_number, isbn, cover_date, release_date, description, theme_ids } = req.body;
+  const allowed = ['name', 'cv_img', 'cv_id', 'cv_slug', 'cv_vol_id', 'publisher', 'issue_number', 'isbn', 'cover_date', 'release_date', 'description'];
+  const fields = [];
+  const values = [];
+  for (const key of allowed) {
+    if (key in req.body) {
+      fields.push(`${key} = ?`);
+      values.push(req.body[key] === '' ? null : (req.body[key] ?? null));
+    }
+  }
+  if (!fields.length && !Array.isArray(req.body.theme_ids)) {
+    return res.status(400).json({ error: 'Нема полів для оновлення' });
+  }
   try {
-    runQuery(
-      `UPDATE collections SET name = ?, cv_img = ?, cv_id = ?, cv_slug = ?,
-        cv_vol_id = ?, publisher = ?, issue_number = ?, isbn = ?,
-        cover_date = ?, release_date = ?, description = ?
-       WHERE id = ?`,
-      [name, cv_img || null, cv_id || null, cv_slug || null,
-       cv_vol_id || null, publisher || null, issue_number || null, isbn || null,
-       cover_date || null, release_date || null, description || null,
-       req.params.id]
-    );
+    if (fields.length) {
+      runQuery(
+        `UPDATE collections SET ${fields.join(', ')} WHERE id = ?`,
+        [...values, req.params.id]
+      );
+    }
     if (Array.isArray(theme_ids)) {
       rawRun('DELETE FROM collection_themes WHERE collection_id = ?', [req.params.id]);
       theme_ids.forEach(themeId =>

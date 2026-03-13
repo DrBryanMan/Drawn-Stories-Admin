@@ -36,8 +36,14 @@ router.get('/', (req, res) => {
     searchParams.push(parseInt(cv_id));
   }
   if (hikka_slug) {
-    conditions.push('v.hikka_slug = ?');
-    searchParams.push(hikka_slug);
+      // Якщо немає дефісу — це лише ID-частина слагу, шукаємо як суфікс
+      if (!hikka_slug.includes('-')) {
+          conditions.push('v.hikka_slug LIKE ?');
+          searchParams.push(`%-${hikka_slug}`);
+      } else {
+          conditions.push('v.hikka_slug = ?');
+          searchParams.push(hikka_slug);
+      }
   }
   if (mal_id) {
     conditions.push('v.mal_id = ?');
