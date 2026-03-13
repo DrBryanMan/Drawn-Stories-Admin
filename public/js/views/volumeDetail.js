@@ -99,7 +99,10 @@ export async function renderVolumeDetail(params) {
                 ← Томи
             </a> ${isMangaSourceVolume
                 ? `/ hikka: ${volume.hikka_slug} / MAL: ${volume.mal_id}`
-                : `/${volume.cv_slug}/4050-${volume.cv_id}`}
+                : `/${volume.cv_slug}/4050-${volume.cv_id}`} 
+            <span style="color: #bbb;">
+                + ${formatDate(volume.created_at)}
+            </span>
         `;
 
 
@@ -158,7 +161,6 @@ export async function renderVolumeDetail(params) {
                             <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
                                 ${buildThemeChipsViewHTML(volumeThemes)}
                             </div>
-                            <div><strong>Дата додавання:</strong> ${formatDate(volume.created_at)}</div>
                             ${volume.description ? `<div class="form-group">${volume.description}</div>` : ''}
                         </div>
                         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
@@ -204,6 +206,34 @@ export async function renderVolumeDetail(params) {
                                 </button>
                             ` : ''}
                         </div>
+
+                        <!-- ── Оригінал (цей том — переклад) ────────────────────── -->
+                        ${translationParent && !isMangaSourceVolume ? `
+                            <div style="display: inline-block; width: 300px; background: var(--bg-primary); padding: .5rem; border-radius: 8px; margin-top: 1em;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+                                    <h2 style="font-size:1.25rem; margin:0;">📖 Оригінал</h2>
+                                    <button class="btn btn-danger btn-small"
+                                        onclick="removeTranslation(${translationParent.id}, ${volume.id})">
+                                        Від'єднати
+                                    </button>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
+                                    onclick="navigate('volume-detail', { id: ${translationParent.id} })">
+                                    ${translationParent.cv_img
+                                        ? `<img src="${cv_img_path_small}${translationParent.cv_img.startsWith('/') ? '' : '/'}${translationParent.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
+                                        : translationParent.hikka_img
+                                            ? `<img src="${translationParent.hikka_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
+                                            : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📚</div>'}
+                                        <div>
+                                            <div style="font-weight:600;">${translationParent.lang ? `[${translationParent.lang}] ` : ''}${translationParent.name}</div>
+                                            ${translationParent.name_uk ? `<div style="font-size:0.85rem; color:var(--text-secondary);">🇺🇦 ${translationParent.name_uk}</div>` : ''}
+                                            ${!translationParent.cv_id && translationParent.hikka_slug ? `<div style="font-size:0.85rem; color:var(--text-secondary);">hikka: ${translationParent.hikka_slug}</div>` : ''}
+                                        ${translationParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationParent.publisher_name}</div>` : ''}
+                                        ${translationParent.collections_count ? `<div style="font-size:0.85rem; color:var(--text-secondary);">📚 ${translationParent.collections_count} збірн.</div>` : ''}
+                                        </div>
+                                </div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
 
@@ -231,34 +261,6 @@ export async function renderVolumeDetail(params) {
                                 `).join('')}
                             </div>
                         ` : `<p style="color:var(--text-secondary); margin:0; font-size:0.9rem;">Немає прив'язаних перекладів.</p>`}
-                    </div>
-                ` : ''}
-
-                <!-- ── Оригінал (цей том — переклад) ────────────────────── -->
-                ${translationParent && !isMangaSourceVolume ? `
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
-                            <h2 style="font-size:1.25rem; margin:0;">📖 Оригінал</h2>
-                            <button class="btn btn-danger btn-small"
-                                onclick="removeTranslation(${translationParent.id}, ${volume.id})">
-                                Від'єднати
-                            </button>
-                        </div>
-                        <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
-                             onclick="navigate('volume-detail', { id: ${translationParent.id} })">
-                            ${translationParent.cv_img
-                                ? `<img src="${cv_img_path_small}${translationParent.cv_img.startsWith('/') ? '' : '/'}${translationParent.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
-                                : translationParent.hikka_img
-                                    ? `<img src="${translationParent.hikka_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
-                                    : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📚</div>'}
-                                <div>
-                                    <div style="font-weight:600;">${translationParent.lang ? `[${translationParent.lang}] ` : ''}${translationParent.name}</div>
-                                    ${translationParent.name_uk ? `<div style="font-size:0.85rem; color:var(--text-secondary);">🇺🇦 ${translationParent.name_uk}</div>` : ''}
-                                    ${!translationParent.cv_id && translationParent.hikka_slug ? `<div style="font-size:0.85rem; color:var(--text-secondary);">hikka: ${translationParent.hikka_slug}</div>` : ''}
-                                ${translationParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationParent.publisher_name}</div>` : ''}
-                                ${translationParent.collections_count ? `<div style="font-size:0.85rem; color:var(--text-secondary);">📚 ${translationParent.collections_count} збірн.</div>` : ''}
-                                </div>
-                        </div>
                     </div>
                 ` : ''}
 
@@ -429,8 +431,11 @@ export async function renderVolumeDetail(params) {
                             </div>
                         </div>
                         <div id="volume-picker-results" style="max-height:320px; overflow-y:auto; border:1px solid var(--border-color); border-radius:6px; margin-bottom:1rem; min-height:48px;"></div>
-                        <div style="display:flex; gap:0.5rem; justify-content:flex-end;">
+                        <div style="display:flex; gap:0.5rem; justify-content:flex-end; align-items:center;">
+                            <span id="volume-picker-selected-count" style="font-size:0.85rem; color:var(--text-secondary);"></span>
                             <button class="btn btn-secondary" onclick="closeVolumePickerModal()">Скасувати</button>
+                            <button class="btn btn-primary" id="volume-picker-confirm-btn" style="display:none;"
+                                    onclick="_confirmVolumePickerMulti()">Додати вибрані</button>
                         </div>
                     </div>
                 </div>
@@ -688,6 +693,7 @@ function renderCollectionsBlock(allCollections, page) {
                             <th id="col-sort-release_date" style="cursor:pointer; user-select:none;">
                                 Реліз${sortArrow('release_date')}
                             </th>
+                            <th title="ISBN">ISBN</th>
                             <th>Дії</th>
                         </tr>
                     </thead>
@@ -699,13 +705,16 @@ function renderCollectionsBlock(allCollections, page) {
                                 <td>
                                     ${col.cv_img
                                         ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}"
-                                               alt="${col.name}" style="width:50px;height:50px;object-fit:cover;border-radius:4px;">`
+                                               alt="${col.name}" style="width:40px; height: 60px;object-fit:cover;border-radius:4px;">`
                                         : '📗'}
                                 </td>
                                 <td><strong>#${col.issue_number || '?'}</strong></td>
                                 <td>${col.name || 'Без назви'}</td>
                                 <td>${formatCoverDate(col.cover_date)}</td>
                                 <td>${formatReleaseDate(col.release_date)}</td>
+                                <td style="text-align:center;" title="${col.isbn || ''}">
+                                    ${col.isbn ? '🔖' : '<span title="ISBN не вказано" style="color: #6c757d; opacity: 0.5; filter: grayscale(100%);">🔖</span>'}
+                                </td>
                                 <td onclick="event.stopPropagation()">
                                     <button class="btn btn-secondary btn-small"
                                             onclick="editCollectionFromVolume(${col.id})">Редагувати</button>
@@ -1494,10 +1503,12 @@ window.removeMagazineChild = async (magazineId, childId) => {
 //   'magazine-set-parent'    — поточний том є дочірнім, шукаємо батьківський журнал
 
 let _volumePickerMode   = null;
-let _volumePickerRefId  = null;   // ID тому з якого відкрита модалка
+let _volumePickerRefId  = null;
 let _volumePickerTimeout = null;
+let _volumePickerSelectedIds = new Set();
 
 window.openVolumePickerModal = (mode, refId) => {
+    _injectVolumePickerStyles();
     _volumePickerMode  = mode;
     _volumePickerRefId = refId;
 
@@ -1543,10 +1554,56 @@ window.openVolumePickerModal = (mode, refId) => {
     searchInput.focus();
 };
 
+function _injectVolumePickerStyles() {
+    if (document.getElementById('vp-styles')) return;
+    const s = document.createElement('style');
+    s.id = 'vp-styles';
+    s.textContent = `
+        .vp-item { display:flex; align-items:center; gap:0.75rem; padding:0.75rem;
+            cursor:pointer; border-bottom:1px solid var(--border-color); transition: background 0.15s; }
+        .vp-item:hover { background: hsl(var(--accent-hsl), .1); }
+        .vp-item--selected { background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
+            outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
+        .vp-item--added { opacity: 0.5; pointer-events: none; }
+        .vp-item--added .vp-check { accent-color: var(--text-secondary); }
+    `;
+    document.head.appendChild(s);
+}
+
 window.closeVolumePickerModal = () => {
     document.getElementById('volume-picker-modal').style.display = 'none';
     _volumePickerMode  = null;
     _volumePickerRefId = null;
+    _volumePickerSelectedIds = new Set();
+};
+
+window._toggleVolumePickerItem = (volId, el) => {
+    if (_volumePickerSelectedIds.has(volId)) {
+        _volumePickerSelectedIds.delete(volId);
+        el.classList.remove('vp-item--selected');
+        el.querySelector('input[type="checkbox"]').checked = false;
+    } else {
+        _volumePickerSelectedIds.add(volId);
+        el.classList.add('vp-item--selected');
+        el.querySelector('input[type="checkbox"]').checked = true;
+    }
+    const count = _volumePickerSelectedIds.size;
+    const confirmBtn = document.getElementById('volume-picker-confirm-btn');
+    confirmBtn.style.display = count > 0 ? 'inline-block' : 'none';
+    confirmBtn.textContent   = `Додати вибрані (${count})`;
+};
+
+window._confirmVolumePickerMulti = async () => {
+    if (!_volumePickerSelectedIds.size) return;
+    const ids   = Array.from(_volumePickerSelectedIds);
+    const mode  = _volumePickerMode;
+    const refId = _volumePickerRefId;
+    window.closeVolumePickerModal();
+    for (const selectedId of ids) {
+        await _confirmVolumePickerSelection(selectedId, mode, refId);
+    }
+    const id = new URL(window.location).searchParams.get('id');
+    if (id) renderVolumeDetail({ id });
 };
 
 async function _searchVolumePicker({ name, db_id, cv_id } = {}) {
@@ -1573,14 +1630,32 @@ async function _searchVolumePicker({ name, db_id, cv_id } = {}) {
         el.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary);">Нічого не знайдено</div>';
         return;
     }
+// Підвантажуємо вже додані id (переклади/журнали) для поточного тому
+    let alreadyIds = new Set();
+    try {
+        if (_volumePickerMode === 'translation-add') {
+            const r = await fetch(`${API_BASE}/volumes/${_volumePickerRefId}/translations`);
+            const d = await r.json();
+            (d.data || []).forEach(v => alreadyIds.add(v.id));
+        } else if (_volumePickerMode === 'magazine-add') {
+            const r = await fetch(`${API_BASE}/volumes/${_volumePickerRefId}/magazine-children`);
+            const d = await r.json();
+            (d.data || []).forEach(v => alreadyIds.add(v.id));
+        }
+    } catch (_) {}
+
     el.innerHTML = result.data.map(vol => {
         const imgSrc = vol.cv_img
             ? `${cv_img_path_small}${vol.cv_img.startsWith('/') ? '' : '/'}${vol.cv_img}`
             : vol.hikka_img || null;
+        const isSelected = _volumePickerSelectedIds.has(vol.id);
+        const isAdded    = alreadyIds.has(vol.id);
         return `
-        <div onclick="_confirmVolumePickerSelection(${vol.id})"
-            style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; cursor:pointer; border-bottom:1px solid var(--border-color);"
-            onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
+        <div class="vp-item${isSelected ? ' vp-item--selected' : ''}${isAdded ? ' vp-item--added' : ''}"
+            data-vol-id="${vol.id}"
+            onclick="_toggleVolumePickerItem(${vol.id}, this)">
+            <input class="vp-check" type="checkbox" ${isSelected || isAdded ? 'checked' : ''} onclick="event.stopPropagation()"
+                style="width:16px;height:16px;flex-shrink:0;accent-color:var(--accent);pointer-events:none;">
             ${imgSrc
                 ? `<img src="${imgSrc}" style="width:36px;height:36px;object-fit:cover;border-radius:4px;flex-shrink:0;">`
                 : '<div style="width:36px;height:36px;background:var(--bg-secondary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1rem;">📚</div>'}
@@ -1595,31 +1670,27 @@ async function _searchVolumePicker({ name, db_id, cv_id } = {}) {
     `}).join('');
 }
 
-window._confirmVolumePickerSelection = async (selectedId) => {
-    if (!_volumePickerMode || !_volumePickerRefId) return;
-
-    // Визначаємо хто parent, хто child залежно від режиму
+window._confirmVolumePickerSelection = async (selectedId, mode, refId) => {
+    mode  = mode  ?? _volumePickerMode;
+    refId = refId ?? _volumePickerRefId;
+    if (!mode || !refId) return;
     let url, body;
-    switch (_volumePickerMode) {
+    switch (mode) {
         case 'translation-add':
-            // refId = оригінал, selectedId = переклад
-            url  = `${API_BASE}/volumes/${_volumePickerRefId}/translations`;
+            url  = `${API_BASE}/volumes/${refId}/translations`;
             body = { child_id: selectedId };
             break;
         case 'translation-set-parent':
-            // refId = переклад, selectedId = оригінал
             url  = `${API_BASE}/volumes/${selectedId}/translations`;
-            body = { child_id: _volumePickerRefId };
+            body = { child_id: refId };
             break;
         case 'magazine-add':
-            // refId = журнал, selectedId = дочірній том
-            url  = `${API_BASE}/volumes/${_volumePickerRefId}/magazine-children`;
+            url  = `${API_BASE}/volumes/${refId}/magazine-children`;
             body = { child_id: selectedId };
             break;
         case 'magazine-set-parent':
-            // refId = дочірній том, selectedId = журнал
             url  = `${API_BASE}/volumes/${selectedId}/magazine-children`;
-            body = { child_id: _volumePickerRefId };
+            body = { child_id: refId };
             break;
         default:
             return;
@@ -1635,10 +1706,6 @@ window._confirmVolumePickerSelection = async (selectedId) => {
         alert(err.error || 'Помилка');
         return;
     }
-
-    window.closeVolumePickerModal();
-    const id = new URL(window.location).searchParams.get('id');
-    if (id) renderVolumeDetail({ id });
 };
 
 // ===== СТВОРЕННЯ ТОМУ МАНҐИ ==============================================

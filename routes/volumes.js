@@ -24,12 +24,12 @@ router.get('/', (req, res) => {
   let conditions = [], searchParams = [], params = [];
 
   if (search) {
-      conditions.push(isExact
-          ? '(LOWER(v.name) = LOWER(?) OR LOWER(v.name_uk) = LOWER(?))'
-          : '(v.name LIKE ? OR v.cv_slug LIKE ? OR v.name_uk LIKE ?)');
-      searchParams = isExact
-          ? [search, search]
-          : [`%${search}%`, `%${search}%`, `%${search}%`];
+    conditions.push(isExact
+        ? '(LOWER(v.name) = LOWER(?) OR ULOWER(v.name_uk) = ULOWER(?))'
+        : '(v.name LIKE ? OR v.cv_slug LIKE ? OR ULOWER(v.name_uk) LIKE ULOWER(?))');
+    searchParams = isExact
+        ? [search, search]
+        : [`%${search}%`, `%${search}%`, `%${search}%`];
   }
   if (cv_id) {
     conditions.push('v.cv_id = ?');

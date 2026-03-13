@@ -108,6 +108,9 @@ async function initDatabase() {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
 
+  // Unicode-сумісний LOWER для кирилиці (вбудований SQLite LOWER не підтримує)
+  db.function('ULOWER', str => (str == null ? null : str.toLowerCase()));
+
   const compat = createCompatWrapper(db);
 
   if (dbExists) {

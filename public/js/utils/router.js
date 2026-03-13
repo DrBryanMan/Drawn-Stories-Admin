@@ -1,6 +1,16 @@
 const routes = {};
 let currentRoute = null;
 
+// Зберігаємо скрол при F5 / закритті вкладки
+window.addEventListener('beforeunload', () => {
+    const key = 'scroll:' + window.location.search;
+    if (window.scrollY > 0) {
+        sessionStorage.setItem(key, window.scrollY);
+    } else {
+        sessionStorage.removeItem(key);
+    }
+});
+
 const PARENT_PAGE_MAP = {
     'volume-detail':        'volumes',
     'issue-detail':         'issues',
@@ -28,6 +38,8 @@ export function navigate(path, params = {}) {
 
     const url = new URL(window.location);
     const prevPage = url.searchParams.get('page');
+    const isSamePage = prevPage === path;
+    const savedScroll = window.scrollY;
 
     url.searchParams.set('page', path);
 
@@ -58,7 +70,17 @@ export function navigate(path, params = {}) {
 
     const handler = routes[path];
     if (handler) {
-        handler(params);
+        const result = handler(params);
+        const scrollKey = 'scroll:' + url.search;
+        const scrollTarget = isSamePage
+            ? savedScroll
+            : parseInt(sessionStorage.getItem(scrollKey) || '0');
+        sessionStorage.removeItem(scrollKey);
+        if (scrollTarget > 0) {
+            Promise.resolve(result).then(() => {
+                window.scrollTo({ top: scrollTarget, behavior: 'instant' });
+            });
+        }
     } else {
         console.error(`Route not found: ${path}`);
     }

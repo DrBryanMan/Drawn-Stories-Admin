@@ -13,8 +13,8 @@
     --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 4px 6px rgba(0, 0, 0, 0.1);
 
+    --accent-hsl: 200, 76%, 43%;
     --danger-hsl: 340, 100%, 50%;
-
 }
 
 * {
@@ -50,6 +50,7 @@ body {
 }
 
 .top-header .sidebar-logo {
+    width: 220px;
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -65,6 +66,7 @@ body {
 
 .top-header .nav-menu {
     display: flex;
+    justify-content: center;
     flex-direction: row;
     flex-wrap: nowrap;
     gap: 0.15rem;
@@ -78,7 +80,7 @@ body {
     display: block;
     padding: .2rem .4rem;
     border-radius: 6px;
-    font-size: .8rem;
+    font-size: 1rem;
     font-weight: 500;
     color: var(--text-secondary);
     text-decoration: none;
@@ -488,8 +490,8 @@ text-decoration: none;
 
 .table th,
 .table td {
-    padding: 1rem;
-    text-align: left;
+    padding: .4rem;
+    text-align: center;
     border-bottom: 1px solid var(--border-color);
 }
 

@@ -126,6 +126,7 @@ export const LANG_MAP = {
     es:      { label: 'Іспанська',              flag: '🇪🇸' },
     'es-AR': { label: 'Іспанська (Аргентина)',  flag: '🇦🇷' },
     be:      { label: 'Бельгійська',            flag: '🇧🇪' },
+    'pt-br': { label: 'Бразильська',            flag: '🇧🇷' },
     el:      { label: 'Грецька',                flag: '🇬🇷' },
     da:      { label: 'Данська',                flag: '🇩🇰' },
     id:      { label: 'Індонезійська',          flag: '🇮🇩' },
