@@ -265,13 +265,13 @@ router.put('/:id', (req, res) => {
         [...values, req.params.id]
       );
     }
-    if (Array.isArray(theme_ids)) {
+    if (Array.isArray(req.body.theme_ids)) {
       rawRun('DELETE FROM collection_themes WHERE collection_id = ?', [req.params.id]);
-      theme_ids.forEach(themeId =>
+      req.body.theme_ids.forEach(themeId =>
         rawRun('INSERT INTO collection_themes (collection_id, theme_id) VALUES (?, ?)', [req.params.id, themeId])
       );
-      saveDatabase();
     }
+    saveDatabase();
     res.json({ message: 'Збірник оновлено' });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
