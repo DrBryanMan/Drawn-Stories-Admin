@@ -108,7 +108,7 @@ export async function renderIssuesList() {
     onEdit:     handleEdit,
     onDelete:   handleDelete,
     onNavigate: (id, cv_id, cv_slug) => navigate('issue-detail', { id, cv_id, cv_slug }),
-    buildUrl: (id) => buildUrl('volume-detail', { id }),
+    buildUrl: (id) => buildUrl('issue-detail', { id }),
   });
 
   // 2. Показуємо панель фільтрів

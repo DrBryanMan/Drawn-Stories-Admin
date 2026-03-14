@@ -24,8 +24,19 @@ const VOLUME_CONDITIONS = {
                            AND v.id NOT IN (SELECT child_id FROM volume_translations))`,
   no_manga_magazine:     `(EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 36)
                            AND v.id NOT IN (SELECT child_id FROM volume_magazines))`,
-  has_mixed_types:       `(EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 44)
-                           AND EXISTS (SELECT 1 FROM issues i WHERE i.cv_vol_id = v.cv_id))`,
+  has_mixed_types: `(EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 44)
+                    AND EXISTS (SELECT 1 FROM issues i WHERE i.cv_vol_id = v.cv_id))`,
+  no_manga_vol_parent: `(
+    v.lang = 'ja'
+    AND EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.volume_id = v.id AND vt.theme_id = 36)
+    AND EXISTS (SELECT 1 FROM volume_themes vt2 WHERE vt2.volume_id = v.id AND vt2.theme_id = 44)
+    AND NOT EXISTS (
+      SELECT 1 FROM volume_translations tr
+      JOIN volumes pv ON pv.id = tr.parent_id
+      WHERE tr.child_id = v.id
+        AND (pv.hikka_slug IS NOT NULL OR pv.mal_id IS NOT NULL)
+    )
+  )`,
 };
 
 router.get('/volumes', (req, res) => {
@@ -60,11 +71,22 @@ router.get('/volumes', (req, res) => {
              CASE WHEN (EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 36)
                         AND v.id NOT IN (SELECT child_id FROM volume_magazines))    THEN 1 ELSE 0 END as miss_manga_magazine,
              CASE WHEN (EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.cv_vol_id = v.cv_id AND vt.theme_id = 44)
-                        AND EXISTS (SELECT 1 FROM issues i WHERE i.cv_vol_id = v.cv_id))            THEN 1 ELSE 0 END as miss_mixed_types
+                        AND EXISTS (SELECT 1 FROM issues i WHERE i.cv_vol_id = v.cv_id))            THEN 1 ELSE 0 END as miss_mixed_types,
+            CASE WHEN (
+              v.lang = 'ja'
+              AND EXISTS (SELECT 1 FROM volume_themes vt WHERE vt.volume_id = v.id AND vt.theme_id = 36)
+              AND EXISTS (SELECT 1 FROM volume_themes vt2 WHERE vt2.volume_id = v.id AND vt2.theme_id = 44)
+              AND NOT EXISTS (
+                SELECT 1 FROM volume_translations tr
+                JOIN volumes pv ON pv.id = tr.parent_id
+                WHERE tr.child_id = v.id
+                  AND (pv.hikka_slug IS NOT NULL OR pv.mal_id IS NOT NULL)
+              )
+            ) THEN 1 ELSE 0 END as miss_manga_vol_parent
       FROM volumes v
       LEFT JOIN publishers p ON v.publisher = p.id
       WHERE (${filterWhere}) ${searchClause}
-      ORDER BY v.name ASC
+      ORDER BY v.created_at DESC
       LIMIT ? OFFSET ?
     `;
 
@@ -126,7 +148,7 @@ router.get('/issues', (req, res) => {
       FROM issues i
       LEFT JOIN volumes v ON i.cv_vol_id = v.cv_id
       WHERE (${filterWhere}) ${searchClause}
-      ORDER BY v.name ASC, CAST(i.issue_number AS REAL) ASC
+      ORDER BY i.created_at DESC
       LIMIT ? OFFSET ?
     `;
 
@@ -196,7 +218,7 @@ router.get('/collections', (req, res) => {
       LEFT JOIN volumes v ON c.cv_vol_id = v.cv_id
       LEFT JOIN publishers p ON c.publisher = p.id
       WHERE (${filterWhere}) ${searchClause}
-      ORDER BY v.name ASC, CAST(c.issue_number AS REAL) ASC
+      ORDER BY c.created_at DESC
       LIMIT ? OFFSET ?
     `;
 
