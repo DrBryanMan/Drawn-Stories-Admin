@@ -131,11 +131,15 @@ router.get('/:id/reprint-source', (req, res) => {
   try {
     const data = getAll(`
       SELECT i.id, i.name, i.cv_img, i.cv_id, i.cv_slug, i.issue_number, i.cv_vol_id,
-             COALESCE(v.name, mv.name) AS volume_name
+             COALESCE(v.name, mv.name) AS volume_name,
+             ir.story_id,
+             s.name_original AS story_name_original,
+             s.name_ua       AS story_name_ua
       FROM issue_reprints ir
       JOIN issues i ON i.id = ir.original_id
-      LEFT JOIN volumes v  ON i.cv_vol_id = v.cv_id
-      LEFT JOIN volumes mv ON i.ds_vol_id = mv.id
+      LEFT JOIN volumes v        ON i.cv_vol_id = v.cv_id
+      LEFT JOIN volumes mv       ON i.ds_vol_id = mv.id
+      LEFT JOIN issue_stories s  ON s.id = ir.story_id
       WHERE ir.reprint_id = ?
     `, [req.params.id]);
     res.json({ data });
@@ -178,7 +182,7 @@ router.delete('/:id/reprints/:reprintId', (req, res) => {
 // ── Репринти: додати джерело (тіло: { original_id }) — з боку репринту ───
 router.post('/:id/reprint-source', (req, res) => {
   const reprintId = parseInt(req.params.id);
-  const { original_id } = req.body;
+  const { original_id, story_id } = req.body;
   if (!original_id) return res.status(400).json({ error: 'original_id обов\'язковий' });
   if (parseInt(original_id) === reprintId) return res.status(400).json({ error: 'Випуск не може бути джерелом самого себе' });
   try {
@@ -188,8 +192,8 @@ router.post('/:id/reprint-source', (req, res) => {
     );
     if (exists) return res.status(400).json({ error: 'Цей зв\'язок вже існує' });
     rawRun(
-      'INSERT INTO issue_reprints (original_id, reprint_id) VALUES (?, ?)',
-      [original_id, reprintId]
+      'INSERT INTO issue_reprints (original_id, reprint_id, story_id) VALUES (?, ?, ?)',
+      [original_id, reprintId, story_id || null]
     );
     saveDatabase();
     res.json({ message: 'Джерело додано' });
@@ -208,6 +212,75 @@ router.delete('/:id/reprint-source/:originalId', (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+// STORIES (issue_stories)
+// GET  /issues/:id/stories  — список усіх історій випуску
+router.get('/:id/stories', (req, res) => {
+  try {
+    const stories = getAll(
+      `SELECT s.*,
+              ir.original_id  AS reprint_original_id,
+              oi.name         AS reprint_original_name,
+              oi.issue_number AS reprint_original_number,
+              COALESCE(ov.name, omv.name) AS reprint_original_volume
+       FROM issue_stories s
+       LEFT JOIN issue_reprints ir
+              ON ir.story_id = s.id
+       LEFT JOIN issues oi ON oi.id = ir.original_id
+       LEFT JOIN volumes ov  ON ov.cv_id = oi.cv_vol_id
+       LEFT JOIN volumes omv ON omv.id   = oi.ds_vol_id
+       WHERE s.issue_id = ?
+       ORDER BY s.order_num, s.id`,
+      [req.params.id]
+    );
+    res.json({ data: stories });
+  } catch (e) { res.json({ data: [] }); }
+});
+
+// POST /issues/:id/stories  — додати нову історію
+router.post('/:id/stories', (req, res) => {
+  const { name_original, name_ua, plot, order_num } = req.body;
+  if (!name_original && !name_ua)
+    return res.status(400).json({ error: 'Вкажіть хоча б одну назву' });
+  try {
+    rawRun(
+      `INSERT INTO issue_stories (issue_id, name_original, name_ua, plot, order_num)
+       VALUES (?, ?, ?, ?, ?)`,
+      [req.params.id, name_original || null, name_ua || null, plot || null, order_num ?? 0]
+    );
+    saveDatabase();
+    res.json({ message: 'Історію додано' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// PUT  /issues/:id/stories/:storyId — оновити
+router.put('/:id/stories/:storyId', (req, res) => {
+  const { name_original, name_ua, plot, order_num } = req.body;
+  try {
+    rawRun(
+      `UPDATE issue_stories
+          SET name_original = ?, name_ua = ?, plot = ?, order_num = ?
+        WHERE id = ? AND issue_id = ?`,
+      [name_original || null, name_ua || null, plot || null, order_num ?? 0,
+       req.params.storyId, req.params.id]
+    );
+    saveDatabase();
+    res.json({ message: 'Збережено' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// DELETE /issues/:id/stories/:storyId — видалити
+router.delete('/:id/stories/:storyId', (req, res) => {
+  try {
+    rawRun(
+      `DELETE FROM issue_stories WHERE id = ? AND issue_id = ?`,
+      [req.params.storyId, req.params.id]
+    );
+    saveDatabase();
+    res.json({ message: 'Видалено' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── Хронології
 router.get('/:id/reading-orders', (req, res) => {
   try {
     const data = getAll(`

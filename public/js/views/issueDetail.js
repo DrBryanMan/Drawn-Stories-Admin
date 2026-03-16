@@ -8,6 +8,79 @@ import { navigate } from '../utils/router.js';
 let currentVolumeId = null;
 let currentIssueId = null;
 
+// ═══════════════════════════════════════════════════════════════
+// БЛОКИ КОНТЕНТУ (сюжет, появи персонажів)
+// ═══════════════════════════════════════════════════════════════
+
+function renderContentBlocks(issue, stories, reprintSources) {
+    const blocks = stories.length > 0
+        ? stories.map(s => renderStoryBlock({
+            title:        s.name_ua || s.name_original || '— без назви —',
+            titleOriginal: s.name_ua && s.name_original ? s.name_original : null,
+            plot:          s.plot || '',
+            reprintSource: s.reprint_original_id ? {
+                id:     s.reprint_original_id,
+                name:   s.reprint_original_name,
+                number: s.reprint_original_number,
+                volume: s.reprint_original_volume,
+            } : null,
+          }))
+        : [renderStoryBlock({
+            title:        issue.name || 'Без назви',
+            titleOriginal: null,
+            plot:          issue.plot || '',
+            reprintSource: reprintSources.length > 0 ? {
+                id:          reprintSources[0].id,
+                name:        reprintSources[0].name,
+                number:      reprintSources[0].issue_number,
+                volume:      reprintSources[0].volume_name,
+                storyLabel:  reprintSources[0].story_name_ua || reprintSources[0].story_name_original || null,
+            } : null,
+          })];
+    return blocks.join('');
+}
+
+function renderStoryBlock({ title, titleOriginal, plot, reprintSource }) {
+    return `
+    <div style="background:var(--bg-primary); border:1px solid var(--border-color); border-radius:8px; padding:1.5rem; margin-bottom:1rem;">
+        ${reprintSource ? `
+        <div style="display:inline-flex; align-items:center; gap:0.4rem; background:var(--bg-tertiary);
+                    border:1px solid var(--border-color); border-radius:4px; padding:0.25rem 0.6rem;
+                    font-size:0.78rem; color:var(--text-secondary); margin-bottom:0.75rem;">
+            🔄 Репринт:
+            <a href="#" onclick="navigate('issue-detail', { id: ${reprintSource.id} })"
+               style="color:var(--accent); text-decoration:none; font-weight:500;">
+                ${reprintSource.name || 'Без назви'} #${reprintSource.number || '?'}
+            </a>
+            ${reprintSource.volume ? `<span style="color:var(--text-muted);">${reprintSource.volume}</span>` : ''}
+            ${reprintSource.storyLabel ? `<span style="color:var(--text-muted);">· «${reprintSource.storyLabel}»</span>` : ''}
+        </div>
+        ` : ''}
+
+        <h2 style="font-size:1.35rem; margin:0 0 0.25rem;">
+            ${title}
+        </h2>
+        ${titleOriginal ? `<div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.75rem;">${titleOriginal}</div>` : ''}
+
+        <!-- Появи (заглушка для майбутніх персонажів) -->
+        <div style="margin-top:1.25rem;">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;
+                        letter-spacing:0.06em; margin-bottom:0.5rem;">Появи</div>
+            <div style="color:var(--text-secondary); font-size:0.9rem; font-style:italic;">— поки порожньо —</div>
+        </div>
+
+        <!-- Сюжет -->
+        <div style="margin-top:1.25rem;">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;
+                        letter-spacing:0.06em; margin-bottom:0.5rem;">Сюжет</div>
+            ${plot
+                ? `<div style="line-height:1.65; color:var(--text-primary);">${plot}</div>`
+                : `<div style="color:var(--text-secondary); font-size:0.9rem; font-style:italic;">— поки порожньо —</div>`}
+        </div>
+    </div>
+    `;
+}
+
 export async function renderIssueDetail(params) {
     const issueId = params.id;
     currentVolumeId = params.volumeId || null;
@@ -19,12 +92,13 @@ export async function renderIssueDetail(params) {
     showLoading();
 
     try {
-        const [issue, roData, colMemberData, reprintsData, reprintSourceData] = await Promise.all([
+        const [issue, roData, colMemberData, reprintsData, reprintSourceData, storiesData] = await Promise.all([
             fetchItem('issues', issueId),
             fetch(`${API_BASE}/issues/${issueId}/reading-orders`).then(r => r.json()),
             fetch(`${API_BASE}/issues/${issueId}/collections-membership`).then(r => r.json()),
             fetch(`${API_BASE}/issues/${issueId}/reprints`).then(r => r.json()),
             fetch(`${API_BASE}/issues/${issueId}/reprint-source`).then(r => r.json()),
+            fetch(`${API_BASE}/issues/${issueId}/stories`).then(r => r.json()),
         ]);
 
         const isCollection = !!issue.collection_id;
@@ -32,6 +106,8 @@ export async function renderIssueDetail(params) {
         const collectionMemberships = colMemberData.data || [];
         const issueReprints = reprintsData.data || [];
         const reprintSources = reprintSourceData.data || [];
+        const issueStories = storiesData.data || [];
+        const hasStories = issueStories.length > 0;
 
         // Визначаємо тип тому за volume_theme_ids (повертається з GET /issues/:id)
         const volumeThemeIds        = issue.volume_theme_ids || [];
@@ -99,6 +175,19 @@ export async function renderIssueDetail(params) {
                                         </span>
                                     `).join(' ')}
                                 </div>
+                            ` : ''}
+                            ${hasStories ? `
+                            <div>
+                                <strong>Історії:</strong>
+                                <div style="display:flex; flex-direction:column; gap:0.2rem; margin-top:0.25rem;">
+                                    ${issueStories.map((s, i) => `
+                                        <span style="font-size:0.9rem; color:var(--text-primary);">
+                                            ${i + 1}. ${s.name_ua || s.name_original || '— без назви —'}
+                                            ${s.name_ua && s.name_original ? `<span style="color:var(--text-muted); font-size:0.8rem;">(${s.name_original})</span>` : ''}
+                                        </span>
+                                    `).join('')}
+                                </div>
+                            </div>
                             ` : ''}
                         </div>
 
@@ -236,6 +325,35 @@ export async function renderIssueDetail(params) {
                         ${groupsHtml}
                     </div>`;
             })() : ''}
+
+            <!-- ═══ БЛОК КОНТЕНТУ (сюжет, появи) ═══════════════════════════ -->
+            <div id="issue-content-blocks" style="margin-top:2rem;">
+                ${renderContentBlocks(issue, issueStories, reprintSources)}
+            </div>
+
+            <!-- ═══ МЕНЕДЖЕР ІСТОРІЙ ════════════════════════════════════════ -->
+            ${!isMangaChapter ? `
+            <div style="background:var(--bg-primary); padding:1.5rem; border-radius:8px; border:1px solid var(--border-color); margin-top:1.5rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:${hasStories ? '1rem' : '0'};">
+                    <h2 style="font-size:1.1rem; margin:0;">📖 Історії у випуску</h2>
+                    <button class="btn btn-secondary btn-small" onclick="openAddStoryModal(${issueId})">+ Додати</button>
+                </div>
+                ${hasStories ? `
+                <div style="display:flex; flex-direction:column; gap:0.5rem;" id="stories-list">
+                    ${issueStories.map(s => `
+                    <div style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem; background:var(--bg-secondary); border-radius:6px;">
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:500;">${s.name_ua || s.name_original || '— без назви —'}</div>
+                            ${s.name_original && s.name_ua ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${s.name_original}</div>` : ''}
+                        </div>
+                        <button class="btn btn-secondary btn-small" onclick="openEditStoryModal(${issueId}, ${s.id})">✏️</button>
+                        <button class="btn btn-danger btn-small" onclick="deleteStory(${issueId}, ${s.id})">✕</button>
+                    </div>
+                    `).join('')}
+                </div>
+                ` : '<div style="color:var(--text-secondary); font-size:0.9rem;">Цей випуск не містить окремих іменованих історій</div>'}
+            </div>
+            ` : ''}
 
             <!-- Блок "Репринти-сінгли" (показується для оригінальних випусків) -->
             ${isOriginalIssue ? `
@@ -624,9 +742,21 @@ window.openAddReprintSourceModal = (issueId) => {
             </div>
         `,
         onSelect: async (selectedIssue) => {
+            // Перевіряємо — чи є у виданні окремі історії
+            const stData = await fetch(`${API_BASE}/issues/${selectedIssue.id}/stories`).then(r => r.json());
+            const srcStories = stData.data || [];
+
+            let chosenStoryId = null;
+
+            if (srcStories.length > 0) {
+                // Показуємо додатковий крок — вибір конкретної історії
+                chosenStoryId = await pickStoryFromIssue(selectedIssue, srcStories);
+                if (chosenStoryId === false) return; // скасовано
+            }
+
             const res = await fetch(`${API_BASE}/issues/${issueId}/reprint-source`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ original_id: selectedIssue.id }),
+                body: JSON.stringify({ original_id: selectedIssue.id, story_id: chosenStoryId }),
             });
             if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
             await renderIssueDetail({ id: issueId });
@@ -773,5 +903,118 @@ export async function mountIssueVolumeNav(issue) {
         if (container) container.innerHTML = '';
     }
 }
+
+function pickStoryFromIssue(sourceIssue, stories) {
+    return new Promise((resolve) => {
+        // Перевикористовуємо overlay-стиль
+        const overlay = document.createElement('div');
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:2000;display:flex;align-items:center;justify-content:center;';
+
+        const box = document.createElement('div');
+        box.style.cssText = 'background:var(--bg-primary);border-radius:8px;padding:1.5rem;width:460px;max-width:90vw;max-height:80vh;overflow-y:auto;';
+        box.innerHTML = `
+            <h3 style="margin:0 0 0.5rem;">Оберіть конкретну історію</h3>
+            <div style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:1rem;">
+                Оригінальний випуск: <strong>${sourceIssue.name || 'Без назви'} #${sourceIssue.issue_number || '?'}</strong>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:0.4rem;">
+                <button data-story-id="null"
+                    style="text-align:left;padding:0.65rem 0.8rem;background:var(--bg-secondary);
+                           border:1px solid var(--border-color);border-radius:6px;cursor:pointer;
+                           font-size:0.9rem;color:var(--text-primary);">
+                    📦 Весь випуск (без конкретної історії)
+                </button>
+                ${stories.map(s => `
+                <button data-story-id="${s.id}"
+                    style="text-align:left;padding:0.65rem 0.8rem;background:var(--bg-secondary);
+                           border:1px solid var(--border-color);border-radius:6px;cursor:pointer;
+                           font-size:0.9rem;color:var(--text-primary);">
+                    ${s.name_ua || s.name_original || '— без назви —'}
+                    ${s.name_ua && s.name_original ? `<span style="font-size:0.8rem;color:var(--text-muted);"> (${s.name_original})</span>` : ''}
+                </button>
+                `).join('')}
+            </div>
+            <div style="margin-top:1rem;text-align:right;">
+                <button id="psi-cancel" class="btn btn-secondary btn-small">Скасувати</button>
+            </div>
+        `;
+
+        overlay.appendChild(box);
+        document.body.appendChild(overlay);
+
+        overlay.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-story-id]');
+            if (btn) {
+                const val = btn.dataset.storyId;
+                document.body.removeChild(overlay);
+                resolve(val === 'null' ? null : parseInt(val));
+                return;
+            }
+            if (e.target === overlay || e.target.id === 'psi-cancel') {
+                document.body.removeChild(overlay);
+                resolve(false);
+            }
+        });
+    });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CRUD STORIES
+// ═══════════════════════════════════════════════════════════════
+
+function getStoryFormHTML(story = null) {
+    return `
+        <form id="edit-form" class='story-form'>
+            <div class="form-group">
+                <label>Оригінальна назва</label>
+                <input type="text" name="name_original" value="${story?.name_original || ''}" placeholder="Original Title">
+            </div>
+            <div class="form-group">
+                <label>Назва українською</label>
+                <input type="text" name="name_ua" value="${story?.name_ua || ''}" placeholder="Назва">
+            </div>
+            <div class="form-group">
+                <label>Порядок</label>
+                <input type="number" name="order_num" value="${story?.order_num ?? 0}" min="0" style="width:80px;">
+            </div>
+            <div class="form-group">
+                <label>Сюжет</label>
+                <textarea name="plot" rows="5" style="width:100%;">${story?.plot || ''}</textarea>
+            </div>
+        </form>
+    `;
+}
+
+window.openAddStoryModal = (issueId) => {
+    openModal('Додати історію', getStoryFormHTML(), async (data) => {
+        const res = await fetch(`${API_BASE}/issues/${issueId}/stories`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+        await renderIssueDetail({ id: issueId });
+    });
+};
+
+window.openEditStoryModal = async (issueId, storyId) => {
+    const storiesRes = await fetch(`${API_BASE}/issues/${issueId}/stories`).then(r => r.json());
+    const story = (storiesRes.data || []).find(s => s.id === storyId);
+    if (!story) return;
+    openModal('Редагувати історію', getStoryFormHTML(story), async (data) => {
+        const res = await fetch(`${API_BASE}/issues/${issueId}/stories/${storyId}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+        if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+        await renderIssueDetail({ id: issueId });
+    });
+};
+
+window.deleteStory = async (issueId, storyId) => {
+    if (!confirm('Видалити цю історію?')) return;
+    const res = await fetch(`${API_BASE}/issues/${issueId}/stories/${storyId}`, { method: 'DELETE' });
+    if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+    await renderIssueDetail({ id: issueId });
+};
 
 window.navigateTo = (type, id) => navigate(type, { id: id });
