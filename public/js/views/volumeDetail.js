@@ -1,4 +1,5 @@
-import { API_BASE, locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage, LANG_MAP, langDisplay } from '../utils/helpers.js';
+import { API_BASE } from '../utils/config.js';
+import { locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage, LANG_MAP, langDisplay } from '../utils/helpers.js';
 import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList, buildThemeChipsViewHTML } from '../utils/themeChips.js';
 import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../utils/publisherSearch.js';
 import { fetchItem, fetchItems } from '../api/api.js';

@@ -1,10 +1,9 @@
+import { API_BASE } from '../utils/config.js';
 import { cv_logo_svg, cv_img_path_original, cv_img_path_small, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage, langDisplay } from '../utils/helpers.js';
 import { openSearchPickerModal, closeSearchPickerModal } from '../components/searchPickerModal.js';
 import { fetchItem, updateItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
 import { navigate } from '../utils/router.js';
-
-const API_BASE = 'http://localhost:7000/api';
 
 let currentVolumeId = null;
 let currentIssueId = null;
@@ -20,17 +19,28 @@ export async function renderIssueDetail(params) {
     showLoading();
 
     try {
-        const [issue, roData, colMemberData] = await Promise.all([
+        const [issue, roData, colMemberData, reprintsData, reprintSourceData] = await Promise.all([
             fetchItem('issues', issueId),
             fetch(`${API_BASE}/issues/${issueId}/reading-orders`).then(r => r.json()),
-            fetch(`${API_BASE}/issues/${issueId}/collections-membership`).then(r => r.json())
+            fetch(`${API_BASE}/issues/${issueId}/collections-membership`).then(r => r.json()),
+            fetch(`${API_BASE}/issues/${issueId}/reprints`).then(r => r.json()),
+            fetch(`${API_BASE}/issues/${issueId}/reprint-source`).then(r => r.json()),
         ]);
 
         const isCollection = !!issue.collection_id;
         const readingOrders = roData.data || [];
         const collectionMemberships = colMemberData.data || [];
+        const issueReprints = reprintsData.data || [];
+        const reprintSources = reprintSourceData.data || [];
 
-        const isMangaChapter = !issue.cv_vol_id && !!issue.ds_vol_id;
+        // Визначаємо тип тому за volume_theme_ids (повертається з GET /issues/:id)
+        const volumeThemeIds     = issue.volume_theme_ids || [];
+        const isTranslatedVolume = volumeThemeIds.includes(51);
+        const isCollectionVolume = volumeThemeIds.includes(44);
+        const isTranslatedSingle = isTranslatedVolume && !isCollectionVolume;
+        const isOriginalIssue    = !isTranslatedVolume;
+        const isMangaChapter     = !issue.cv_vol_id && !!issue.ds_vol_id;
+
         document.getElementById('page-title').innerHTML = `
             <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
                 ← Випуски
@@ -48,6 +58,9 @@ export async function renderIssueDetail(params) {
                             ? `<img src="${issue.cv_img.startsWith('https') ? issue.cv_img : issue.cv_img.startsWith('/') ? cv_img_path_original + issue.cv_img : cv_img_path_original + '/' + issue.cv_img}" alt="${issue.name}"
                                 style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
                             : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📖</div>'}
+                            <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1em;">
+                                <a href="https://comicvine.gamespot.com/${issue.cv_slug}/4000-${issue.cv_id}" target="_blank">${cv_logo_svg}</a>
+                            </div>
                     </div>
                     <div style="flex: 1;">
                         <h1 style="font-size: 2rem; margin-bottom: 1rem;">${issue.name || 'Без назви'} #${issue.issue_number}</h1>
@@ -85,9 +98,6 @@ export async function renderIssueDetail(params) {
                                     `).join(' ')}
                                 </div>
                             ` : ''}
-                        </div>
-                        <div>
-                            <a href="https://comicvine.gamespot.com/${issue.cv_slug}/4000-${issue.cv_id}" target="_blank">${cv_logo_svg}</a>
                         </div>
 
                         <!-- Рядок 1: основні дії -->
@@ -150,7 +160,7 @@ export async function renderIssueDetail(params) {
                     if (!groupMap.has(key)) {
                         groupMap.set(key, {
                             vol_id:   c.parent_vol_id,
-                            vol_name: c.parent_vol_name || c.cv_vol_id || '—',
+                            vol_name: c.parent_vol_name || c.name || 'Без тому',
                             vol_lang: c.parent_vol_lang || null,
                             cols: [],
                         });
@@ -178,7 +188,7 @@ export async function renderIssueDetail(params) {
                                 : null;
                         return `
                             <div onclick="navigateTo('collection-detail', ${c.id})"
-                                style="display:flex; flex-direction:column; align-items:center; cursor:pointer;
+                                style="display:flex; flex-direction:column; max-width: calc(100px + .5em); align-items:center; cursor:pointer;
                                         background:var(--bg-secondary); border:1px solid var(--border-color);
                                         border-radius:8px; padding:.2em;
                                         transition:box-shadow 0.15s;"
@@ -224,6 +234,75 @@ export async function renderIssueDetail(params) {
                         ${groupsHtml}
                     </div>`;
             })() : ''}
+
+            <!-- Блок "Репринти-сінгли" (показується для оригінальних випусків) -->
+            ${isOriginalIssue ? `
+            <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 1.5rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: ${issueReprints.length ? '1rem' : '0'};">
+                    <h2 style="font-size:1.1rem; margin:0;">🔁 Репринти (${issueReprints.length})</h2>
+                    <button class="btn btn-secondary btn-small" onclick="openAddReprintModal(${issueId})">
+                        + Вказати репринт
+                    </button>
+                </div>
+                ${issueReprints.length > 0 ? `
+                <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                    ${issueReprints.map(rep => `
+                    <div style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem; background:var(--bg-secondary); border-radius:6px;">
+                        ${rep.cv_img
+                            ? `<img src="${cv_img_path_small}${rep.cv_img.startsWith('/') ? '' : '/'}${rep.cv_img}"
+                                style="width:36px; height:54px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
+                            : '<div style="width:36px; height:54px; background:var(--bg-tertiary); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center;">📖</div>'}
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:500; cursor:pointer; color:var(--accent);"
+                                onclick="navigate('issue-detail', { id: ${rep.id} })">
+                                ${rep.name || 'Без назви'} #${rep.issue_number || '?'}
+                            </div>
+                            <div style="font-size:0.8rem; color:var(--text-secondary);">
+                                ${rep.volume_lang ? `[${rep.volume_lang}] ` : ''}${rep.volume_name || ''}
+                            </div>
+                        </div>
+                        <button class="btn btn-danger btn-small" style="flex-shrink:0;"
+                                onclick="removeReprint(${issueId}, ${rep.id})">✕</button>
+                    </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+            </div>
+            ` : ''}
+
+            <!-- Блок "Джерело" (показується для перекладених сінглів) -->
+            ${isTranslatedSingle ? `
+            <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 1.5rem;">
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: ${reprintSources.length ? '1rem' : '0'};">
+                    <h2 style="font-size:1.1rem; margin:0;">📄 Оригінал репринту ${reprintSources.length ? '' : ''}</h2>
+                    ${!reprintSources.length ? `
+                    <button class="btn btn-secondary btn-small" onclick="openAddReprintSourceModal(${issueId})">
+                        + Вказати джерело
+                    </button>` : ''}
+                </div>
+                ${reprintSources.length > 0 ? `
+                <div style="display:flex; flex-direction:column; gap:0.5rem;">
+                    ${reprintSources.map(src => `
+                    <div style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem; background:var(--bg-secondary); border-radius:6px;">
+                        ${src.cv_img
+                            ? `<img src="${cv_img_path_small}${src.cv_img.startsWith('/') ? '' : '/'}${src.cv_img}"
+                                style="width:36px; height:54px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
+                            : '<div style="width:36px; height:54px; background:var(--bg-tertiary); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center;">📖</div>'}
+                        <div style="flex:1; min-width:0;">
+                            <div style="font-weight:500; cursor:pointer; color:var(--accent);"
+                                onclick="navigate('issue-detail', { id: ${src.id} })">
+                                ${src.name || 'Без назви'} #${src.issue_number || '?'}
+                            </div>
+                            <div style="font-size:0.8rem; color:var(--text-secondary);">${src.volume_name || ''}</div>
+                        </div>
+                        <button class="btn btn-danger btn-small" style="flex-shrink:0;"
+                                onclick="removeReprintSource(${issueId}, ${src.id})">✕</button>
+                    </div>
+                    `).join('')}
+                </div>
+                ` : '<div style="color:var(--text-secondary); font-size:0.9rem;">Джерело не вказано</div>'}
+            </div>
+            ` : ''}
         `;
 
         // Монтуємо навігацію між випусками тому
@@ -463,6 +542,110 @@ window.confirmAddToRO = async () => {
     if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
     window.closeIssueAddToROModal();
     await renderIssueDetail({ id: iroCurrentIssueId });
+};
+
+// ═══════════════════════════════════════════════════════════════
+// РЕПРИНТИ (issue_reprints)
+// ═══════════════════════════════════════════════════════════════
+
+// Відкрити пікер для додавання репринту (з боку оригіналу)
+window.openAddReprintModal = (issueId) => {
+    openSearchPickerModal({
+        title: 'Вказати репринт-сінгл',
+        hint: 'Знайдіть перекладений випуск-сінгл і клікніть для підтвердження.',
+        inputs: [
+            { id: 'name',        label: 'Назва випуску', placeholder: 'Назва...' },
+            { id: 'volume_name', label: 'Том',           placeholder: 'Том...'   },
+        ],
+        searchFn: async ({ name, volume_name }) => {
+            const params = new URLSearchParams({ limit: 20 });
+            if (name)        params.set('name', name);
+            if (volume_name) params.set('volume_name', volume_name);
+            if (!name && !volume_name) return [];
+            const res = await fetch(`${API_BASE}/issues?${params}`);
+            const data = await res.json();
+            return data.data || [];
+        },
+        renderItem: (issue, idx) => `
+            <div data-spm-item="${idx}"
+                 style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; border-bottom:1px solid var(--border-color);">
+                ${issue.cv_img
+                    ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}"
+                        style="width:36px; height:54px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
+                    : '<div style="width:36px; height:54px; background:var(--bg-secondary); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center;">📖</div>'}
+                <div>
+                    <div style="font-weight:500;">${issue.name || 'Без назви'} #${issue.issue_number || '?'}</div>
+                    ${issue.volume_name ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${issue.volume_name}</div>` : ''}
+                </div>
+            </div>
+        `,
+        onSelect: async (selectedIssue) => {
+            const res = await fetch(`${API_BASE}/issues/${issueId}/reprints`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reprint_id: selectedIssue.id }),
+            });
+            if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+            await renderIssueDetail({ id: issueId });
+        },
+    });
+};
+
+// Відкрити пікер для додавання джерела (з боку репринту)
+window.openAddReprintSourceModal = (issueId) => {
+    openSearchPickerModal({
+        title: 'Вказати джерело (оригінал)',
+        hint: 'Знайдіть оригінальний випуск і клікніть для підтвердження.',
+        inputs: [
+            { id: 'name',        label: 'Назва випуску', placeholder: 'Назва...' },
+            { id: 'volume_name', label: 'Том',           placeholder: 'Том...'   },
+        ],
+        searchFn: async ({ name, volume_name }) => {
+            const params = new URLSearchParams({ limit: 20 });
+            if (name)        params.set('name', name);
+            if (volume_name) params.set('volume_name', volume_name);
+            if (!name && !volume_name) return [];
+            const res = await fetch(`${API_BASE}/issues?${params}`);
+            const data = await res.json();
+            return data.data || [];
+        },
+        renderItem: (issue, idx) => `
+            <div data-spm-item="${idx}"
+                 style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; border-bottom:1px solid var(--border-color);">
+                ${issue.cv_img
+                    ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}"
+                        style="width:36px; height:54px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
+                    : '<div style="width:36px; height:54px; background:var(--bg-secondary); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center;">📖</div>'}
+                <div>
+                    <div style="font-weight:500;">${issue.name || 'Без назви'} #${issue.issue_number || '?'}</div>
+                    ${issue.volume_name ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${issue.volume_name}</div>` : ''}
+                </div>
+            </div>
+        `,
+        onSelect: async (selectedIssue) => {
+            const res = await fetch(`${API_BASE}/issues/${issueId}/reprint-source`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ original_id: selectedIssue.id }),
+            });
+            if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+            await renderIssueDetail({ id: issueId });
+        },
+    });
+};
+
+// Видалити репринт
+window.removeReprint = async (issueId, reprintId) => {
+    if (!confirm('Видалити зв\'язок з репринтом?')) return;
+    const res = await fetch(`${API_BASE}/issues/${issueId}/reprints/${reprintId}`, { method: 'DELETE' });
+    if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+    await renderIssueDetail({ id: issueId });
+};
+
+// Видалити джерело
+window.removeReprintSource = async (issueId, originalId) => {
+    if (!confirm('Видалити зв\'язок з джерелом?')) return;
+    const res = await fetch(`${API_BASE}/issues/${issueId}/reprint-source/${originalId}`, { method: 'DELETE' });
+    if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+    await renderIssueDetail({ id: issueId });
 };
 
 // ═══════════════════════════════════════════════════════════════

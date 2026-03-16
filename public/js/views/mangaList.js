@@ -1,3 +1,4 @@
+import { API_BASE } from '../utils/config.js';
 import { cv_img_path_small, showError, showLoading, showEmpty } from '../utils/helpers.js';
 import { navigate, buildUrl } from '../utils/router.js';
 import { createPagination, getInitialPage } from '../utils/pagination.js';
@@ -5,7 +6,6 @@ import { mountHeaderActions } from '../components/headerActions.js';
 import { clearFiltersPanel, getFiltersPanel } from '../components/filtersPanel.js';
 import { mountPublisherFilter } from '../components/publisherFilterPanel.js';
 
-const API_BASE = 'http://localhost:7000/api';
 const LIMIT = 50;
 let currentOffset = 0;
 let currentSearch = '';

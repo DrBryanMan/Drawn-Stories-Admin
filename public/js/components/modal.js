@@ -21,8 +21,8 @@ export function openModal(title, formHTML, onSave, options = {}) {
     modal.classList.add('active');
 
     // Ширина модалки
-    if (modalContent) {
-        modalContent.style.maxWidth = options.wide ? '760px' : '600px';
+if (modalContent) {
+        modalContent.classList.toggle('modal-content--wide', !!options.wide);
     }
 
     currentModal = modal;

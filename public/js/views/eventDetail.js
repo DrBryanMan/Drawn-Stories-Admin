@@ -1,11 +1,10 @@
+import { API_BASE } from '../utils/config.js';
 import { fetchItem } from '../api/api.js';
 import { cv_img_path_small, formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openModal } from '../components/modal.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
-import { buildVolumesMap, renderVolumeSummary, injectVolumeChipsStyles } from '../components/volumeChips.js';
-
-const API_BASE = 'http://localhost:7000/api';
+import { buildVolumesMap, renderVolumeSummary } from '../components/volumeChips.js';
 
 const IMPORTANCE_LABELS = {
   'main':     'Основний',
@@ -67,7 +66,6 @@ async function renderPage(event) {
   `;
 
   // Уніфікований компонент томів (clickable: false — без навігації, бо в event немає vol_db_id)
-  injectVolumeChipsStyles();
   const volumesMap = buildVolumesMap(issues, { keyField: 'volume_cv_id', nameField: 'volume_name', dbIdField: 'volume_db_id' });
   const volumesHtml = renderVolumeSummary(volumesMap, { label: 'Томи у події', clickable: true });
 

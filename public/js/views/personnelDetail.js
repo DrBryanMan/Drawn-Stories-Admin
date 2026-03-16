@@ -1,11 +1,8 @@
-// personnelDetail.js — public/js/views/personnelDetail.js
-
+import { API_BASE } from '../utils/config.js';
 import { fetchItem } from '../api/api.js';
 import { formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openModal } from '../components/modal.js';
-
-const API_BASE = 'http://localhost:7000/api';
 
 export async function renderPersonnelDetail(params) {
   const id = params.id;
@@ -85,7 +82,6 @@ window.editPersonnel = async (id) => {
       </div>
     </form>
   `;
-  const { openModal } = await import('../components/modal.js');
   openModal('Редагувати персону', formHTML, async (data) => {
     await fetch(`${API_BASE}/personnel/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },

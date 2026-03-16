@@ -1,5 +1,6 @@
+import { API_BASE } from '../utils/config.js';
 import { fetchItem } from '../api/api.js';
-import { API_BASE, cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
+import { cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate, navigateToParent } from '../utils/router.js';
 import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
@@ -9,7 +10,6 @@ import {
     buildVolumesMap,
     renderVolumeSummary,
     attachVolumeChipsHandlers,
-    injectVolumeChipsStyles,
 } from '../components/volumeChips.js';
 
 // ID вже доданих випусків для фільтрації в пошуку
@@ -191,7 +191,6 @@ function renderPage(collection, seriesList = []) {
     `;
 
     // ── Volume summary з проміжками номерів ──────────────────────────────────
-    injectVolumeChipsStyles();
     const volumesMap = buildVolumesMap(collection.issues || [], {
         keyField:         'cv_vol_id',
         fallbackKeyField: 'ds_vol_id',

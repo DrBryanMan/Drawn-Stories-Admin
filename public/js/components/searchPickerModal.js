@@ -150,8 +150,10 @@ async function _runSPMSearch() {
       const idx = parseInt(row.dataset.spmItem);
       row.style.cursor = 'pointer';
       row.addEventListener('click', () => {
+        const onSelect = _spmConfig.onSelect;
+        const item = items[idx];
         closeSearchPickerModal();
-        _spmConfig.onSelect(items[idx]);
+        onSelect(item);
       });
       row.addEventListener('mouseenter', () => { row.style.background = 'var(--bg-secondary)'; });
       row.addEventListener('mouseleave', () => { row.style.background = '';                    });

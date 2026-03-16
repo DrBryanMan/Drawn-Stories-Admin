@@ -1,7 +1,6 @@
-// public/js/components/publisherFilterPanel.js
-// Блок фільтру по видавництву (мульти-вибір) — монтується в #filters-panel
+import { API_BASE } from '../utils/config.js';
 
-const API_BASE = 'http://localhost:7000/api';
+// Блок фільтру по видавництву (мульти-вибір) — монтується в #filters-panel
 
 /**
  * Додає блок вибору видавництва в #filters-panel.

@@ -1,6 +1,6 @@
-// Блок фільтру по темам (мульти-вибір) — монтується в #filters-panel
+import { API_BASE } from '../utils/config.js';
 
-const API_BASE = 'http://localhost:7000/api';
+// Блок фільтру по темам (мульти-вибір) — монтується в #filters-panel
 
 /**
  * Додає блок вибору теми в #filters-panel.

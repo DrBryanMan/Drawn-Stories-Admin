@@ -1,3 +1,4 @@
+import { API_BASE } from '../utils/config.js';
 import { cv_img_path_small, showError, showLoading, showEmpty } from '../utils/helpers.js';
 import { navigate, buildUrl } from '../utils/router.js';
 import { createPagination, getInitialPage } from '../utils/pagination.js';
@@ -91,7 +92,7 @@ async function loadAndRender() {
         if (currentThemes.length)
             params.set('theme_ids', currentThemes.map(t => t.id).join(','));
 
-        const resp = await fetch(`http://localhost:7000/api/collections?${params}`);
+        const resp = await fetch(`${API_BASE}/collections?${params}`);
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const result = await resp.json();
 

@@ -1,10 +1,10 @@
+import { API_BASE } from '../utils/config.js';
 import { fetchItem } from '../api/api.js';
 import { cv_img_path_small, cv_img_path_original, formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openAddVolumeModal } from '../components/addVolumeModal.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
 
-const API_BASE = 'http://localhost:7000/api';
 let _collectionsSortOrder = 'date'; // 'date' | 'name' | 'number'
 
 export async function renderSeriesDetail(params) {

@@ -1,12 +1,9 @@
-// public/js/views/readingOrderDetail.js
-
+import { API_BASE } from '../utils/config.js';
 import { fetchItem } from '../api/api.js';
 import { cv_img_path_small, formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
-import { buildVolumesMap, renderVolumeSummary, attachVolumeChipsHandlers, injectVolumeChipsStyles } from '../components/volumeChips.js';
-
-const API_BASE = 'http://localhost:7000/api';
+import { buildVolumesMap, renderVolumeSummary, attachVolumeChipsHandlers } from '../components/volumeChips.js';
 
 // Зберігаємо ID вже доданих випусків для фільтрації в пошуку
 let currentOrderIssueIds = new Set();
@@ -39,7 +36,6 @@ function renderPage(order) {
     const issues = order.issues || [];
 
     // Уніфікований компонент томів
-    injectVolumeChipsStyles();
     const volumesMap = buildVolumesMap(issues, { keyField: 'cv_vol_id', nameField: 'volume_name', dbIdField: 'volume_db_id' });
     const volumesHtml = renderVolumeSummary(volumesMap, { label: 'Додані серії', clickable: true });
 

@@ -1,8 +1,10 @@
-// routes/issues.js
 const { Router } = require('express');
 const { runQuery, getAll, getOne, rawRun, saveDatabase } = require('../db');
 
 const router = Router();
+
+const TRANSLATED_THEME_ID = 51;
+const COLLECTION_THEME_ID = 44;
 
 function getCollectionIdForIssue(issueId) {
   try {
@@ -106,6 +108,106 @@ router.get('/', (req, res) => {
   res.json({ data: issues, total: total?.count || 0 });
 });
 
+// ── Репринти: отримати всі репринти цього випуску (цей — оригінал) ────────
+router.get('/:id/reprints', (req, res) => {
+  try {
+    const data = getAll(`
+      SELECT i.id, i.name, i.cv_img, i.cv_id, i.cv_slug, i.issue_number, i.cv_vol_id,
+             COALESCE(v.name, mv.name) AS volume_name,
+             v.lang AS volume_lang
+      FROM issue_reprints ir
+      JOIN issues i ON i.id = ir.reprint_id
+      LEFT JOIN volumes v  ON i.cv_vol_id = v.cv_id
+      LEFT JOIN volumes mv ON i.ds_vol_id = mv.id
+      WHERE ir.original_id = ?
+      ORDER BY v.lang, i.issue_number
+    `, [req.params.id]);
+    res.json({ data });
+  } catch (e) { res.json({ data: [] }); }
+});
+
+// ── Репринти: отримати оригінал цього репринту (цей — перекладений сінгл) ─
+router.get('/:id/reprint-source', (req, res) => {
+  try {
+    const data = getAll(`
+      SELECT i.id, i.name, i.cv_img, i.cv_id, i.cv_slug, i.issue_number, i.cv_vol_id,
+             COALESCE(v.name, mv.name) AS volume_name
+      FROM issue_reprints ir
+      JOIN issues i ON i.id = ir.original_id
+      LEFT JOIN volumes v  ON i.cv_vol_id = v.cv_id
+      LEFT JOIN volumes mv ON i.ds_vol_id = mv.id
+      WHERE ir.reprint_id = ?
+    `, [req.params.id]);
+    res.json({ data });
+  } catch (e) { res.json({ data: [] }); }
+});
+
+// ── Репринти: додати репринт (тіло: { reprint_id }) ──────────────────────
+router.post('/:id/reprints', (req, res) => {
+  const originalId = parseInt(req.params.id);
+  const { reprint_id } = req.body;
+  if (!reprint_id) return res.status(400).json({ error: 'reprint_id обов\'язковий' });
+  if (parseInt(reprint_id) === originalId) return res.status(400).json({ error: 'Випуск не може бути репринтом самого себе' });
+  try {
+    const exists = getOne(
+      'SELECT id FROM issue_reprints WHERE original_id = ? AND reprint_id = ?',
+      [originalId, reprint_id]
+    );
+    if (exists) return res.status(400).json({ error: 'Цей зв\'язок вже існує' });
+    rawRun(
+      'INSERT INTO issue_reprints (original_id, reprint_id) VALUES (?, ?)',
+      [originalId, reprint_id]
+    );
+    saveDatabase();
+    res.json({ message: 'Репринт додано' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── Репринти: видалити зв'язок ────────────────────────────────────────────
+router.delete('/:id/reprints/:reprintId', (req, res) => {
+  try {
+    rawRun(
+      'DELETE FROM issue_reprints WHERE original_id = ? AND reprint_id = ?',
+      [req.params.id, req.params.reprintId]
+    );
+    saveDatabase();
+    res.json({ message: 'Зв\'язок видалено' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── Репринти: додати джерело (тіло: { original_id }) — з боку репринту ───
+router.post('/:id/reprint-source', (req, res) => {
+  const reprintId = parseInt(req.params.id);
+  const { original_id } = req.body;
+  if (!original_id) return res.status(400).json({ error: 'original_id обов\'язковий' });
+  if (parseInt(original_id) === reprintId) return res.status(400).json({ error: 'Випуск не може бути джерелом самого себе' });
+  try {
+    const exists = getOne(
+      'SELECT id FROM issue_reprints WHERE original_id = ? AND reprint_id = ?',
+      [original_id, reprintId]
+    );
+    if (exists) return res.status(400).json({ error: 'Цей зв\'язок вже існує' });
+    rawRun(
+      'INSERT INTO issue_reprints (original_id, reprint_id) VALUES (?, ?)',
+      [original_id, reprintId]
+    );
+    saveDatabase();
+    res.json({ message: 'Джерело додано' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── Репринти: видалити джерело — з боку репринту ─────────────────────────
+router.delete('/:id/reprint-source/:originalId', (req, res) => {
+  try {
+    rawRun(
+      'DELETE FROM issue_reprints WHERE original_id = ? AND reprint_id = ?',
+      [req.params.originalId, req.params.id]
+    );
+    saveDatabase();
+    res.json({ message: 'Джерело видалено' });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 router.get('/:id/reading-orders', (req, res) => {
   try {
     const data = getAll(`
@@ -149,9 +251,18 @@ router.get('/:id', (req, res) => {
     WHERE i.id = ?
   `, [req.params.id]);
   if (!issue) return res.status(404).json({ error: 'Випуск не знайдено' });
-
+  // Додаємо theme ids тому для визначення типу на фронті
+  const volumeThemeIds = issue.cv_vol_id
+    ? getAll(
+        `SELECT vt.theme_id FROM volume_themes vt
+         JOIN volumes v ON v.id = vt.volume_id
+         WHERE v.cv_id = ?`,
+        [issue.cv_vol_id]
+      ).map(r => r.theme_id)
+    : [];
+  issue.volume_theme_ids = volumeThemeIds;
   issue.collection_id = getCollectionIdForIssue(issue.id);
-  res.json(issue);
+  res.json({ ...issue, volume_theme_ids: volumeThemeIds });
 });
 
 router.post('/', (req, res) => {

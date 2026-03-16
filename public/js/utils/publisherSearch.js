@@ -1,7 +1,6 @@
-// public/js/utils/publisherSearch.js
-// Спільний хелпер для пошуку видавництва та відображення чіпів теми/видавництва
+import { API_BASE } from '../utils/config.js';
 
-const API_BASE = 'http://localhost:7000/api';
+// Спільний хелпер для пошуку видавництва та відображення чіпів теми/видавництва
 
 // ── Генерація HTML пошуку видавництва ──────────────────────────────────────
 
@@ -31,10 +30,7 @@ export function publisherSearchHTML({ publisherId, publisherName, inputId, hidde
              value=""
              style="width:100%;"
              autocomplete="off">
-      <div id="${resultsId}"
-           style="display:none; position:absolute; left:0; right:0; z-index:200; background:var(--bg-primary);
-                  border:1px solid var(--border-color); border-radius:6px; max-height:200px; overflow-y:auto;
-                  box-shadow:var(--shadow-lg); margin-top:2px;">
+      <div id="${resultsId}" class="publisher-results-dropdown">
       </div>
     </div>
   `;

@@ -3,6 +3,20 @@
 // Нові міграції додавати в кінець масиву MIGRATIONS.
 
 const MIGRATIONS = [
+  // ── M020: issue_reprints — зв'язок оригінал → репринт-сінгл ─────────────
+  {
+    id: 'M020_issue_reprints',
+    up(db) {
+      db.run(`CREATE TABLE IF NOT EXISTS issue_reprints (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        original_id INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+        reprint_id  INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+        UNIQUE(original_id, reprint_id)
+      )`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_issue_reprints_original ON issue_reprints(original_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_issue_reprints_reprint  ON issue_reprints(reprint_id)`);
+    },
+  },
 
   // ── M001: поле lang у volumes ────────────────────────────────────────────
   {
