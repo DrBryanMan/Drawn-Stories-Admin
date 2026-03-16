@@ -80,7 +80,7 @@ function ensureModal() {
       </div>
 
       <!-- Рядок "Вибрати всі" -->
-      <div id="aim-select-all-row" style="display:none; align-items:center; justify-content:space-between; padding:0.5rem 0.75rem; margin-bottom:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:8px;">
+      <div id="aim-select-all-row">
         <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem; user-select:none;">
           <input type="checkbox" id="aim-select-all-checkbox" style="width:16px; height:16px; margin:0; accent-color:var(--accent);">
           <span>Вибрати всі</span>
@@ -148,8 +148,6 @@ function ensureModal() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && _modal?.classList.contains('active')) closeAddIssueModal();
   });
-
-  injectStyles();
 }
 
 // ── Відкрити / Закрити ────────────────────────────────────────────────────
@@ -383,156 +381,4 @@ function toggleSelectAll(checked) {
 
   const checkbox = document.getElementById('aim-select-all-checkbox');
   if (checkbox) checkbox.indeterminate = false;
-}
-
-// ── Стилі ───────────────────────────────────────────────────────────────
-
-function injectStyles() {
-  if (document.getElementById('add-issue-modal-styles')) return;
-  const style = document.createElement('style');
-  style.id = 'add-issue-modal-styles';
-  style.textContent = `
-    .add-issue-modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      z-index: 1100;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
-    }
-    .add-issue-modal-overlay.active {
-      display: flex;
-    }
-    .add-issue-modal-box {
-      background: var(--bg-primary);
-      border-radius: 12px;
-      padding: 1.75rem;
-      width: 980px;
-      max-width: 96vw;
-      max-height: 92vh;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-    }
-    .aim-filters {
-      display: grid;
-      grid-template-columns: 2fr 2fr 1fr 1fr 1fr 1fr auto;
-      gap: 0.9rem;
-      margin-bottom: 1.25rem;
-      align-items: flex-end;
-    }
-    .aim-label {
-      font-size: 0.82rem;
-      display: block;
-      margin-bottom: 0.3rem;
-      color: var(--text-secondary);
-    }
-    .aim-results-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-      gap: 0.9rem;
-      padding: 0.8rem;
-      max-height: 380px;
-      overflow-y: auto;
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      background: var(--bg-secondary);
-    }
-    .aim-empty {
-      grid-column: 1 / -1;
-      padding: 2rem 1rem;
-      text-align: center;
-      color: var(--text-tertiary);
-      font-size: 0.95rem;
-    }
-    .aim-card {
-      display: flex;
-      flex-direction: column;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      overflow: hidden;
-      transition: all 0.18s ease;
-      position: relative;
-      height: 100%;
-      cursor: pointer;
-    }
-    .aim-card:hover {
-      border-color: var(--accent);
-      transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.18);
-    }
-    .aim-card--added {
-      opacity: 0.4;
-      filter: grayscale(0.7);
-      pointer-events: none;
-      cursor: not-allowed;
-    }
-    .aim-card--selected {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3.5px rgba(var(--accent-rgb), 0.35);
-    }
-    .aim-card--selected::after {
-      content: '✓';
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: var(--accent);
-      color: white;
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: bold;
-      font-size: 16px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.4);
-      z-index: 2;
-    }
-    .aim-card-img {
-      width: 100%;
-      aspect-ratio: 2 / 3;
-      object-fit: cover;
-      object-position: top;
-      display: block;
-      background: #0f0f0f;
-    }
-    .aim-card-placeholder {
-      aspect-ratio: 2 / 3;
-      background: linear-gradient(145deg, #ecececff, #bebebeff);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.4rem;
-      color: #555;
-    }
-    .aim-card-info {
-      padding: 0.6rem 0.75rem;
-      font-size: 0.8rem;
-      line-height: 1.3;
-      flex-grow: 1;
-    }
-    .aim-card-name {
-      font-weight: 600;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .aim-card-meta {
-      color: var(--text-tertiary);
-      font-size: 0.74rem;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      margin-top: 0.2rem;
-    }
-    .aim-footer {
-      display: flex;
-      gap: 0.75rem;
-      justify-content: flex-end;
-      margin-top: 1.25rem;
-    }
-  `;
-  document.head.appendChild(style);
 }

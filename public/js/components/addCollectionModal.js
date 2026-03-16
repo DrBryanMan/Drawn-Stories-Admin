@@ -43,7 +43,7 @@ function ensureModal() {
       </div>
 
       <!-- Рядок "Вибрати всі" -->
-      <div id="acm-select-all-row" style="display:none; align-items:center; gap:0.75rem; padding:0.5rem 0.8rem; margin-bottom:0.5rem; background:var(--bg-secondary); border-radius:8px; border:1px solid var(--border-color);">
+      <div id="acm-select-all-row">
         <input type="checkbox" id="acm-select-all-checkbox" style="width:16px;height:16px;cursor:pointer;">
         <label for="acm-select-all-checkbox" style="cursor:pointer; font-size:0.9rem;">
           Вибрати всі <span id="acm-select-all-count"></span>
@@ -82,8 +82,6 @@ function ensureModal() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && _modal?.classList.contains('active')) closeAddCollectionModal();
   });
-
-  injectStyles();
   _modal = el;
 }
 
@@ -247,149 +245,4 @@ async function confirmSelection() {
   const onAdd = _config.onAdd;   // зберігаємо до закриття
   closeAddCollectionModal();
   await onAdd(ids);
-}
-
-// ── Стилі ────────────────────────────────────────────────────────────────
-
-function injectStyles() {
-  if (document.getElementById('add-collection-modal-styles')) return;
-  const style = document.createElement('style');
-  style.id = 'add-collection-modal-styles';
-  style.textContent = `
-    .acm-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      z-index: 1100;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
-    }
-    .acm-overlay.active { display: flex; }
-    .acm-box {
-      background: var(--bg-primary);
-      border-radius: 12px;
-      padding: 1.75rem;
-      width: 860px;
-      max-width: 96vw;
-      max-height: 92vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-    }
-    .acm-filters {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 0.9rem;
-      margin-bottom: 1.25rem;
-      align-items: flex-end;
-    }
-    .acm-label {
-      font-size: 0.82rem;
-      display: block;
-      margin-bottom: 0.3rem;
-      color: var(--text-secondary);
-    }
-    .acm-results-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-      gap: 0.9rem;
-      padding: 0.8rem;
-      max-height: 420px;
-      overflow-y: auto;
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      background: var(--bg-secondary);
-      flex: 1;
-    }
-    .acm-empty {
-      grid-column: 1 / -1;
-      padding: 2rem 1rem;
-      text-align: center;
-      color: var(--text-tertiary);
-      font-size: 0.95rem;
-    }
-    .acm-card {
-      display: flex;
-      flex-direction: column;
-      background: var(--bg-primary);
-      border: 2px solid var(--border-color);
-      border-radius: 10px;
-      overflow: hidden;
-      transition: all 0.18s ease;
-      position: relative;
-      cursor: pointer;
-    }
-    .acm-card:hover:not(.acm-card--added) {
-      border-color: var(--accent);
-      transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.18);
-    }
-    .acm-card--added {
-      opacity: 0.4;
-      filter: grayscale(0.7);
-      pointer-events: none;
-    }
-    .acm-card--selected {
-      border-color: var(--accent);
-      background: color-mix(in srgb, var(--accent) 12%, var(--bg-primary));
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
-    }
-    .acm-card-img {
-      width: 100%;
-      aspect-ratio: 2/3;
-      object-fit: cover;
-      display: block;
-    }
-    .acm-card-placeholder {
-      width: 100%;
-      aspect-ratio: 2/3;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
-      background: var(--bg-secondary);
-    }
-    .acm-card-info {
-      padding: 0.5rem 0.6rem;
-      flex: 1;
-    }
-    .acm-card-name {
-      font-size: 0.8rem;
-      font-weight: 600;
-      line-height: 1.3;
-      overflow: hidden;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-    }
-    .acm-card-meta {
-      font-size: 0.72rem;
-      color: var(--text-secondary);
-      margin-top: 0.25rem;
-      overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-    }
-    .acm-card-badge {
-      position: absolute;
-      top: 6px;
-      right: 6px;
-      background: var(--success, #28a745);
-      color: #fff;
-      font-size: 0.7rem;
-      padding: 2px 6px;
-      border-radius: 4px;
-    }
-    .acm-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.75rem;
-      margin-top: 1.25rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--border-color);
-    }
-  `;
-  document.head.appendChild(style);
 }

@@ -29,7 +29,7 @@ function ensureModal() {
   el.className = 'avm-overlay';
   el.innerHTML = `
     <div class="avm-box">
-      <h3 id="avm-title" style="margin-bottom:1rem;"></h3>
+      <h3 id="avm-title"></h3>
 
       <div class="avm-filters">
         <div class="form-group" style="margin:0;">
@@ -64,8 +64,6 @@ function ensureModal() {
     clearTimeout(_searchTimeout);
     _searchTimeout = setTimeout(triggerSearch, 400);
   });
-
-  injectStyles();
   _modal = el;
 }
 
@@ -143,7 +141,7 @@ async function performSearch(query) {
     });
 
   } catch (err) {
-    el.innerHTML = '<div class="avm-empty" style="color:var(--danger);">Помилка пошуку</div>';
+    el.innerHTML = '<div class="avm-empty">Помилка пошуку</div>';
     console.error('addVolumeModal search error:', err);
   }
 }
@@ -172,143 +170,4 @@ async function confirmSelection() {
   const onAdd = _config.onAdd;
   closeAddVolumeModal();
   await onAdd(ids);
-}
-
-// ── Стилі ────────────────────────────────────────────────────────────────
-
-function injectStyles() {
-  if (document.getElementById('add-volume-modal-styles')) return;
-  const style = document.createElement('style');
-  style.id = 'add-volume-modal-styles';
-  style.textContent = `
-    .avm-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      z-index: 1100;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(4px);
-    }
-    .avm-overlay.active { display: flex; }
-    .avm-box {
-      background: var(--bg-primary);
-      border-radius: 12px;
-      padding: 1.75rem;
-      width: 860px;
-      max-width: 96vw;
-      max-height: 92vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.4);
-    }
-    .avm-filters {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 0.9rem;
-      margin-bottom: 1.25rem;
-      align-items: flex-end;
-    }
-    .avm-label {
-      font-size: 0.82rem;
-      display: block;
-      margin-bottom: 0.3rem;
-      color: var(--text-secondary);
-    }
-    .avm-results-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
-      gap: 0.75rem;
-      overflow-y: auto;
-      flex: 1;
-      min-height: 220px;
-      max-height: 52vh;
-      padding: 0.25rem;
-    }
-    .avm-empty {
-      grid-column: 1 / -1;
-      text-align: center;
-      color: var(--text-secondary);
-      padding: 3rem 1rem;
-      font-size: 0.95rem;
-    }
-    .avm-card {
-      position: relative;
-      border: 2px solid var(--border-color);
-      border-radius: 8px;
-      overflow: hidden;
-      cursor: pointer;
-      transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s;
-      background: var(--bg-secondary);
-    }
-    .avm-card:hover {
-      border-color: var(--primary);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .avm-card--selected {
-      border-color: var(--primary) !important;
-      background: color-mix(in srgb, var(--primary) 10%, var(--bg-secondary));
-      box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);
-    }
-    .avm-card--added {
-      opacity: 0.5;
-      cursor: default;
-      pointer-events: none;
-    }
-    .avm-card-img {
-      width: 100%;
-      aspect-ratio: 2/3;
-      object-fit: cover;
-      display: block;
-    }
-    .avm-card-placeholder {
-      width: 100%;
-      aspect-ratio: 2/3;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.5rem;
-      background: var(--bg-tertiary, var(--bg-secondary));
-    }
-    .avm-card-info {
-      padding: 0.4rem 0.5rem 0.5rem;
-    }
-    .avm-card-name {
-      font-size: 0.78rem;
-      font-weight: 600;
-      line-height: 1.3;
-      overflow: hidden;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-    }
-    .avm-card-meta {
-      font-size: 0.7rem;
-      color: var(--text-secondary);
-      margin-top: 0.2rem;
-    }
-    .avm-card-badge {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      text-align: center;
-      background: rgba(0,0,0,0.6);
-      color: #fff;
-      font-size: 0.7rem;
-      padding: 0.25rem 0.4rem;
-    }
-    .avm-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.75rem;
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid var(--border-color);
-      flex-shrink: 0;
-    }
-  `;
-  document.head.appendChild(style);
 }

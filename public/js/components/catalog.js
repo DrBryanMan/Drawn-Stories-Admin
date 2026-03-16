@@ -64,13 +64,7 @@ function setupSearchArea() {
   document.getElementById('cv-id-search-wrapper')?.remove();
 
   const searchInput = document.getElementById('search-input');
-  searchInput.style.display = 'inline-block';
-  searchInput.style.width = '240px';
-  searchInput.style.padding = '0.5rem';
-  searchInput.style.border = '1px solid #ccc';
-  searchInput.style.borderRadius = '4px';
-  searchInput.style.fontSize = '1rem';
-  searchInput.style.marginRight = '0.75rem';
+  searchInput.className = 'search-input';
   searchInput.value = currentSearch;
 
   // ── Чекбокс "Точне співпадіння" ──

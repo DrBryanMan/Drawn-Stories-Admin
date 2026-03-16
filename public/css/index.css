@@ -1,47 +1,57 @@
-@import url('./styles.css');
+/* ═══════════════════════════════════════════════════════════
+   index.css — головний entry point для index.html
+   Підключає всі шари стилів у правильному порядку.
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Основа ── */
+@import url('./variables.css');
+@import url('./base.css');
+@import url('./layout.css');
+
+/* ── Фільтри ── */
 @import url('./filters-panel.css');
 
-/* Компоненти */
+/* ── Компоненти ── */
+@import url('./components/buttons.css');
+@import url('./components/forms.css');
+@import url('./components/modal.css');
+@import url('./components/badges-chips.css');
+@import url('./components/pagination.css');
+@import url('./components/cards.css');
+@import url('./components/table.css');
 @import url('./components/issues_navbar.css');
+@import url('./components/volume-relations.css');
 
+/* ═══════════════════════════════════════════════════════════
+   Локальні доповнення для index (не виносяться в окремий файл)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Підрядки в сайдбарі ── */
 .stat-item.stat-sub {
     padding-top: 1px;
     padding-bottom: 1px;
-    opacity: 0.75;
+    opacity: 0.7;
 }
-
 .stat-item.stat-sub .stat-label {
     padding-left: 0.75rem;
-    font-size: 0.78rem;
+    font-size: 0.76rem;
 }
-
 .stat-item.stat-sub .stat-value {
-    font-size: 0.78rem;
+    font-size: 0.76rem;
 }
 
-
-/*  */
-
-.lang-chip {
-    cursor: pointer;
-    padding: 0.2rem 0.55rem;
-    border-radius: 12px;
-    border: 1px solid var(--border-color);
+/* ── Пошук — точне співпадіння ── */
+#exact-match-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
     font-size: 0.82rem;
-    background: var(--bg-secondary);
-    color: var(--text-primary);
+    color: var(--text-secondary);
+    cursor: pointer;
     user-select: none;
-    transition: .15s;
-    white-space: nowrap;
+    margin-right: 0.5rem;
 }
-
-.lang-chip:hover {
-    border-color: var(--accent);
-    color: var(--accent);
-}
-
-.lang-chip--active {
-    background: var(--accent);
-    color: white !important;
-    border-color: var(--accent);
+#exact-match-wrapper input[type="checkbox"] {
+    accent-color: var(--accent);
+    cursor: pointer;
 }

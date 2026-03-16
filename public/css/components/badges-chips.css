@@ -1,0 +1,228 @@
+/* ═══════════════════════════════════════════════════════════
+   components/badges-chips.css — бейджі та чіпи
+   ═══════════════════════════════════════════════════════════ */
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  БАЗОВІ БЕЙДЖІ (.badge)                                 ║
+   ╚══════════════════════════════════════════════════════════╝ */
+
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 5px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.4;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.badge-collection {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+}
+
+.badge-issue {
+    background: var(--success-light);
+    color: var(--success);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.badge-lang {
+    background: var(--warning-light);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-issue-count {
+    background: var(--accent-light);
+    color: var(--accent);
+    border: 1px solid rgba(124, 110, 247, 0.3);
+}
+
+/* ── Рік (як на скріншоті — жовтий) ── */
+.badge-year {
+    background: var(--badge-year-bg);
+    color: var(--badge-year-color);
+    border: 1px solid var(--badge-year-border);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+}
+
+/* ── Перегляди (зелений) ── */
+.badge-views {
+    background: var(--badge-views-bg);
+    color: var(--badge-views-color);
+    border: 1px solid var(--badge-views-border);
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 0.15rem 0.55rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+/* ── Позначка теми на картці ── */
+.theme-badge {
+    display: inline-block;
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.73rem;
+    font-weight: 500;
+    background: var(--chip-theme-bg);
+    color: var(--chip-theme-color);
+    border: 1px solid var(--chip-theme-border);
+    margin-right: 0.3rem;
+    margin-bottom: 0.2rem;
+}
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  РЕДАГУВАННЯ ЧІПИ (.edit-chip)                         ║
+   ╚══════════════════════════════════════════════════════════╝ */
+
+.edit-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.5rem 0.2rem 0.6rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    line-height: 1;
+}
+
+.edit-chip button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    font-size: 1rem;
+    opacity: 0.55;
+    color: inherit;
+    transition: opacity 0.15s;
+}
+.edit-chip button:hover { opacity: 1; }
+
+.edit-chip-publisher {
+    background: var(--chip-publisher-bg);
+    color: var(--chip-publisher-color);
+    border: 1px solid var(--chip-publisher-border);
+}
+
+.edit-chip-theme {
+    background: var(--chip-theme-bg);
+    color: var(--chip-theme-color);
+    border: 1px solid var(--chip-theme-border);
+}
+
+.edit-chip-genre {
+    background: var(--chip-genre-bg);
+    color: var(--chip-genre-color);
+    border: 1px solid var(--chip-genre-border);
+}
+
+.edit-chip-type {
+    background: var(--chip-type-bg);
+    color: var(--chip-type-color);
+    border: 1px solid var(--chip-type-border);
+}
+
+/* ── Розділювач груп ── */
+.theme-chip-group-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    align-self: center;
+    padding: 0 0.25rem;
+    white-space: nowrap;
+}
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  ФІЛЬТР-ЧІПИ (.filter-chip--)                         ║
+   ╚══════════════════════════════════════════════════════════╝ */
+
+.filter-chip--theme,
+.filter-chip--theme-genre,
+.filter-chip--theme-type,
+.filter-chip--genre {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.2rem 0.5rem 0.2rem 0.65rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.filter-chip--theme {
+    background: var(--chip-theme-bg);
+    color: var(--chip-theme-color);
+    border: 1px solid var(--chip-theme-border);
+}
+
+.filter-chip--theme-genre,
+.filter-chip--genre {
+    background: var(--chip-genre-bg);
+    color: var(--chip-genre-color);
+    border: 1px solid var(--chip-genre-border);
+}
+
+.filter-chip--theme-type {
+    background: var(--chip-type-bg);
+    color: var(--chip-type-color);
+    border: 1px solid var(--chip-type-border);
+}
+
+.filter-chip--theme button,
+.filter-chip--theme-genre button,
+.filter-chip--theme-type button,
+.filter-chip--genre button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    font-size: 0.95rem;
+    opacity: 0.55;
+    color: inherit;
+    transition: opacity 0.15s;
+}
+.filter-chip--theme button:hover,
+.filter-chip--theme-genre button:hover,
+.filter-chip--theme-type button:hover,
+.filter-chip--genre button:hover { opacity: 1; }
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  LANG-CHIP                                              ║
+   ╚══════════════════════════════════════════════════════════╝ */
+
+.lang-chip {
+    cursor: pointer;
+    padding: 0.2rem 0.55rem;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    font-size: 0.82rem;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    user-select: none;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+    white-space: nowrap;
+}
+
+.lang-chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.lang-chip--active {
+    background: var(--accent);
+    color: #fff !important;
+    border-color: var(--accent);
+}

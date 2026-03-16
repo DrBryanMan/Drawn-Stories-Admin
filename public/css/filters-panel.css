@@ -1,150 +1,178 @@
-/* ── Панель фільтрів ─────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════
+   filters-panel.css — панель фільтрів
+   ═══════════════════════════════════════════════════════════ */
 
 .filters-panel {
     display: flex;
     flex-wrap: wrap;
+    gap: 0.5rem;
     align-items: center;
-    gap: 0.5rem 1.25rem;
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 0.75rem;
     background: var(--bg-primary);
-    border-bottom: 1px solid var(--border-color);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
     margin-bottom: 0.75rem;
-    flex-shrink: 0;
 }
 
-/* Один блок фільтру (наприклад "Тип:" або "Видавництво:") */
-.filter-block {
+.filters-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+/* ── Рядок фільтра (лейбл + елемент) ── */
+.filter-row {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.4rem;
+    flex-wrap: wrap;
 }
 
-.filter-block__label {
-    font-size: 0.8rem;
+.filter-row label {
+    font-size: 0.78rem;
     color: var(--text-secondary);
     white-space: nowrap;
-    margin-right: 0.1rem;
 }
 
-/* Чіп обраного видавництва */
-.filter-chip--publisher {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.5rem 0.2rem 0.65rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    background: #dbeafe;
-    color: #1d4ed8;
-    border: 1px solid #bfdbfe;
-}
-
-.filter-chip__remove {
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    line-height: 1;
-    font-size: 1rem;
-    opacity: 0.6;
-    color: inherit;
-}
-.filter-chip__remove:hover { opacity: 1; }
-
-/* Кнопка "Скинути" */
-.filter-clear-btn {
-    padding: 0.15rem 0.55rem;
-    border-radius: 999px;
+.filter-row input,
+.filter-row select {
+    padding: 0.3rem 0.6rem;
     border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    color: var(--text-secondary);
-    cursor: pointer;
-    font-size: 0.75rem;
-}
-.filter-clear-btn:hover {
-    border-color: var(--danger);
-    color: var(--danger);
-}
-
-/* Інпут пошуку видавництва */
-.filter-search-input {
-    padding: 0.2rem 0.65rem;
-    border-radius: 999px;
-    border: 1px solid var(--border-color);
+    border-radius: 6px;
     background: var(--bg-secondary);
     color: var(--text-primary);
-    font-size: 0.8rem;
-    width: 170px;
+    font-size: 0.82rem;
     outline: none;
-}
-.filter-search-input:focus {
-    border-color: var(--accent);
-    background: var(--bg-primary);
+    transition: border-color 0.15s;
 }
 
-/* Дропдаун */
+.filter-row input:focus,
+.filter-row select:focus {
+    border-color: var(--accent);
+}
+
+/* ── Розділювач ── */
+.filter-separator {
+    width: 1px;
+    height: 20px;
+    background: var(--border-color);
+    margin: 0 0.1rem;
+}
+
+/* ── Чекбокси (wanted page) ── */
+.filters-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+}
+
+.filter-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    user-select: none;
+    transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.filter-checkbox-label:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+.filter-checkbox-label input[type="checkbox"] {
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+.filter-checkbox-label.active {
+    background: var(--accent-light);
+    border-color: rgba(124, 110, 247, 0.35);
+    color: var(--accent);
+}
+
+.filters-actions {
+    display: flex;
+    gap: 0.35rem;
+    margin-left: auto;
+}
+
+/* ── Тема-фільтр блок (фільтр по темах з dropdown) ── */
+.filter-theme-block {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.filter-theme-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    min-height: 28px;
+}
+
+.filter-theme-input-wrap {
+    position: relative;
+}
+
+/* ── Dropdown тем ── */
 .filter-dropdown {
-    display: none;
     position: absolute;
     left: 0;
-    top: calc(100% + 4px);
+    right: 0;
     z-index: 300;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 6px;
-    min-width: 230px;
-    max-height: 200px;
+    border-radius: 8px;
+    max-height: 260px;
     overflow-y: auto;
     box-shadow: var(--shadow-lg);
+    margin-top: 2px;
+}
+
+.filter-dropdown__group-header {
+    padding: 0.4rem 0.75rem 0.25rem;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
 .filter-dropdown__item {
     padding: 0.45rem 0.75rem;
     cursor: pointer;
     font-size: 0.85rem;
+    color: var(--text-primary);
     border-bottom: 1px solid var(--border-color);
+    transition: background 0.12s;
 }
+
 .filter-dropdown__item:last-child { border-bottom: none; }
-.filter-dropdown__item:hover { background: var(--bg-secondary); }
+
+.filter-dropdown__item:hover { background: var(--bg-hover); }
+
 .filter-dropdown__item--selected {
-    opacity: 0.45;
+    opacity: 0.4;
     pointer-events: none;
 }
 
 .filter-dropdown__empty {
-    padding: 0.6rem 0.75rem;
+    padding: 0.75rem;
     font-size: 0.85rem;
-    color: var(--text-secondary);
-}
-
-/* ── ДОДАТИ ДО public/css/filters-panel.css ─────────────────────────────── */
-
-/* Чіп обраного жанру у фільтрі */
-.filter-chip--genre {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.5rem 0.2rem 0.65rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    background: #fef3c7;
-    color: #92400e;
-    border: 1px solid #fde68a;
-}
-
-/* Чіп обраної теми у фільтрі */
-.filter-chip--theme {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.2rem 0.5rem 0.2rem 0.65rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    background: #ede9fe;
-    color: #5b21b6;
-    border: 1px solid #ddd6fe;
+    color: var(--text-muted);
+    text-align: center;
 }

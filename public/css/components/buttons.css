@@ -1,0 +1,151 @@
+/* ═══════════════════════════════════════════════════════════
+   components/buttons.css — кнопки
+   ═══════════════════════════════════════════════════════════ */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.9rem;
+    border-radius: 7px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, opacity 0.15s;
+    white-space: nowrap;
+    user-select: none;
+    text-decoration: none;
+    line-height: 1.4;
+}
+
+.btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ── Primary ── */
+.btn-primary {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+.btn-primary:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+/* ── Secondary ── */
+.btn-secondary {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-color: var(--border-color);
+}
+.btn-secondary:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--border-hover);
+}
+
+/* ── Accent (alias) ── */
+.btn-accent {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+}
+.btn-accent:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+}
+
+/* ── Danger ── */
+.btn-danger {
+    background: var(--danger-light);
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+.btn-danger:hover {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+}
+
+/* ── Ghost ── */
+.btn-ghost {
+    background: transparent;
+    color: var(--text-secondary);
+    border-color: transparent;
+}
+.btn-ghost:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* ── Small ── */
+.btn-sm {
+    padding: 0.25rem 0.6rem;
+    font-size: 0.8rem;
+    border-radius: 5px;
+}
+
+/* ── Icon-only ── */
+.btn-icon {
+    padding: 0.35rem;
+    border-radius: 6px;
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-secondary);
+    line-height: 1;
+}
+.btn-icon:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+/* ── Search input ── */
+.search-input {
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    transition: border-color 0.15s, background 0.15s;
+    outline: none;
+}
+.search-input::placeholder { color: var(--text-muted); }
+.search-input:focus {
+    border-color: var(--accent);
+    background: var(--bg-tertiary);
+}
+
+/* ── Badge-filter (фільтр по бейджу) ── */
+.badge-filter-btn {
+    padding: 0.3rem 0.85rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    transition: all 0.15s;
+}
+.badge-filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.badge-filter-btn.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+.badge-filter-btn[data-type="collection"].active {
+    background: #3b82f6;
+    border-color: #3b82f6;
+}
+.badge-filter-btn[data-type="issue"].active {
+    background: #22c55e;
+    border-color: #22c55e;
+}
