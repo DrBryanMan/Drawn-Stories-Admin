@@ -114,16 +114,19 @@ router.get('/:id/reprints', (req, res) => {
     const data = getAll(`
       SELECT i.id, i.name, i.cv_img, i.cv_id, i.cv_slug, i.issue_number, i.cv_vol_id,
              COALESCE(v.name, mv.name) AS volume_name,
-             v.lang AS volume_lang
+             v.lang AS volume_lang,
+             ir.story_id,
+             s.name_original AS story_name_original,
+             s.name_ua       AS story_name_ua
       FROM issue_reprints ir
       JOIN issues i ON i.id = ir.reprint_id
-      LEFT JOIN volumes v  ON i.cv_vol_id = v.cv_id
-      LEFT JOIN volumes mv ON i.ds_vol_id = mv.id
+      LEFT JOIN volumes v        ON i.cv_vol_id = v.cv_id
+      LEFT JOIN volumes mv       ON i.ds_vol_id = mv.id
+      LEFT JOIN issue_stories s  ON s.id = ir.story_id
       WHERE ir.original_id = ?
       ORDER BY v.lang, i.issue_number
     `, [req.params.id]);
-    res.json({ data });
-  } catch (e) { res.json({ data: [] }); }
+  } catch (e) { console.error('reprints error:', e.message); res.json({ data: [] }); }
 });
 
 // ── Репринти: отримати оригінал цього репринту (цей — перекладений сінгл) ─
@@ -134,7 +137,8 @@ router.get('/:id/reprint-source', (req, res) => {
              COALESCE(v.name, mv.name) AS volume_name,
              ir.story_id,
              s.name_original AS story_name_original,
-             s.name_ua       AS story_name_ua
+             s.name_ua       AS story_name_ua,
+             s.plot          AS story_plot
       FROM issue_reprints ir
       JOIN issues i ON i.id = ir.original_id
       LEFT JOIN volumes v        ON i.cv_vol_id = v.cv_id
@@ -217,17 +221,8 @@ router.delete('/:id/reprint-source/:originalId', (req, res) => {
 router.get('/:id/stories', (req, res) => {
   try {
     const stories = getAll(
-      `SELECT s.*,
-              ir.original_id  AS reprint_original_id,
-              oi.name         AS reprint_original_name,
-              oi.issue_number AS reprint_original_number,
-              COALESCE(ov.name, omv.name) AS reprint_original_volume
+      `SELECT s.*
        FROM issue_stories s
-       LEFT JOIN issue_reprints ir
-              ON ir.story_id = s.id
-       LEFT JOIN issues oi ON oi.id = ir.original_id
-       LEFT JOIN volumes ov  ON ov.cv_id = oi.cv_vol_id
-       LEFT JOIN volumes omv ON omv.id   = oi.ds_vol_id
        WHERE s.issue_id = ?
        ORDER BY s.order_num, s.id`,
       [req.params.id]

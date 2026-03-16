@@ -9,60 +9,100 @@ let currentVolumeId = null;
 let currentIssueId = null;
 
 // ═══════════════════════════════════════════════════════════════
-// БЛОКИ КОНТЕНТУ (сюжет, появи персонажів)
+// БЛОКИ КОНТЕНТУ (сюжет, появи)
 // ═══════════════════════════════════════════════════════════════
 
-function renderContentBlocks(issue, stories, reprintSources) {
-    const blocks = stories.length > 0
-        ? stories.map(s => renderStoryBlock({
-            title:        s.name_ua || s.name_original || '— без назви —',
-            titleOriginal: s.name_ua && s.name_original ? s.name_original : null,
-            plot:          s.plot || '',
-            reprintSource: s.reprint_original_id ? {
-                id:     s.reprint_original_id,
-                name:   s.reprint_original_name,
-                number: s.reprint_original_number,
-                volume: s.reprint_original_volume,
-            } : null,
-          }))
-        : [renderStoryBlock({
-            title:        issue.name || 'Без назви',
-            titleOriginal: null,
-            plot:          issue.plot || '',
-            reprintSource: reprintSources.length > 0 ? {
-                id:          reprintSources[0].id,
-                name:        reprintSources[0].name,
-                number:      reprintSources[0].issue_number,
-                volume:      reprintSources[0].volume_name,
-                storyLabel:  reprintSources[0].story_name_ua || reprintSources[0].story_name_original || null,
-            } : null,
-          })];
+/**
+ * Будує всі блоки контенту для сторінки випуску.
+ *
+ * Логіка:
+ * 1. ГОЛОВНИЙ БЛОК (завжди) — сам випуск.
+ *    Плашки репрінту: reprintSources де story_id IS NULL.
+ *
+ * 2а. Якщо є власні stories (оригінальний випуск) — по блоку на кожну.
+ *     Без плашок (вони оригінальні).
+ *
+ * 2б. Якщо репринт-випуск і є story-level джерела (story_id != null) —
+ *     по блоку на кожне, з плашкою "Репринт: ... · «назва историї»".
+ */
+function renderContentBlocks(issue, stories, reprintSources, isReprintOrTranslated) {
+    const blocks = [];
+
+    // ── 1. Головний блок (завжди) ─────────────────────────────────────────
+    const wholeIssueReprintSources = isReprintOrTranslated
+        ? reprintSources.filter(s => !s.story_id)
+        : [];
+
+    blocks.push(renderStoryBlock({
+        title:          issue.name || 'Без назви',
+        titleOriginal:  null,
+        plot:           issue.plot || '',
+        reprintSources: wholeIssueReprintSources,
+    }));
+
+    // ── 2а. Власні sub-stories (оригінальний випуск) ──────────────────────
+    if (stories.length > 0) {
+        for (const s of stories) {
+            blocks.push(renderStoryBlock({
+                title:          s.name_ua || s.name_original || '— без назви —',
+                titleOriginal:  s.name_ua && s.name_original ? s.name_original : null,
+                plot:           s.plot || '',
+                reprintSources: [],
+            }));
+        }
+    }
+
+    // ── 2б. Story-level reprintSources (репринт із конкретними историями) ─
+    if (isReprintOrTranslated && stories.length === 0) {
+        const storyReprintSources = reprintSources.filter(s => s.story_id);
+        for (const src of storyReprintSources) {
+            blocks.push(renderStoryBlock({
+                title:          src.story_name_ua || src.story_name_original || '— без назви —',
+                titleOriginal:  src.story_name_ua && src.story_name_original
+                                    ? src.story_name_original : null,
+                plot:           src.story_plot || '',
+                reprintSources: [src],
+            }));
+        }
+    }
+
     return blocks.join('');
 }
 
-function renderStoryBlock({ title, titleOriginal, plot, reprintSource }) {
-    return `
-    <div style="background:var(--bg-primary); border:1px solid var(--border-color); border-radius:8px; padding:1.5rem; margin-bottom:1rem;">
-        ${reprintSource ? `
+/**
+ * Рендерить один контент-блок (для випуску або окремої историї).
+ * @param {string}   title
+ * @param {string|null} titleOriginal
+ * @param {string}   plot
+ * @param {Array}    reprintSources — масив джерел (може бути порожній)
+ */
+function renderStoryBlock({ title, titleOriginal, plot, reprintSources }) {
+    const badges = reprintSources.map(src => `
         <div style="display:inline-flex; align-items:center; gap:0.4rem; background:var(--bg-tertiary);
                     border:1px solid var(--border-color); border-radius:4px; padding:0.25rem 0.6rem;
-                    font-size:0.78rem; color:var(--text-secondary); margin-bottom:0.75rem;">
+                    font-size:0.78rem; color:var(--text-secondary); margin-bottom:0.4rem; margin-right:0.4rem;">
             🔄 Репринт:
-            <a href="#" onclick="navigate('issue-detail', { id: ${reprintSource.id} })"
+            <a href="#" onclick="event.preventDefault(); navigate('issue-detail', { id: ${src.id} })"
                style="color:var(--accent); text-decoration:none; font-weight:500;">
-                ${reprintSource.name || 'Без назви'} #${reprintSource.number || '?'}
+                ${src.name || 'Без назви'} #${src.issue_number || '?'}
             </a>
-            ${reprintSource.volume ? `<span style="color:var(--text-muted);">${reprintSource.volume}</span>` : ''}
-            ${reprintSource.storyLabel ? `<span style="color:var(--text-muted);">· «${reprintSource.storyLabel}»</span>` : ''}
+            ${src.volume_name ? `<span style="color:var(--text-muted);">${src.volume_name}</span>` : ''}
+            ${src.story_name_ua || src.story_name_original
+                ? `<span style="color:var(--text-muted);">· «${src.story_name_ua || src.story_name_original}»</span>`
+                : ''}
         </div>
-        ` : ''}
+    `).join('');
 
-        <h2 style="font-size:1.35rem; margin:0 0 0.25rem;">
-            ${title}
-        </h2>
-        ${titleOriginal ? `<div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.75rem;">${titleOriginal}</div>` : ''}
+    return `
+    <div style="background:var(--bg-primary); border:1px solid var(--border-color); border-radius:8px; padding:1.5rem; margin-bottom:1rem;">
+        ${badges ? `<div style="margin-bottom:0.75rem;">${badges}</div>` : ''}
 
-        <!-- Появи (заглушка для майбутніх персонажів) -->
+        <h2 style="font-size:1.35rem; margin:0 0 0.25rem;">${title}</h2>
+        ${titleOriginal
+            ? `<div style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:0.75rem;">${titleOriginal}</div>`
+            : ''}
+
+        <!-- Появи (заглушка) -->
         <div style="margin-top:1.25rem;">
             <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase;
                         letter-spacing:0.06em; margin-bottom:0.5rem;">Появи</div>
