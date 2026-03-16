@@ -258,7 +258,7 @@ function updatePagination(total) {
   pagination.style.display = 'flex';
 
   document.getElementById('page-info').textContent =
-    `Ст. ${page} з ${pages} (Рез. ${total})`;
+    `Ст. ${page} з ${pages} (${total})`;
 
   const prev = document.getElementById('prev-btn');
   const next = document.getElementById('next-btn');

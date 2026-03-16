@@ -71,13 +71,14 @@
     display: inline-block;
     padding: 0.15rem 0.5rem;
     border-radius: 12px;
-    font-size: 0.73rem;
+    font-size: 0.72rem;
     font-weight: 500;
     background: var(--chip-theme-bg);
     color: var(--chip-theme-color);
     border: 1px solid var(--chip-theme-border);
     margin-right: 0.3rem;
     margin-bottom: 0.2rem;
+    white-space: nowrap;
 }
 
 /* ╔══════════════════════════════════════════════════════════╗
@@ -172,6 +173,12 @@
     background: var(--chip-genre-bg);
     color: var(--chip-genre-color);
     border: 1px solid var(--chip-genre-border);
+}
+
+.filter-chip--publisher {
+    background: var(--chip-publisher-bg);
+    color: var(--chip-publisher-color);
+    border: 1px solid var(--chip-publisher-border);
 }
 
 .filter-chip--theme-type {

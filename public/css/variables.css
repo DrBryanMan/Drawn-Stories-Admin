@@ -4,81 +4,64 @@
 
 :root {
     /* ── Фони ── */
-    --bg-app:       #ffffff;
-    --bg-primary:   #f1f3f5;
-    --bg-secondary: #f8f9fa;
-    --bg-tertiary:  #e9ecef;
-    --bg-hover:     #f1f3f5;
-    --border-color: #e9ecef;
+    --bg-app:       #eef1f8;          /* ← злегка блакитно-сіруватий замість #fff */
+    --bg-primary:   #f3f5fb;          /* ← чуть blue-tint замість #f1f3f5 */
+    --bg-secondary: #f9fafd;
+    --bg-tertiary:  #e8ecf4;
+    --bg-hover:     #e8ecf4;
 
-    --border-color:  #e9ecef;
-    --border-hover:  #dee2e6;
+    --border-color: #dde2ef;
+    --border-hover: #c5cde0;
 
-    --text-primary:   #212529;
-    --text-secondary: #495057;
-    --text-muted:     #6c757d;
-/*     
-    --bg-app:        #0d1117;
-    --bg-primary:    #161b2e;
-    --bg-secondary:  #1e2540;
-    --bg-tertiary:   #252b47;
-    --bg-hover:      #252b47;
-    /* ── Межі ── */
-/* 
-    --border-color:  #2a3050;
-    --border-hover:  #3d4570;
-*/
-    /* ── Текст ── */
-/* 
-    --text-primary:   #e2e8f0;
-    --text-secondary: #94a3b8;
-    --text-muted:     #5a6585;
-*/
+    --text-primary:   #1e2340;
+    --text-secondary: #4a5278;
+    --text-muted:     #8892b0;
 
     /* ── Акцент (фіолетовий) ── */
-    --accent:         #7c6ef7;
-    --accent-hover:   #6c5ce7;
-    --accent-light:   rgba(124, 110, 247, 0.15);
-    --accent-hsl:     247, 88%, 70%;
+    --accent:         #6c5ce7;
+    --accent-hover:   #5849c2;
+    --accent_light:   #c6bfff;
+    --accent-light:   rgba(108, 92, 231, 0.12);
+    --accent-hsl:     250, 75%, 63%;
 
     /* ── Статуси ── */
-    --danger:         #ef4444;
-    --danger-light:   rgba(239, 68, 68, 0.15);
-    --success:        #22c55e;
-    --success-light:  rgba(34, 197, 94, 0.12);
-    --warning:        #f59e0b;
-    --warning-light:  rgba(245, 158, 11, 0.15);
+    --danger:         #e53e3e;
+    --danger-light:   rgba(229, 62, 62, 0.1);
+    --success:        #38a169;
+    --success-light:  rgba(56, 161, 105, 0.1);
+    --warning:        #d97706;
+    --warning-light:  rgba(217, 119, 6, 0.12);
 
-    /* ── Спеціальні бейджі (як на скріншоті) ── */
-    --badge-year-bg:      rgba(245, 158, 11, 0.15);
-    --badge-year-color:   #f59e0b;
-    --badge-year-border:  rgba(245, 158, 11, 0.3);
+    /* ── Спеціальні бейджі ── */
+    --badge-year-bg:      rgba(217, 119, 6, 0.1);
+    --badge-year-color:   #b45309;
+    --badge-year-border:  rgba(217, 119, 6, 0.25);
 
-    --badge-views-bg:     rgba(34, 197, 94, 0.12);
-    --badge-views-color:  #4ade80;
-    --badge-views-border: rgba(34, 197, 94, 0.25);
+    --badge-views-bg:     rgba(56, 161, 105, 0.1);
+    --badge-views-color:  #276749;
+    --badge-views-border: rgba(56, 161, 105, 0.2);
 
-    --badge-id-color:     #7c6ef7;
+    --badge-id-color:     #6c5ce7;
 
-    /* ── Чіпи тегів (світлі акценти на темному фоні) ── */
-    --chip-publisher-bg:     rgba(96, 165, 250, 0.12);
-    --chip-publisher-color:  #60a5fa;
-    --chip-publisher-border: rgba(96, 165, 250, 0.25);
+    /* ── Чіпи тегів (адаптовані для світлої теми) ── */
+    --chip-publisher-bg:     rgba(59, 130, 246, 0.08);
+    --chip-publisher-color:  #1d4ed8;
+    --chip-publisher-border: rgba(59, 130, 246, 0.22);
 
-    --chip-theme-bg:     rgba(167, 139, 250, 0.12);
-    --chip-theme-color:  #a78bfa;
-    --chip-theme-border: rgba(167, 139, 250, 0.25);
+    --chip-theme-bg:     rgba(109, 40, 217, 0.08);
+    --chip-theme-color:  #5b21b6;
+    --chip-theme-border: rgba(109, 40, 217, 0.2);
 
-    --chip-genre-bg:     rgba(251, 191, 36, 0.12);
-    --chip-genre-color:  #fbbf24;
-    --chip-genre-border: rgba(251, 191, 36, 0.25);
+    --chip-genre-bg:     rgba(180, 83, 9, 0.08);
+    --chip-genre-color:  #92400e;
+    --chip-genre-border: rgba(180, 83, 9, 0.2);
 
-    --chip-type-bg:      rgba(52, 211, 153, 0.12);
-    --chip-type-color:   #34d399;
-    --chip-type-border:  rgba(52, 211, 153, 0.25);
+    --chip-type-bg:      rgba(5, 150, 105, 0.08);
+    --chip-type-color:   #065f46;
+    --chip-type-border:  rgba(5, 150, 105, 0.2);
 
-    /* ── Тіні ── */
-    --shadow:    0 1px 4px rgba(0, 0, 0, 0.5);
-    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
-    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.8);
+    /* ── Тіні (легкі для світлої теми) ── */
+    --shadow:    0 1px 4px rgba(30, 35, 64, 0.08);
+    --shadow-lg: 0 6px 24px rgba(30, 35, 64, 0.13);
+    --shadow-xl: 0 16px 48px rgba(30, 35, 64, 0.18);
 }

@@ -149,3 +149,22 @@
     background: #22c55e;
     border-color: #22c55e;
 }
+
+
+
+.btn-notext.btn-small {
+    padding: 0;
+    font-size: 0.8rem;
+	width: 2em;
+	aspect-ratio: 1 / 1;
+}
+
+.btn-notext.btn-danger {
+    background: hsl(var(--danger-hsl), .7);
+    /* color: white; */
+}
+
+.btn-notext.btn-danger:hover {
+    background: hsl(var(--danger-hsl), .9);
+    color: var(--danger);
+}

@@ -503,8 +503,8 @@ function renderIssueRows(issues, collectionId) {
                 ` : formatDate(issue.release_date)}
             </td>
             <td onclick="event.stopPropagation()">
-                <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); editIssueFromCollection(${issue.id})">Редагувати</button>
-                <button class="btn btn-danger btn-small" onclick="removeIssueFromCollection(${collectionId}, ${issue.id})">Видалити</button>
+                <button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); editIssueFromCollection(${issue.id})">Ред.</button>
+                <button class="btn btn-notext btn-danger btn-small" onclick="removeIssueFromCollection(${collectionId}, ${issue.id})">✕</button>
             </td>
         </tr>
     `).join('');

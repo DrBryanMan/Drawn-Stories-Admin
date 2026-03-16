@@ -56,9 +56,10 @@
 
 .vrel-chain-item {
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.3rem 0.65rem;
+    padding: .3em;
     border-radius: 8px;
     font-size: 0.8rem;
     background: var(--bg-secondary);
@@ -67,17 +68,17 @@
     transition: border-color 0.15s, color 0.15s;
 }
 
-.vrel-chain-item--current {
+.vrel-chain-item.current {
     background: var(--accent-light);
     border-color: rgba(124, 110, 247, 0.4);
     color: var(--accent);
     font-weight: 600;
 }
 
-.vrel-chain-item--link {
+.vrel-chain-item.link {
     cursor: pointer;
 }
-.vrel-chain-item--link:hover {
+.vrel-chain-item.link:hover {
     border-color: var(--border-hover);
     color: var(--text-primary);
 }
@@ -118,15 +119,16 @@
 
 .vrel-card {
     display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 0.6rem;
-    padding: 0.45rem 0.75rem;
+    padding: .3em;
     background: var(--bg-secondary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
     cursor: pointer;
     transition: border-color 0.15s, background 0.15s;
-    max-width: 280px;
+    max-width: 210px;
 }
 
 .vrel-card:hover {
@@ -198,3 +200,163 @@
     color: var(--accent);
     background: var(--accent-light);
 }
+
+/* ╔══════════════════════════════════════════════════════════╗
+   ║  МОДАЛКА "ДОДАТИ ЗВ'ЯЗОК" (#vrel-modal)                ║
+   ╚══════════════════════════════════════════════════════════╝ */
+
+#vrel-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 35, 64, 0.45);
+    backdrop-filter: blur(5px);
+    z-index: 1200;
+    align-items: center;
+    justify-content: center;
+}
+#vrel-modal.open { display: flex; }
+
+.vrel-modal-box {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 1.75rem;
+    width: 520px;
+    max-width: 95vw;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: var(--shadow-xl);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.vrel-modal-box h4 {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0 0 0.25rem;
+}
+
+/* ── Група полів ── */
+.vrel-modal-fg {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.vrel-modal-fg label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.vrel-modal-fg input,
+.vrel-modal-fg select {
+    padding: 0.45rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+.vrel-modal-fg input:focus,
+.vrel-modal-fg select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+    background: #fff;
+}
+.vrel-modal-fg input::placeholder { color: var(--text-muted); }
+
+/* ── Таблетки типів зв'язку ── */
+.vrel-type-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.vrel-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
+    transition: all 0.15s;
+    user-select: none;
+}
+.vrel-pill:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-light);
+}
+.vrel-pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+/* Кольори таблеток за типом (активний стан) */
+.vrel-pill-continuation.active { background: #3b82f6; border-color: #3b82f6; }
+.vrel-pill-sequel.active       { background: #059669; border-color: #059669; }
+.vrel-pill-prequel.active      { background: #db2777; border-color: #db2777; }
+.vrel-pill-spinoff.active      { background: #d97706; border-color: #d97706; }
+.vrel-pill-related.active      { background: #6c5ce7; border-color: #6c5ce7; }
+
+/* ── Результати пошуку ── */
+.vrel-search-results {
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    max-height: 260px;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+}
+
+.vrel-search-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.12s;
+    font-size: 0.85rem;
+}
+.vrel-search-row:last-child { border-bottom: none; }
+.vrel-search-row:hover { background: var(--accent-light); }
+
+.vrel-search-row img {
+    width: 30px;
+    height: 45px;
+    object-fit: cover;
+    border-radius: 4px;
+    flex-shrink: 0;
+    background: var(--bg-tertiary);
+}
+
+/* ── Кнопки дій ── */
+.vrel-modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+    margin-top: 0.25rem;
+}
+
+/* ── Кольори типів зв'язку у картках (адаптовані для світлої теми) ── */
+.rel-type-continuation { color: #1d4ed8; }
+.rel-type-sequel       { color: #059669; }
+.rel-type-prequel      { color: #be185d; }
+.rel-type-spinoff      { color: #b45309; }
+.rel-type-related      { color: #64748b; }
