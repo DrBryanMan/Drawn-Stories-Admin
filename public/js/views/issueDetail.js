@@ -28,46 +28,44 @@ let currentIssueId = null;
 function renderContentBlocks(issue, stories, reprintSources, isReprintOrTranslated) {
     const blocks = [];
 
-    // ── 1. Головний блок (завжди) ─────────────────────────────────────────
-    const wholeIssueReprintSources = isReprintOrTranslated
-        ? reprintSources.filter(s => !s.story_id)
-        : [];
-
-// Для whole-issue репринту — підтягуємо plot з першоджерела
-    const wholeIssuePlot = issue.plot ||
-        (wholeIssueReprintSources.length > 0
-            ? wholeIssueReprintSources[0].source_issue_plot || ''
-            : '');
-
+    // ── 1. Головний блок (завжди) — сам випуск, без плашок ───────────────
     blocks.push(renderStoryBlock({
         title:          issue.name || 'Без назви',
         titleOriginal:  null,
-        plot:           wholeIssuePlot,
-        reprintSources: wholeIssueReprintSources,
+        plot:           issue.plot || '',
+        reprintSources: [],
     }));
 
-    // ── 2а. Власні sub-stories (оригінальний випуск) ──────────────────────
-    if (stories.length > 0) {
+    if (isReprintOrTranslated && reprintSources.length > 0) {
+        // ── 2. Репринт-випуск: окремий блок на КОЖНЕ джерело ─────────────
+        for (const src of reprintSources) {
+            if (src.story_id) {
+                // Конкретна историія з оригіналу
+                blocks.push(renderStoryBlock({
+                    title:         src.story_name_ua || src.story_name_original || '— без назви —',
+                    titleOriginal: src.story_name_ua && src.story_name_original
+                                       ? src.story_name_original : null,
+                    plot:          src.story_plot || '',
+                    reprintSources: [src],
+                }));
+            } else {
+                // Весь оригінальний випуск (без конкретної историї)
+                blocks.push(renderStoryBlock({
+                    title:         src.name || '— без назви —',
+                    titleOriginal: null,
+                    plot:          src.source_issue_plot || '',
+                    reprintSources: [src],
+                }));
+            }
+        }
+    } else if (!isReprintOrTranslated && stories.length > 0) {
+        // ── 2. Оригінальний випуск зі sub-stories ────────────────────────
         for (const s of stories) {
             blocks.push(renderStoryBlock({
-                title:          s.name_ua || s.name_original || '— без назви —',
-                titleOriginal:  s.name_ua && s.name_original ? s.name_original : null,
-                plot:           s.plot || '',
+                title:         s.name_ua || s.name_original || '— без назви —',
+                titleOriginal: s.name_ua && s.name_original ? s.name_original : null,
+                plot:          s.plot || '',
                 reprintSources: [],
-            }));
-        }
-    }
-
-    // ── 2б. Story-level reprintSources (репринт із конкретними историями) ─
-    if (isReprintOrTranslated && stories.length === 0) {
-        const storyReprintSources = reprintSources.filter(s => s.story_id);
-        for (const src of storyReprintSources) {
-            blocks.push(renderStoryBlock({
-                title:          src.story_name_ua || src.story_name_original || '— без назви —',
-                titleOriginal:  src.story_name_ua && src.story_name_original
-                                    ? src.story_name_original : null,
-                plot:           src.story_plot || '',
-                reprintSources: [src],
             }));
         }
     }
@@ -93,9 +91,6 @@ function renderStoryBlock({ title, titleOriginal, plot, reprintSources }) {
                 ${src.name || 'Без назви'} #${src.issue_number || '?'}
             </a>
             ${src.volume_name ? `<span style="color:var(--text-muted);">${src.volume_name}</span>` : ''}
-            ${src.story_name_ua || src.story_name_original
-                ? `<span style="color:var(--text-muted);">· «${src.story_name_ua || src.story_name_original}»</span>`
-                : ''}
         </div>
     `).join('');
 
@@ -419,14 +414,16 @@ export async function renderIssueDetail(params) {
                                 style="width:36px; height:54px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
                             : '<div style="width:36px; height:54px; background:var(--bg-tertiary); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center;">📖</div>'}
                         <div style="flex:1; min-width:0;">
+                            <div style="font-size:0.8rem; color:var(--text-secondary);">
+                                ${rep.volume_lang ? `[${rep.volume_lang}] ` : ''}${rep.volume_name || ''}
+                            </div>
                             <div style="font-weight:500; cursor:pointer; color:var(--accent);"
                                 onclick="navigate('issue-detail', { id: ${rep.id} })">
                                 ${rep.name || 'Без назви'} #${rep.issue_number || '?'}
                             </div>
                             <div style="font-size:0.8rem; color:var(--text-secondary);">
-                                ${rep.volume_lang ? `[${rep.volume_lang}] ` : ''}${rep.volume_name || ''}
                                 ${rep.story_name_ua || rep.story_name_original
-                                    ? `<span style="color:var(--text-muted);"> · «${rep.story_name_ua || rep.story_name_original}»</span>`
+                                    ? `<span style="color:var(--accent);">«${rep.story_name_ua || rep.story_name_original}»</span>`
                                     : ''}
                             </div>
                         </div>
@@ -458,11 +455,18 @@ export async function renderIssueDetail(params) {
                                 style="width:36px; height:54px; object-fit:cover; border-radius:3px; flex-shrink:0;">`
                             : '<div style="width:36px; height:54px; background:var(--bg-tertiary); border-radius:3px; flex-shrink:0; display:flex; align-items:center; justify-content:center;">📖</div>'}
                         <div style="flex:1; min-width:0;">
+                            <div style="font-size:0.8rem; color:var(--text-secondary);">
+                                ${src.volume_name || ''}
+                            </div>
                             <div style="font-weight:500; cursor:pointer; color:var(--accent);"
                                 onclick="navigate('issue-detail', { id: ${src.id} })">
                                 ${src.name || 'Без назви'} #${src.issue_number || '?'}
                             </div>
-                            <div style="font-size:0.8rem; color:var(--text-secondary);">${src.volume_name || ''}</div>
+                            <div style="font-size:0.8rem; color:var(--text-secondary);">
+                                ${src.story_name_ua || src.story_name_original
+                                    ? `<span style="color:var(--accent);">«${src.story_name_ua || src.story_name_original}»</span>`
+                                    : ''}
+                            </div>
                         </div>
                         <button class="btn btn-danger btn-small" style="flex-shrink:0;"
                                 onclick="removeReprintSource(${issueId}, ${src.id})">✕</button>

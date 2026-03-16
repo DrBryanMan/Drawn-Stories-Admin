@@ -160,7 +160,7 @@ router.post('/:id/reprints', (req, res) => {
   if (parseInt(reprint_id) === originalId) return res.status(400).json({ error: 'Випуск не може бути репринтом самого себе' });
   try {
     const exists = getOne(
-      'SELECT id FROM issue_reprints WHERE original_id = ? AND reprint_id = ?',
+      'SELECT id FROM issue_reprints WHERE original_id = ? AND reprint_id = ? AND story_id IS NULL',
       [originalId, reprint_id]
     );
     if (exists) return res.status(400).json({ error: 'Цей зв\'язок вже існує' });
@@ -193,8 +193,8 @@ router.post('/:id/reprint-source', (req, res) => {
   if (parseInt(original_id) === reprintId) return res.status(400).json({ error: 'Випуск не може бути джерелом самого себе' });
   try {
     const exists = getOne(
-      'SELECT id FROM issue_reprints WHERE original_id = ? AND reprint_id = ?',
-      [original_id, reprintId]
+      'SELECT id FROM issue_reprints WHERE original_id = ? AND reprint_id = ? AND (story_id IS ? OR story_id = ?)',
+      [original_id, reprintId, story_id || null, story_id || null]
     );
     if (exists) return res.status(400).json({ error: 'Цей зв\'язок вже існує' });
     rawRun(

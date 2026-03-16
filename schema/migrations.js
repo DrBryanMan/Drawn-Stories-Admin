@@ -391,6 +391,29 @@ const MIGRATIONS = [
       db.run(`ALTER TABLE issues ADD COLUMN plot TEXT`);
     },
   },
+  
+  // ── M024: issue_reprints — змінити UNIQUE(original_id, reprint_id)
+  //   на UNIQUE(original_id, reprint_id, story_id) щоб дозволити
+  //   кілька историй з одного оригіналу в одному репринті
+  {
+    id: 'M024_issue_reprints_unique_with_story',
+    up(db) {
+      // SQLite не підтримує DROP CONSTRAINT — перестворюємо таблицю
+      db.run(`CREATE TABLE IF NOT EXISTS issue_reprints_new (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        original_id INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+        reprint_id  INTEGER NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+        story_id    INTEGER REFERENCES issue_stories(id) ON DELETE SET NULL,
+        UNIQUE(original_id, reprint_id, story_id)
+      )`);
+      db.run(`INSERT INTO issue_reprints_new (id, original_id, reprint_id, story_id)
+              SELECT id, original_id, reprint_id, story_id FROM issue_reprints`);
+      db.run(`DROP TABLE issue_reprints`);
+      db.run(`ALTER TABLE issue_reprints_new RENAME TO issue_reprints`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_issue_reprints_original ON issue_reprints(original_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_issue_reprints_reprint  ON issue_reprints(reprint_id)`);
+    },
+  },
 ];
 
 // ── Таблиця міграцій ────────────────────────────────────────────────────────
