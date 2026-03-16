@@ -126,6 +126,7 @@ router.get('/:id/reprints', (req, res) => {
       WHERE ir.original_id = ?
       ORDER BY v.lang, i.issue_number
     `, [req.params.id]);
+    res.json({ data });
   } catch (e) { console.error('reprints error:', e.message); res.json({ data: [] }); }
 });
 
@@ -138,7 +139,8 @@ router.get('/:id/reprint-source', (req, res) => {
              ir.story_id,
              s.name_original AS story_name_original,
              s.name_ua       AS story_name_ua,
-             s.plot          AS story_plot
+             s.plot          AS story_plot,
+             i.plot          AS source_issue_plot
       FROM issue_reprints ir
       JOIN issues i ON i.id = ir.original_id
       LEFT JOIN volumes v        ON i.cv_vol_id = v.cv_id

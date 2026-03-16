@@ -33,10 +33,16 @@ function renderContentBlocks(issue, stories, reprintSources, isReprintOrTranslat
         ? reprintSources.filter(s => !s.story_id)
         : [];
 
+// Для whole-issue репринту — підтягуємо plot з першоджерела
+    const wholeIssuePlot = issue.plot ||
+        (wholeIssueReprintSources.length > 0
+            ? wholeIssueReprintSources[0].source_issue_plot || ''
+            : '');
+
     blocks.push(renderStoryBlock({
         title:          issue.name || 'Без назви',
         titleOriginal:  null,
-        plot:           issue.plot || '',
+        plot:           wholeIssuePlot,
         reprintSources: wholeIssueReprintSources,
     }));
 
@@ -368,7 +374,7 @@ export async function renderIssueDetail(params) {
 
             <!-- ═══ БЛОК КОНТЕНТУ (сюжет, появи) ═══════════════════════════ -->
             <div id="issue-content-blocks" style="margin-top:2rem;">
-                ${renderContentBlocks(issue, issueStories, reprintSources)}
+                ${renderContentBlocks(issue, issueStories, reprintSources, isReprintOrTranslated)}
             </div>
 
             <!-- ═══ МЕНЕДЖЕР ІСТОРІЙ ════════════════════════════════════════ -->
@@ -419,6 +425,9 @@ export async function renderIssueDetail(params) {
                             </div>
                             <div style="font-size:0.8rem; color:var(--text-secondary);">
                                 ${rep.volume_lang ? `[${rep.volume_lang}] ` : ''}${rep.volume_name || ''}
+                                ${rep.story_name_ua || rep.story_name_original
+                                    ? `<span style="color:var(--text-muted);"> · «${rep.story_name_ua || rep.story_name_original}»</span>`
+                                    : ''}
                             </div>
                         </div>
                         <button class="btn btn-danger btn-small" style="flex-shrink:0;"
