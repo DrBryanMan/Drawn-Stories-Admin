@@ -1563,8 +1563,7 @@ function _injectVolumePickerStyles() {
         .vp-item { display:flex; align-items:center; gap:0.75rem; padding:0.75rem;
             cursor:pointer; border-bottom:1px solid var(--border-color); transition: background 0.15s; }
         .vp-item:hover { background: hsl(var(--accent-hsl), .1); }
-        .vp-item--selected { background: color-mix(in srgb, var(--accent) 12%, transparent) !important;
-            outline: 1.5px solid var(--accent); outline-offset: -1.5px; }
+        .vp-item--selected { background: color-mix(in srgb, var(--accent) 12%, transparent) !important;}
         .vp-item--added { opacity: 0.5; pointer-events: none; }
         .vp-item--added .vp-check { accent-color: var(--text-secondary); }
     `;

@@ -34,12 +34,14 @@ export async function renderIssueDetail(params) {
         const reprintSources = reprintSourceData.data || [];
 
         // Визначаємо тип тому за volume_theme_ids (повертається з GET /issues/:id)
-        const volumeThemeIds     = issue.volume_theme_ids || [];
-        const isTranslatedVolume = volumeThemeIds.includes(51);
-        const isCollectionVolume = volumeThemeIds.includes(44);
-        const isTranslatedSingle = isTranslatedVolume && !isCollectionVolume;
-        const isOriginalIssue    = !isTranslatedVolume;
-        const isMangaChapter     = !issue.cv_vol_id && !!issue.ds_vol_id;
+        const volumeThemeIds        = issue.volume_theme_ids || [];
+        const isTranslatedVolume    = volumeThemeIds.includes(51);
+        const isCollectionVolume    = volumeThemeIds.includes(44);
+        const isReprintVolume     = volumeThemeIds.includes(71);
+        const isTranslatedSingle    = isTranslatedVolume && !isCollectionVolume;
+        const isOriginalIssue       = !isTranslatedVolume && !isReprintVolume;
+        const isReprintOrTranslated = isTranslatedSingle || isReprintVolume;
+        const isMangaChapter        = !issue.cv_vol_id && !!issue.ds_vol_id;
 
         document.getElementById('page-title').innerHTML = `
             <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
@@ -271,14 +273,14 @@ export async function renderIssueDetail(params) {
             ` : ''}
 
             <!-- Блок "Джерело" (показується для перекладених сінглів) -->
-            ${isTranslatedSingle ? `
+            ${isReprintOrTranslated ? `
             <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 1.5rem;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: ${reprintSources.length ? '1rem' : '0'};">
                     <h2 style="font-size:1.1rem; margin:0;">📄 Оригінал репринту ${reprintSources.length ? '' : ''}</h2>
-                    ${!reprintSources.length ? `
-                    <button class="btn btn-secondary btn-small" onclick="openAddReprintSourceModal(${issueId})">
-                        + Вказати джерело
-                    </button>` : ''}
+                    ${(isReprintVolume || !reprintSources.length) ? `
+                        <button class="btn btn-secondary btn-small" onclick="openAddReprintSourceModal(${issueId})">
+                            + Вказати джерело
+                        </button>` : ''}
                 </div>
                 ${reprintSources.length > 0 ? `
                 <div style="display:flex; flex-direction:column; gap:0.5rem;">

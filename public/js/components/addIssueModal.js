@@ -89,7 +89,9 @@ function ensureModal() {
         <span id="aim-select-all-hint" style="font-size:0.78rem; color:var(--text-tertiary);"></span>
       </div>
 
-      <div id="aim-results" class="aim-results-grid"></div>
+      <div class="aim-results-container">
+        <div id="aim-results" class="aim-results-grid"></div>
+      </div>
 
       <div id="aim-importance-block" style="display:none; margin-bottom:1rem;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">

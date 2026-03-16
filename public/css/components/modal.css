@@ -435,7 +435,7 @@
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    padding: 1.75rem;
+    padding: 1em 1em .5em;
     width: 1000px;
     max-width: 96vw;
     max-height: 92vh;
@@ -526,6 +526,32 @@
     background: var(--accent-light);
 }
 
+.aim-card--selected:hover {
+    border-color: var(--accent);
+    background: var(--accent-light);
+    transform: translateY(-1px);
+}
+
+.aim-card--selected::after {
+    content: '✓';
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 18px;
+    height: 18px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 0.65rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    pointer-events: none;
+    z-index: 2;
+}
+
 .aim-card--added {
     opacity: 0.45;
     cursor: not-allowed;
@@ -607,8 +633,8 @@
     display: flex;
     justify-content: flex-end;
     gap: 0.6rem;
-    margin-top: 1.25rem;
-    padding-top: 1rem;
+    margin-top: .3em;
+    padding-top: .3em;
     border-top: 1px solid var(--border-color);
     flex-shrink: 0;
 }
