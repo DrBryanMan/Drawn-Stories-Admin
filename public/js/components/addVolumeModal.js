@@ -129,12 +129,19 @@ async function performSearch(query) {
             : '<div class="avm-card-placeholder">📚</div>'}
           <div class="avm-card-info">
             <div class="avm-card-name">${vol.name || 'Без назви'}</div>
-            <div class="avm-card-meta">${vol.issue_count ? '📖 ' + vol.issue_count : ''}${vol.lang ? ' · ' + vol.lang.toUpperCase() : ''}</div>
+            <div class="avm-card-meta">
+              ${vol.has_collection_theme ? '<span style="color:#7c3aed; font-weight:600;">📚 Збірник</span> · ' : ''}
+              ${vol.issue_count ? '📖 ' + vol.issue_count : ''}${vol.lang ? ' · ' + vol.lang.toUpperCase() : ''}
+            </div>
           </div>
           ${alreadyAdded ? '<div class="avm-card-badge">✓ Вже додано</div>' : ''}
         </div>
       `;
     }).join('');
+
+    // Зберігаємо дані для варну
+    if (!_config._volumeDataCache) _config._volumeDataCache = {};
+    volumes.forEach(v => { _config._volumeDataCache[v.id] = v; });
 
     el.querySelectorAll('.avm-card:not(.avm-card--added)').forEach(card => {
       card.addEventListener('click', () => toggleSelection(parseInt(card.dataset.volId), card));
@@ -167,6 +174,21 @@ function updateConfirmBtn() {
 async function confirmSelection() {
   if (!_config?.onAdd || !_selectedVolumeIds.size) return;
   const ids = Array.from(_selectedVolumeIds);
+
+  // Варн якщо серед вибраних є томи-збірники
+  if (_config.warnCollectionVolume && _config._volumeDataCache) {
+    const collectionVols = ids
+      .map(id => _config._volumeDataCache[id])
+      .filter(v => v?.has_collection_theme);
+    if (collectionVols.length > 0) {
+      const names = collectionVols.map(v => v.name).join(', ');
+      const ok = confirm(
+        `⚠️ Увага! Наступні томи є томами-збірниками і будуть відображатись у секції "Томи збірників":\n\n${names}\n\nПродовжити?`
+      );
+      if (!ok) return;
+    }
+  }
+
   const onAdd = _config.onAdd;
   closeAddVolumeModal();
   await onAdd(ids);

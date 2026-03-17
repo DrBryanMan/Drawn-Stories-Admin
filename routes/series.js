@@ -39,9 +39,7 @@ router.get('/:id', (req, res) => {
     JOIN series_volumes sv ON v.id = sv.volume_id
     LEFT JOIN issues i ON i.cv_vol_id = v.cv_id
     LEFT JOIN collections col ON col.cv_vol_id = v.cv_id    -- ← НОВЕ
-    LEFT JOIN (
-      SELECT cv_vol_id FROM volume_themes WHERE theme_id = ?
-    ) vt44 ON v.cv_id = vt44.cv_vol_id
+    LEFT JOIN volume_themes vt44 ON vt44.volume_id = v.id AND vt44.theme_id = ?
     WHERE sv.series_id = ?
     GROUP BY v.id
     ORDER BY v.name ASC

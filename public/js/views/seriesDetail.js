@@ -1,7 +1,7 @@
 import { API_BASE } from '../utils/config.js';
 import { fetchItem } from '../api/api.js';
 import { cv_img_path_small, cv_img_path_original, formatDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
-import { navigate } from '../utils/router.js';
+import { navigate, buildUrl } from '../utils/router.js';
 import { openAddVolumeModal } from '../components/addVolumeModal.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
 
@@ -28,8 +28,8 @@ async function renderPage(series) {
     const collections = series.collections || [];
 
     // Розділяємо томи на два типи
-    const collectionVolumes = volumes.filter(v => v.has_collection_theme);
     const regularVolumes    = volumes.filter(v => !v.has_collection_theme);
+    const collectionVolumes = volumes.filter(v => v.has_collection_theme || (v.collection_count && +v.collection_count > 0));
 
     // Зберігаємо для використання у модалках
     window._seriesVolumes     = volumes;
@@ -135,7 +135,9 @@ async function renderPage(series) {
 
 function renderVolumeCards(volumes, seriesId) {
     return volumes.map(vol => `
-        <div class="card" onclick="navigate('volume-detail', { id: ${vol.id} })" style="cursor:pointer;">
+        <div class="card" style="cursor:pointer;"
+             onclick="if(event.ctrlKey||event.metaKey){event.preventDefault();window.open('${buildUrl('volume-detail', { id: vol.id })}','_blank')}else{navigate('volume-detail',{id:${vol.id}})}"
+             onmousedown="if(event.button===1){event.preventDefault();window.open('${buildUrl('volume-detail', { id: vol.id })}','_blank')}">
             <div class="card-img">
                 ${vol.cv_img
                     ? `<img src="${cv_img_path_small}${vol.cv_img.startsWith('/') ? '' : '/'}${vol.cv_img}" alt="${vol.name}">`
@@ -159,8 +161,9 @@ function renderVolumeCards(volumes, seriesId) {
 
 function renderCollectionCards(collections, seriesId) {
     return collections.map(col => `
-        <div class="card" onclick="navigate('collection-detail', { id: ${col.id} })" style="cursor:pointer;">
-            <div class="card-img">
+        <div class="card" style="cursor:pointer;"
+             onclick="if(event.ctrlKey||event.metaKey){event.preventDefault();window.open('${buildUrl('collection-detail', { id: col.id })}','_blank')}else{navigate('collection-detail',{id:${col.id}})}"
+             onmousedown="if(event.button===1){event.preventDefault();window.open('${buildUrl('collection-detail', { id: col.id })}','_blank')}">            <div class="card-img">
                 ${col.cv_img
                     ? `<img src="${cv_img_path_small}${col.cv_img.startsWith('/') ? '' : '/'}${col.cv_img}" alt="${col.name}">`
                     : '<div style="font-size:2.5rem;">📗</div>'}
@@ -251,6 +254,7 @@ window.openAddVolumeToSeriesModal = (seriesId) => {
         alreadyIds: new Set((window._seriesVolumes || []).map(v => v.id)),
         apiBase: API_BASE,
         cvImgPathSmall: cv_img_path_small,
+        warnCollectionVolume: true,
         onAdd: async (volumeIds) => {
             let lastError = null;
             for (const volId of volumeIds) {

@@ -73,7 +73,10 @@ router.get('/', (req, res) => {
   const volumes = getAll(`
     SELECT v.*,
            p.name as publisher_name,
-           (SELECT COUNT(*) FROM issues i WHERE i.cv_vol_id = v.cv_id) as issue_count
+           (SELECT COUNT(*) FROM issues i WHERE i.cv_vol_id = v.cv_id) as issue_count,
+          CASE WHEN EXISTS (
+            SELECT 1 FROM volume_themes vt WHERE vt.volume_id = v.id AND vt.theme_id = 44
+          ) THEN 1 ELSE 0 END as has_collection_theme
     FROM volumes v
     LEFT JOIN publishers p ON v.publisher = p.id
     ${whereClause}
