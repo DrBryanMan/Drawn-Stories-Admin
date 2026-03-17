@@ -1,36 +1,36 @@
 import { API_BASE } from '../utils/config.js';
 
-// Спільний хелпер для пошуку видавництва та відображення чіпів теми/видавництва
+// ── Закріплені видавництва (ID з бази) ────────────────────────────────────
+export const PINNED_PUBLISHER_IDS = [
+  11,  // Marvel
+  4,   // DC
+  199, // Image
+  332, // IDW
+  361, // Dynamite Entertainment
+  182, // Disney
+];
 
 // ── Генерація HTML пошуку видавництва ──────────────────────────────────────
-
-/**
- * Повертає HTML-блок пошуку видавництва.
- * publisherId   — поточний publisher (id або null)
- * publisherName — поточна назва (рядок або null)
- * inputId       — ID для input (напр. "vol-pub-input")
- * hiddenId      — ID для прихованого input зі значенням (напр. "vol-pub-id")
- * resultsId     — ID для div результатів (напр. "vol-pub-results")
- * chipId        — ID для div чіпа (напр. "vol-pub-chip")
- */
 export function publisherSearchHTML({ publisherId, publisherName, inputId, hiddenId, resultsId, chipId }) {
   return `
-    <div class="form-group" style="position:relative;">
+    <div class="form-group">
       <label>Видавництво</label>
       <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; margin-bottom:0.35rem;" id="${chipId}">
         ${publisherId ? `
-          <span class=" chip  chip-publisher" data-id="${publisherId}">
+          <span class="chip chip-publisher" data-id="${publisherId}">
             🏢 ${publisherName || 'ID:' + publisherId}
             <button type="button" onclick="clearPublisher('${chipId}','${hiddenId}','${inputId}')" title="Видалити">×</button>
           </span>
         ` : ''}
       </div>
       <input type="hidden" id="${hiddenId}" value="${publisherId || ''}">
-      <input type="text" id="${inputId}" placeholder="Шукати видавництво..."
-             value=""
-             style="width:100%;"
+      <input type="text" id="${inputId}" placeholder="Пошук видавництва..."
+             style="width:100%; margin-bottom:0.35rem;"
              autocomplete="off">
-      <div id="${resultsId}" class="publisher-results-dropdown">
+      <div id="${resultsId}" class="publisher-inline-list">
+        <div class="publisher-list-loading" style="padding:0.6rem 0.75rem; color:var(--text-muted); font-size:0.8rem;">
+          Завантаження...
+        </div>
       </div>
     </div>
   `;
@@ -38,66 +38,122 @@ export function publisherSearchHTML({ publisherId, publisherName, inputId, hidde
 
 /**
  * Ініціалізує логіку пошуку видавництва після вставки HTML в DOM.
+ * Тепер показує inline-список (як теми): закріплені вгорі + пошук.
  */
 export function initPublisherSearch({ inputId, hiddenId, resultsId, chipId }) {
-  const input = document.getElementById(inputId);
-  const results = document.getElementById(resultsId);
-  if (!input || !results) return;
+  const input   = document.getElementById(inputId);
+  const listEl  = document.getElementById(resultsId);
+  if (!input || !listEl) return;
 
+  let pinnedPublishers = [];
   let timeout = null;
 
-  input.addEventListener('input', () => {
-    clearTimeout(timeout);
-    const q = input.value.trim();
-    if (!q) { results.style.display = 'none'; return; }
-    timeout = setTimeout(async () => {
-      const res = await fetch(`${API_BASE}/publishers?search=${encodeURIComponent(q)}&limit=20`);
+  // Завантажуємо закріплені видавництва (якщо є)
+  async function loadPinned() {
+    if (!PINNED_PUBLISHER_IDS.length) {
+      listEl.innerHTML = '';
+      return;
+    }
+    try {
+      const res  = await fetch(`${API_BASE}/publishers?ids=${PINNED_PUBLISHER_IDS.join(',')}&limit=50`);
       const data = await res.json();
-      if (!data.data?.length) {
-        results.innerHTML = '<div style="padding:0.75rem; color:var(--text-secondary); font-size:0.875rem;">Нічого не знайдено</div>';
-        results.style.display = 'block';
+      pinnedPublishers = data.data || [];
+    } catch (_) {
+      pinnedPublishers = [];
+    }
+    renderList('');
+  }
+
+  function renderList(query) {
+    const q = query.toLowerCase().trim();
+
+    if (!q) {
+      // Без пошуку — показуємо тільки закріплені
+      if (!pinnedPublishers.length) {
+        listEl.innerHTML = `<div class="publisher-list-empty">Почніть вводити назву для пошуку</div>`;
         return;
       }
-      results.innerHTML = data.data.map(p => `
-        <div onclick="selectPublisher('${chipId}','${hiddenId}','${inputId}','${resultsId}', ${p.id}, '${p.name.replace(/'/g, "\\'")}')"
-             style="padding:0.5rem 0.75rem; cursor:pointer; font-size:0.875rem; border-bottom:1px solid var(--border-color);"
-             onmouseenter="this.style.background='var(--bg-secondary)'" onmouseleave="this.style.background=''">
-          🏢 ${p.name} <span style="color:var(--text-secondary); font-size:0.75rem;">(ID: ${p.id})</span>
-        </div>
-      `).join('');
-      results.style.display = 'block';
-    }, 250);
-  });
-
-  // Закрити dropdown при кліку поза
-  document.addEventListener('click', (e) => {
-    if (!input.contains(e.target) && !results.contains(e.target)) {
-      results.style.display = 'none';
+      listEl.innerHTML = `
+        <div class="publisher-group-header">📌 Закріплені</div>
+        ${pinnedPublishers.map(p => publisherListItemHTML(p, chipId, hiddenId, inputId, resultsId)).join('')}
+      `;
+      return;
     }
-  });
+
+    // Під час пошуку — запит на сервер
+    listEl.innerHTML = `<div class="publisher-list-loading">Пошук...</div>`;
+    clearTimeout(timeout);
+    timeout = setTimeout(async () => {
+      try {
+        const res  = await fetch(`${API_BASE}/publishers?search=${encodeURIComponent(q)}&limit=20`);
+        const data = await res.json();
+        const pubs = data.data || [];
+
+        if (!pubs.length) {
+          listEl.innerHTML = `<div class="publisher-list-empty">Нічого не знайдено</div>`;
+          return;
+        }
+
+        // Відокремлюємо закріплені від решти
+        const pinnedIds = new Set(PINNED_PUBLISHER_IDS);
+        const pinnedInResults = pubs.filter(p => pinnedIds.has(p.id));
+        const rest            = pubs.filter(p => !pinnedIds.has(p.id));
+
+        let html = '';
+        if (pinnedInResults.length) {
+          html += `<div class="publisher-group-header">📌 Закріплені</div>`;
+          html += pinnedInResults.map(p => publisherListItemHTML(p, chipId, hiddenId, inputId, resultsId)).join('');
+        }
+        if (rest.length) {
+          if (pinnedInResults.length) html += `<div class="publisher-group-header">🔍 Результати</div>`;
+          html += rest.map(p => publisherListItemHTML(p, chipId, hiddenId, inputId, resultsId)).join('');
+        }
+        listEl.innerHTML = html;
+      } catch (_) {
+        listEl.innerHTML = `<div class="publisher-list-empty">Помилка пошуку</div>`;
+      }
+    }, 250);
+  }
+
+  input.addEventListener('input', () => renderList(input.value));
+  loadPinned();
+}
+
+function publisherListItemHTML(p, chipId, hiddenId, inputId, resultsId) {
+  return `
+    <div class="publisher-list-item"
+         onclick="selectPublisher('${chipId}','${hiddenId}','${inputId}','${resultsId}',${p.id},'${p.name.replace(/'/g, "\\'")}')"
+         onmouseenter="this.classList.add('publisher-list-item--hover')"
+         onmouseleave="this.classList.remove('publisher-list-item--hover')">
+      🏢 ${p.name}
+      <span style="color:var(--text-muted); font-size:0.75rem; margin-left:auto;">#${p.id}</span>
+    </div>
+  `;
 }
 
 // ── Глобальні функції для onclick в HTML ──────────────────────────────────
 
 window.selectPublisher = (chipId, hiddenId, inputId, resultsId, pubId, pubName) => {
-  // Встановлюємо чіп
   const chip = document.getElementById(chipId);
   if (chip) {
     chip.innerHTML = `
-      <span class=" chip  chip-publisher" data-id="${pubId}">
+      <span class="chip chip-publisher" data-id="${pubId}">
         🏢 ${pubName}
         <button type="button" onclick="clearPublisher('${chipId}','${hiddenId}','${inputId}')" title="Видалити">×</button>
       </span>
     `;
   }
-  // Встановлюємо прихований input
   const hidden = document.getElementById(hiddenId);
   if (hidden) hidden.value = pubId;
-  // Очищаємо пошук
-  const input = document.getElementById(inputId);
-  if (input) input.value = '';
-  const results = document.getElementById(resultsId);
-  if (results) results.style.display = 'none';
+  const input  = document.getElementById(inputId);
+  if (input)  input.value = '';
+
+  // Оновлюємо список (знову показуємо закріплені)
+  const listEl = document.getElementById(resultsId);
+  if (listEl) {
+    // Тригеримо повторний рендер з порожнім запитом
+    input?.dispatchEvent(new Event('input'));
+  }
 };
 
 window.clearPublisher = (chipId, hiddenId, inputId) => {
@@ -105,25 +161,18 @@ window.clearPublisher = (chipId, hiddenId, inputId) => {
   if (chip) chip.innerHTML = '';
   const hidden = document.getElementById(hiddenId);
   if (hidden) hidden.value = '';
-  const input = document.getElementById(inputId);
-  if (input) input.value = '';
+  const input  = document.getElementById(inputId);
+  if (input)  input.value = '';
 };
 
 // ── Хелпер для рендеру чіпів тем ─────────────────────────────────────────
 
-/**
- * Оновлює список чіпів тем.
- * selectedIds — Set<number> обраних тем
- * allThemes   — масив усіх тем [{id, name}]
- * chipsContainerId — ID контейнера для чіпів
- * checkboxContainerId — ID контейнера з чекбоксами
- */
 export function renderThemeChips(selectedIds, allThemes, chipsContainerId) {
   const container = document.getElementById(chipsContainerId);
   if (!container) return;
   const selected = allThemes.filter(t => selectedIds.has(t.id));
   container.innerHTML = selected.map(t => `
-    <span class=" chip  chip-theme" data-id="${t.id}">
+    <span class="chip chip-theme" data-id="${t.id}">
       ${t.name}
       <button type="button" onclick="removeThemeChip(${t.id}, '${chipsContainerId}')" title="Видалити">×</button>
     </span>
@@ -131,52 +180,11 @@ export function renderThemeChips(selectedIds, allThemes, chipsContainerId) {
 }
 
 window.removeThemeChip = (themeId, chipsContainerId) => {
-  // Знімаємо чекбокс
   const cb = document.querySelector(`input[type="checkbox"][value="${themeId}"]`);
   if (cb) {
     cb.checked = false;
     cb.dispatchEvent(new Event('change'));
   }
-  // Видаляємо чіп
   const chip = document.querySelector(`#${chipsContainerId} [data-id="${themeId}"]`);
   if (chip) chip.remove();
 };
-
-// ── CSS-стилі для чіпів (додаються один раз) ─────────────────────────────
-
-if (!document.getElementById(' chips-style')) {
-  const style = document.createElement('style');
-  style.id = ' chips-style';
-  style.textContent = `
-    .chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      padding: 0.2rem 0.5rem 0.2rem 0.6rem;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: 500;
-    }
-    .chip button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 0;
-      line-height: 1;
-      font-size: 1rem;
-      opacity: 0.6;
-    }
-    .chip button:hover { opacity: 1; }
-    .chip-publisher {
-      background: #dbeafe;
-      color: #1d4ed8;
-      border: 1px solid #bfdbfe;
-    }
-    .chip-theme {
-      background: #ede9fe;
-      color: #5b21b6;
-      border: 1px solid #ddd6fe;
-    }
-  `;
-  document.head.appendChild(style);
-}

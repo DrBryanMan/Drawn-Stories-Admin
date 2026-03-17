@@ -59,7 +59,7 @@
     justify-content: center;
 }
 
-.inav__btn:hover {
+.inav__btn:hover:not(.inav__btn--current) {
     background: var(--bg-tertiary);
     border-color: var(--accent);
     color: var(--text-primary);

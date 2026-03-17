@@ -1,5 +1,11 @@
-// ── Хелпер: клас чіпа по типу ─────────────────────────────────────────────
+export const PINNED_THEME_IDS = [
+  36, // манґа
+  27, // журнал
+  71, // репрінт
+  15, // публікується
+];
 
+// ── Хелпер: клас чіпа по типу ─────────────────────────────────────────────
 function chipClassByType(type) {
   if (type === 'genre') return ' chip-genre';
   if (type === 'type')  return ' chip-type';
@@ -88,29 +94,39 @@ export function buildThemeChipsHTML(allThemes, removeFnName) {
  * @param {string} onChangeFn — ім'я глобальної функції для onchange
  */
 export function buildThemeCheckboxListHTML(allThemes, selectedIds, onChangeFn) {
-  const types   = allThemes.filter(t => t.type === 'type');
-  const genres  = allThemes.filter(t => t.type === 'genre');
-  const themes  = allThemes.filter(t => t.type === 'theme' || !t.type);
+  const pinnedIds = new Set(PINNED_THEME_IDS);
+  const pinned  = allThemes.filter(t => pinnedIds.has(t.id));
+  const types   = allThemes.filter(t => !pinnedIds.has(t.id) && t.type === 'type');
+  const genres  = allThemes.filter(t => !pinnedIds.has(t.id) && t.type === 'genre');
+  const themes  = allThemes.filter(t => !pinnedIds.has(t.id) && (t.type === 'theme' || !t.type));
 
   const renderItem = (t) => {
     const label = t.ua_name
       ? t.ua_name.charAt(0).toUpperCase() + t.ua_name.slice(1)
       : t.name;
+    const checked = selectedIds.has(t.id);
     return `
-      <label class="theme-checkbox-item"
-        onmouseenter="this.style.background='var(--bg-secondary)'"
-        onmouseleave="this.style.background=''">
+      <label class="theme-checkbox-item${checked ? ' theme-checkbox-item--checked' : ''}">
+        <span class="theme-cb-box${checked ? ' theme-cb-box--checked' : ''}">
+          <svg class="theme-cb-check" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M1 4l3 3 5-6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
         <input type="checkbox" value="${t.id}"
               data-type="${t.type || 'theme'}"
               data-name="${(t.name || '').toLowerCase()}"
-              ${selectedIds.has(t.id) ? 'checked' : ''}
-              onchange="${onChangeFn}()">
-        <span>${label}</span>
+              ${checked ? 'checked' : ''}
+              onchange="${onChangeFn}(); this.closest('.theme-checkbox-item').classList.toggle('theme-checkbox-item--checked', this.checked); this.previousElementSibling.classList.toggle('theme-cb-box--checked', this.checked);">
+        <span class="theme-cb-label">${label}</span>
       </label>
     `;
   };
 
   const parts = [];
+  if (pinned.length) {
+    parts.push(`<div class="theme-group-header theme-group-header--pinned">⭐ Закріплені</div>`);
+    parts.push(pinned.map(renderItem).join(''));
+  }
   if (types.length) {
     parts.push(`<div class="theme-group-header">📂 Типи</div>`);
     parts.push(types.map(renderItem).join(''));

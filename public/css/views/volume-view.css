@@ -1,0 +1,24 @@
+.source-links {
+	justify-content: center;
+}
+
+.source-links > a {
+	font-weight: bold;
+	padding: .2em .4em;
+	border-radius: 8px;
+	transition: .3s;
+	
+	&:hover {
+		background: var(--accent-light);
+	}
+}
+
+.source-links > a[href*='comicvine'] {
+	color: rgb(7,199,32) !important;
+}
+.source-links > a[href*='hikka.io'] {
+	color: rgb(148,1,230) !important;
+}
+.source-links > a[href*='myanimelist'] {
+	color: rgb(1,125,224) !important;
+}

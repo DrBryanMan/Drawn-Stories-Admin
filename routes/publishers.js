@@ -5,7 +5,21 @@ const { getAll, getOne } = require('../db');
 const router = Router();
 
 router.get('/', (req, res) => {
-  const { search, limit = 30, offset = 0 } = req.query;
+  const { search, ids, limit = 30, offset = 0 } = req.query;
+
+  // ── Вибірка по конкретних ID (для закріплених видавництв) ──
+  if (ids) {
+    const idList = ids.split(',').map(Number).filter(Boolean);
+    if (idList.length) {
+      const placeholders = idList.map(() => '?').join(',');
+      const data = getAll(
+        `SELECT id, cv_id, name, cv_slug FROM publishers WHERE id IN (${placeholders}) ORDER BY name ASC`,
+        idList
+      );
+      return res.json({ data, total: data.length });
+    }
+  }
+
   let query = 'SELECT id, cv_id, name, cv_slug FROM publishers';
   let params = [], searchParams = [];
   if (search) {

@@ -128,7 +128,7 @@ async function performSearch(name) {
   el.innerHTML = '<div class="acm-empty">⏳ Пошук...</div>';
 
   try {
-    const params = new URLSearchParams({ search: name, limit: 40 });
+    const params = new URLSearchParams({ search: name, limit: 100 });
     const res = await fetch(`${_config.apiBase}/collections/search?${params}`);
     const result = await res.json();
     const data = result.data || [];

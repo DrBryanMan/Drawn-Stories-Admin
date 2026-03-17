@@ -109,7 +109,7 @@ router.get('/search', (req, res) => {
 
 // Комбінований список: випуски з томів теми collection + таблиця collections
 router.get('/', (req, res) => {
-  const { search, limit = 50, offset = 0, type, publisher_ids, theme_ids } = req.query;
+  const { search, limit = 100, offset = 0, type, publisher_ids, theme_ids } = req.query;
 
   // Розбираємо publisher_ids: "1,2,3" → [1, 2, 3]
   const pubIds = publisher_ids
@@ -462,7 +462,7 @@ const MANGA_THEME_ID = 36;
 const mangaRouter = Router();
 
 mangaRouter.get('/', (req, res) => {
-  const { search, limit = 50, offset = 0, type, publisher_ids, theme_ids } = req.query;
+  const { search, limit = 100, offset = 0, type, publisher_ids, theme_ids } = req.query;
 
   const pubIds = publisher_ids
     ? publisher_ids.split(',').map(Number).filter(Boolean)

@@ -8,6 +8,9 @@
 @import url('./base.css');
 @import url('./layout.css');
 
+/* ── Сторінки ── */
+@import url('./views/volume-view.css');
+
 /* ── Фільтри ── */
 @import url('./filters-panel.css');
 

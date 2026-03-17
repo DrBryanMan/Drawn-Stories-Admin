@@ -240,7 +240,7 @@ const name      = document.getElementById('aim-name').value.trim();
     }
   }
 
-  const searchParams = new URLSearchParams({ limit: 50 });
+  const searchParams = new URLSearchParams({ limit: 100 });
   if (name)            searchParams.set('name', name);
   if (volume)          searchParams.set('volume_name', volume);
   if (number)          searchParams.set('issue_number', number);

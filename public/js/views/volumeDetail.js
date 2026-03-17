@@ -121,20 +121,20 @@ export async function renderVolumeDetail(params) {
                                     style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
                                 : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📚</div>'
                         }
-                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1em;">
+                        <div class="source-links" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1em;">
                                 ${!isMangaSourceVolume
-                                    ? `<a href="https://comicvine.gamespot.com/${volume.cv_slug}/4050-${volume.cv_id}" target="_blank">${cv_logo_svg}</a>`
+                                    ? `<a href="https://comicvine.gamespot.com/${volume.cv_slug}/4050-${volume.cv_id}" target="_blank">CV ↗</a>`
                                     : ''}
-                                ${isMangaSourceVolume && volume.hikka_slug
-                                    ? `<a href="https://hikka.io/manga/${volume.hikka_slug}" target="_blank" style="color:var(--accent); font-size:0.85rem; text-decoration:none;">hikka.io ↗</a>`
+                                ${volume.hikka_slug
+                                    ? `<a href="https://hikka.io/manga/${volume.hikka_slug}" target="_blank" style="color:var(--accent); font-size:0.85rem; text-decoration:none;">HIKKA ↗</a>`
                                     : ''}
-                                ${isMangaSourceVolume && volume.mal_id
+                                ${volume.mal_id
                                     ? `<a href="https://myanimelist.net/manga/${volume.mal_id}" target="_blank" style="color:var(--accent); font-size:0.85rem; text-decoration:none;">MAL ↗</a>`
-                                    : ''}                            ${volume.locg_slug ? `
-                                <a href="https://leagueofcomicgeeks.com/comics/series/${volume.locg_id}/${volume.locg_slug}" target="_blank">
-                                    <img src="${locg_img}" alt="League of Comic Geeks" style="height:30px; vertical-align:middle;">
-                                </a>
-                            ` : ''}
+                                    : ''}
+                                ${volume.locg_slug
+                                    ? `<a href="https://leagueofcomicgeeks.com/comics/series/${volume.locg_id}/${volume.locg_slug}" target="_blank">
+                                        <img src="${locg_img}" alt="League of Comic Geeks" style="height:30px; vertical-align:middle;"></a>`
+                                    : ''}
                         </div>
                     </div>
                     <div style="flex: 1;">
