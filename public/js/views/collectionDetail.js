@@ -839,7 +839,7 @@ function rebuildColThemeChips() {
     const checked = document.querySelectorAll('#edit-themes-list input[type="checkbox"]:checked');
     const selectedThemes = Array.from(checked).map(cb => ({
         id:   parseInt(cb.value),
-        name: cb.closest('label')?.querySelector('span')?.textContent?.trim() || '',
+        name: cb.dataset.uaName || cb.closest('label')?.querySelector('.theme-cb-label')?.textContent?.trim() || '',
         type: cb.dataset.type || 'theme',
     }));
 

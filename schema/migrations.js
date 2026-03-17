@@ -414,6 +414,22 @@ const MIGRATIONS = [
       db.run(`CREATE INDEX IF NOT EXISTS idx_issue_reprints_reprint  ON issue_reprints(reprint_id)`);
     },
   },
+  
+  // ── M013: magazine_chapters — зв'язок журнал-том → розділ манги ────────
+  {
+    id: 'M013_magazine_chapters',
+    up(db) {
+      db.run(`CREATE TABLE IF NOT EXISTS magazine_chapters (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        magazine_id INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
+        issue_id    INTEGER NOT NULL REFERENCES issues(id)  ON DELETE CASCADE,
+        sort_order  INTEGER NOT NULL DEFAULT 0,
+        UNIQUE(magazine_id, issue_id)
+      )`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_mc_magazine ON magazine_chapters(magazine_id)`);
+      db.run(`CREATE INDEX IF NOT EXISTS idx_mc_issue    ON magazine_chapters(issue_id)`);
+    },
+  },
 ];
 
 // ── Таблиця міграцій ────────────────────────────────────────────────────────

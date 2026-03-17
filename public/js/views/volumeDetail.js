@@ -49,6 +49,7 @@ export async function renderVolumeDetail(params) {
         let translationParentData   = { data: null };
         let magazineChildrenData    = { data: [] };
         let magazineParentData      = { data: null };
+        let magazineChaptersData    = { data: [] };
 
         if (isMangaSourceVolume) {
             // Для манґа-тому завантажуємо журнал, збірники і переклади
@@ -58,12 +59,14 @@ export async function renderVolumeDetail(params) {
                 collectionsFromIssuesData,
                 translationsData,
                 translationParentData,
+                magazineChaptersData,
             ] = await Promise.all([
                 fetch(`${API_BASE}/volumes/${volumeId}/magazine-children`).then(r => r.ok ? r.json() : { data: [] }),
                 fetch(`${API_BASE}/volumes/${volumeId}/magazine-parent`).then(r => r.ok ? r.json() : { data: [] }),
                 fetch(`${API_BASE}/volumes/${volumeId}/collections-from-issues`).then(r => r.ok ? r.json() : { data: [] }),
                 fetch(`${API_BASE}/volumes/${volumeId}/translations`).then(r => r.ok ? r.json() : { data: [] }),
                 fetch(`${API_BASE}/volumes/${volumeId}/translation-parent`).then(r => r.ok ? r.json() : { data: null }),
+                fetch(`${API_BASE}/volumes/${volumeId}/magazine-chapters`).then(r => r.ok ? r.json() : { data: [] }),
             ]);
         } else {
             [
@@ -74,6 +77,7 @@ export async function renderVolumeDetail(params) {
                 translationParentData,
                 magazineChildrenData,
                 magazineParentData,
+                magazineChaptersData
             ] = await Promise.all([
                 volume.cv_id
                     ? fetchItems('issues', { volume_id: volume.cv_id })
@@ -86,6 +90,7 @@ export async function renderVolumeDetail(params) {
                 fetch(`${API_BASE}/volumes/${volumeId}/translation-parent`).then(r => r.ok ? r.json() : { data: null }),
                 fetch(`${API_BASE}/volumes/${volumeId}/magazine-children`).then(r => r.ok ? r.json() : { data: [] }),
                 fetch(`${API_BASE}/volumes/${volumeId}/magazine-parent`).then(r => r.ok ? r.json() : { data: null }),
+                fetch(`${API_BASE}/volumes/${volumeId}/magazine-chapters`).then(r => r.ok ? r.json() : { data: [] }),
             ]);
         }
         const volCollections = volumeCollectionsData.data || [];
@@ -94,6 +99,7 @@ export async function renderVolumeDetail(params) {
         const translationParent = translationParentData.data || null;
         const magazineChildren = magazineChildrenData.data || [];
         const magazineParents = magazineParentData.data || [];
+        const magazineChapters = magazineChaptersData.data || [];
 
         document.getElementById('page-title').innerHTML = `
             <a href="#" onclick="event.preventDefault(); navigateToParent()">
@@ -288,6 +294,38 @@ export async function renderVolumeDetail(params) {
                                 `).join('')}
                             </div>
                         ` : `<p style="color:var(--text-secondary); margin:0; font-size:0.9rem;">Немає підтомів. Натисніть "+ Додати том" щоб прив'язати том до цього журналу.</p>`}
+                    </div>
+                ` : ''}
+
+                <!-- ── Зміст журналу: розділи манги ──────────────────────── -->
+                ${(isMagazineVolume || magazineChildren.length > 0) && magazineChapters.length > 0 ? `
+                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
+                        <h2 style="font-size:1.25rem; margin:0 0 1rem;">📖 Зміст (${magazineChapters.length} розділів)</h2>
+                        <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                            ${(() => {
+                                const byVol = {};
+                                magazineChapters.forEach(ch => {
+                                    if (!byVol[ch.vol_id]) byVol[ch.vol_id] = { name: ch.vol_name, id: ch.vol_id, chapters: [] };
+                                    byVol[ch.vol_id].chapters.push(ch);
+                                });
+                                return Object.values(byVol).map(vol => `
+                                    <div style="background:var(--bg-secondary); border-radius:6px; padding:0.6rem 0.85rem;">
+                                        <div style="font-weight:600; font-size:0.9rem; margin-bottom:0.35rem;">
+                                            <a href="#" onclick="event.preventDefault(); navigate('volume-detail', { id: ${vol.id} })"
+                                               style="color:var(--accent); text-decoration:none;">${vol.name}</a>
+                                        </div>
+                                        <div style="display:flex; flex-wrap:wrap; gap:0.3rem;">
+                                            ${vol.chapters.map(ch => `
+                                                <a href="#" onclick="event.preventDefault(); navigate('issue-detail', { id: ${ch.id} })"
+                                                   class="theme-badge" style="text-decoration:none; cursor:pointer;" title="${ch.name || ''}">
+                                                    #${ch.issue_number}
+                                                </a>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `).join('');
+                            })()}
+                        </div>
                     </div>
                 ` : ''}
 
@@ -1179,7 +1217,7 @@ function rebuildVolThemeChips() {
     const checked = document.querySelectorAll('#themes-list input[type="checkbox"]:checked');
     const selectedThemes = Array.from(checked).map(cb => ({
         id: parseInt(cb.value),
-        name: cb.closest('label')?.querySelector('span')?.textContent?.trim() || '',
+        name: cb.dataset.uaName || cb.closest('label')?.querySelector('.theme-cb-label')?.textContent?.trim() || '',
         type: cb.dataset.type || 'theme',
     }));
     container.innerHTML = buildThemeChipsHTML(selectedThemes, 'removeThemeChipVolume');

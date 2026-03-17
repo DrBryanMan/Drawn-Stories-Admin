@@ -400,4 +400,23 @@ router.post('/:id/make-collection', (req, res) => {
   } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
+// GET журнали, до яких входить цей розділ манги
+router.get('/:id/magazine-memberships', (req, res) => {
+  const data = getAll(`
+    SELECT
+      mc.id AS link_id,
+      mc.sort_order,
+      v.id   AS magazine_id,
+      v.name AS magazine_name,
+      v.hikka_img,
+      v.cv_img,
+      v.start_year
+    FROM magazine_chapters mc
+    JOIN volumes v ON v.id = mc.magazine_id
+    WHERE mc.issue_id = ?
+    ORDER BY v.name ASC
+  `, [req.params.id]);
+  res.json({ data });
+});
+
 module.exports = router;

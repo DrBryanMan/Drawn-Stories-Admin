@@ -133,13 +133,14 @@ export async function renderIssueDetail(params) {
     showLoading();
 
     try {
-        const [issue, roData, colMemberData, reprintsData, reprintSourceData, storiesData] = await Promise.all([
+        const [issue, roData, colMemberData, reprintsData, reprintSourceData, storiesData, magMemberData] = await Promise.all([
             fetchItem('issues', issueId),
             fetch(`${API_BASE}/issues/${issueId}/reading-orders`).then(r => r.json()),
             fetch(`${API_BASE}/issues/${issueId}/collections-membership`).then(r => r.json()),
             fetch(`${API_BASE}/issues/${issueId}/reprints`).then(r => r.json()),
             fetch(`${API_BASE}/issues/${issueId}/reprint-source`).then(r => r.json()),
             fetch(`${API_BASE}/issues/${issueId}/stories`).then(r => r.json()),
+            fetch(`${API_BASE}/issues/${issueId}/magazine-memberships`).then(r => r.json()),
         ]);
 
         const isCollection = !!issue.collection_id;
@@ -149,6 +150,7 @@ export async function renderIssueDetail(params) {
         const reprintSources = reprintSourceData.data || [];
         const issueStories = storiesData.data || [];
         const hasStories = issueStories.length > 0;
+        const magazineMemberships = magMemberData.data || [];
 
         // Визначаємо тип тому за volume_theme_ids (повертається з GET /issues/:id)
         const volumeThemeIds        = issue.volume_theme_ids || [];
@@ -366,6 +368,30 @@ export async function renderIssueDetail(params) {
                         ${groupsHtml}
                     </div>`;
             })() : ''}
+
+            ${isMangaChapter ? `
+                <div id="manga-magazine-block" style="margin-top: 1.5rem;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+                        <div style="font-size:0.75rem; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.06em;">
+                            📰 Журнали
+                        </div>
+                        <button class="btn btn-small" onclick="openAddChapterToMagazineModal(${issueId})">
+                            + Додати до журналу
+                        </button>
+                    </div>
+                    ${magazineMemberships.length > 0 ? magazineMemberships.map(mag => `
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:0.5rem;
+                                    background:var(--bg-secondary); border-radius:6px; padding:0.5rem 0.75rem; margin-bottom:0.4rem;">
+                            <a href="#" onclick="event.preventDefault(); navigate('volume-detail', { id: ${mag.magazine_id} })"
+                            style="color:var(--accent); text-decoration:none; font-weight:500; font-size:0.9rem;">
+                                ${mag.magazine_name}
+                            </a>
+                            <button class="btn btn-danger btn-small"
+                                    onclick="removeChapterFromMagazine(${issueId}, ${mag.magazine_id})">✕</button>
+                        </div>
+                    `).join('') : `<div style="color:var(--text-secondary); font-size:0.85rem; font-style:italic;">— не додано —</div>`}
+                </div>
+            ` : ''}
 
             <!-- ═══ БЛОК КОНТЕНТУ (сюжет, появи) ═══════════════════════════ -->
             <div id="issue-content-blocks" style="margin-top:2rem;">
@@ -1066,6 +1092,54 @@ window.openEditStoryModal = async (issueId, storyId) => {
 window.deleteStory = async (issueId, storyId) => {
     if (!confirm('Видалити цю історію?')) return;
     const res = await fetch(`${API_BASE}/issues/${issueId}/stories/${storyId}`, { method: 'DELETE' });
+    if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+    await renderIssueDetail({ id: issueId });
+};
+
+// ===== ЖУРНАЛИ ДЛЯ РОЗДІЛІВ МАНГИ =====
+
+window.openAddChapterToMagazineModal = (issueId) => {
+    openSearchPickerModal({
+        title: 'Додати розділ до журналу',
+        hint: 'Знайдіть журнал (том з темою Magazine) і клікніть.',
+        inputs: [
+            { id: 'search', label: 'Назва журналу', placeholder: 'Введіть назву...' },
+        ],
+        searchFn: async ({ search }) => {
+            if (!search) return [];
+            // Шукаємо томи з темою Magazine (theme_id=35)
+            const res = await fetch(`${API_BASE}/volumes?search=${encodeURIComponent(search)}&theme_ids=35&limit=20`);
+            const data = await res.json();
+            return data.data || [];
+        },
+        renderItem: (vol, idx) => `
+            <div data-spm-item="${idx}"
+                 style="display:flex; align-items:center; gap:0.75rem; padding:0.75rem; border-bottom:1px solid var(--border-color);">
+                <div style="width:36px; height:54px; background:var(--bg-secondary); border-radius:3px;
+                            display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:1.2rem;">📰</div>
+                <div>
+                    <div style="font-weight:500;">${vol.name}</div>
+                    ${vol.start_year ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${vol.start_year}</div>` : ''}
+                </div>
+            </div>
+        `,
+        onSelect: async (vol) => {
+            const res = await fetch(`${API_BASE}/volumes/${vol.id}/magazine-chapters`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ issue_id: issueId }),
+            });
+            if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
+            await renderIssueDetail({ id: issueId });
+        },
+    });
+};
+
+window.removeChapterFromMagazine = async (issueId, magazineId) => {
+    if (!confirm('Прибрати розділ з журналу?')) return;
+    const res = await fetch(`${API_BASE}/volumes/${magazineId}/magazine-chapters/${issueId}`, {
+        method: 'DELETE',
+    });
     if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
     await renderIssueDetail({ id: issueId });
 };

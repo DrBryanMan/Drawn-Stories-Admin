@@ -1,8 +1,8 @@
 export const PINNED_THEME_IDS = [
   36, // манґа
-  27, // журнал
+  35, // журнал
   71, // репрінт
-  15, // публікується
+  72, // публікується
 ];
 
 // ── Хелпер: клас чіпа по типу ─────────────────────────────────────────────
@@ -115,6 +115,7 @@ export function buildThemeCheckboxListHTML(allThemes, selectedIds, onChangeFn) {
         <input type="checkbox" value="${t.id}"
               data-type="${t.type || 'theme'}"
               data-name="${(t.name || '').toLowerCase()}"
+              data-ua-name="${label}"
               ${checked ? 'checked' : ''}
               onchange="${onChangeFn}(); this.closest('.theme-checkbox-item').classList.toggle('theme-checkbox-item--checked', this.checked); this.previousElementSibling.classList.toggle('theme-cb-box--checked', this.checked);">
         <span class="theme-cb-label">${label}</span>

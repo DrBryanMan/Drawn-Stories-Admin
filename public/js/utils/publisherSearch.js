@@ -36,76 +36,55 @@ export function publisherSearchHTML({ publisherId, publisherName, inputId, hidde
   `;
 }
 
-/**
- * Ініціалізує логіку пошуку видавництва після вставки HTML в DOM.
- * Тепер показує inline-список (як теми): закріплені вгорі + пошук.
- */
 export function initPublisherSearch({ inputId, hiddenId, resultsId, chipId }) {
-  const input   = document.getElementById(inputId);
-  const listEl  = document.getElementById(resultsId);
+  const input  = document.getElementById(inputId);
+  const listEl = document.getElementById(resultsId);
   if (!input || !listEl) return;
 
-  let pinnedPublishers = [];
   let timeout = null;
 
-  // Завантажуємо закріплені видавництва (якщо є)
-  async function loadPinned() {
+  // Рендер закріплених без жодного запиту на сервер
+  function renderPinned() {
     if (!PINNED_PUBLISHER_IDS.length) {
-      listEl.innerHTML = '';
+      listEl.innerHTML = `<div class="publisher-list-empty">Введіть назву для пошуку</div>`;
       return;
     }
-    try {
-      const res  = await fetch(`${API_BASE}/publishers?ids=${PINNED_PUBLISHER_IDS.join(',')}&limit=50`);
-      const data = await res.json();
-      pinnedPublishers = data.data || [];
-    } catch (_) {
-      pinnedPublishers = [];
-    }
-    renderList('');
+    listEl.innerHTML = `
+      <div class="publisher-group-header">📌 Рекомендовані</div>
+      ${PINNED_PUBLISHER_IDS.map(id => `
+        <div class="publisher-list-item publisher-list-item--pinned"
+             data-pub-id="${id}"
+             onclick="loadAndSelectPublisher('${chipId}','${hiddenId}','${inputId}','${resultsId}', ${id})">
+          🏢 <span class="pub-name-placeholder" data-id="${id}">…</span>
+        </div>
+      `).join('')}
+    `;
+    // Підвантажуємо назви асинхронно
+    loadPinnedNames(chipId, hiddenId, inputId, resultsId);
   }
 
-  function renderList(query) {
-    const q = query.toLowerCase().trim();
-
-    if (!q) {
-      // Без пошуку — показуємо тільки закріплені
-      if (!pinnedPublishers.length) {
-        listEl.innerHTML = `<div class="publisher-list-empty">Почніть вводити назву для пошуку</div>`;
-        return;
-      }
-      listEl.innerHTML = `
-        <div class="publisher-group-header">📌 Закріплені</div>
-        ${pinnedPublishers.map(p => publisherListItemHTML(p, chipId, hiddenId, inputId, resultsId)).join('')}
-      `;
-      return;
-    }
-
-    // Під час пошуку — запит на сервер
-    listEl.innerHTML = `<div class="publisher-list-loading">Пошук...</div>`;
+  function renderSearch(q) {
+    listEl.innerHTML = `<div class="publisher-list-loading">Пошук…</div>`;
     clearTimeout(timeout);
     timeout = setTimeout(async () => {
       try {
         const res  = await fetch(`${API_BASE}/publishers?search=${encodeURIComponent(q)}&limit=20`);
         const data = await res.json();
         const pubs = data.data || [];
-
         if (!pubs.length) {
           listEl.innerHTML = `<div class="publisher-list-empty">Нічого не знайдено</div>`;
           return;
         }
-
-        // Відокремлюємо закріплені від решти
-        const pinnedIds = new Set(PINNED_PUBLISHER_IDS);
-        const pinnedInResults = pubs.filter(p => pinnedIds.has(p.id));
-        const rest            = pubs.filter(p => !pinnedIds.has(p.id));
-
+        const pinnedSet = new Set(PINNED_PUBLISHER_IDS);
+        const pinned = pubs.filter(p => pinnedSet.has(p.id));
+        const rest   = pubs.filter(p => !pinnedSet.has(p.id));
         let html = '';
-        if (pinnedInResults.length) {
-          html += `<div class="publisher-group-header">📌 Закріплені</div>`;
-          html += pinnedInResults.map(p => publisherListItemHTML(p, chipId, hiddenId, inputId, resultsId)).join('');
+        if (pinned.length) {
+          html += `<div class="publisher-group-header">📌 Рекомендовані</div>`;
+          html += pinned.map(p => publisherListItemHTML(p, chipId, hiddenId, inputId, resultsId)).join('');
         }
         if (rest.length) {
-          if (pinnedInResults.length) html += `<div class="publisher-group-header">🔍 Результати</div>`;
+          if (pinned.length) html += `<div class="publisher-group-header">🔍 Результати</div>`;
           html += rest.map(p => publisherListItemHTML(p, chipId, hiddenId, inputId, resultsId)).join('');
         }
         listEl.innerHTML = html;
@@ -115,9 +94,42 @@ export function initPublisherSearch({ inputId, hiddenId, resultsId, chipId }) {
     }, 250);
   }
 
-  input.addEventListener('input', () => renderList(input.value));
-  loadPinned();
+  input.addEventListener('input', () => {
+    const q = input.value.trim();
+    if (!q) renderPinned();
+    else    renderSearch(q);
+  });
+
+  renderPinned();
 }
+
+// Підвантажує назви для закріплених (запит лише один раз при відкритті)
+async function loadPinnedNames(chipId, hiddenId, inputId, resultsId) {
+  if (!PINNED_PUBLISHER_IDS.length) return;
+  try {
+    const res  = await fetch(`${API_BASE}/publishers?ids=${PINNED_PUBLISHER_IDS.join(',')}&limit=50`);
+    const data = await res.json();
+    (data.data || []).forEach(p => {
+      document.querySelectorAll(`.pub-name-placeholder[data-id="${p.id}"]`).forEach(el => {
+        el.textContent = p.name;
+        // Додаємо onclick з правильною назвою
+        el.closest('.publisher-list-item')?.setAttribute(
+          'onclick',
+          `selectPublisher('${chipId}','${hiddenId}','${inputId}','${resultsId}',${p.id},'${p.name.replace(/'/g, "\\'")}')`
+        );
+      });
+    });
+  } catch (_) {}
+}
+
+// Для placeholder-кнопки до завантаження назв
+window.loadAndSelectPublisher = async (chipId, hiddenId, inputId, resultsId, pubId) => {
+  try {
+    const res  = await fetch(`${API_BASE}/publishers/${pubId}`);
+    const p    = await res.json();
+    window.selectPublisher(chipId, hiddenId, inputId, resultsId, p.id, p.name);
+  } catch (_) {}
+};
 
 function publisherListItemHTML(p, chipId, hiddenId, inputId, resultsId) {
   return `
@@ -126,7 +138,7 @@ function publisherListItemHTML(p, chipId, hiddenId, inputId, resultsId) {
          onmouseenter="this.classList.add('publisher-list-item--hover')"
          onmouseleave="this.classList.remove('publisher-list-item--hover')">
       🏢 ${p.name}
-      <span style="color:var(--text-muted); font-size:0.75rem; margin-left:auto;">#${p.id}</span>
+      <span style="color:var(--text-muted); font-size:0.75rem; margin-left:auto;">id: ${p.id}</span>
     </div>
   `;
 }

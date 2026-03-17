@@ -137,6 +137,7 @@ export const LANG_MAP = {
     sr:      { label: 'Сербська',               flag: '🇷🇸' },
     tr:      { label: 'Турецька',               flag: '🇹🇷' },
     fi:      { label: 'Фінська',                flag: '🇫🇮' },
+    cs:      { label: 'Чеська',                 flag: '🇨🇿' },
     sv:      { label: 'Шведська',               flag: '🇸🇪' },
     uk:      { label: 'Українська',             flag: '🇺🇦' },
     zh:      { label: 'Китайська',              flag: '🇨🇳' },
