@@ -19,7 +19,7 @@ export function publisherSearchHTML({ publisherId, publisherName, inputId, hidde
       <label>Видавництво</label>
       <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap; margin-bottom:0.35rem;" id="${chipId}">
         ${publisherId ? `
-          <span class="edit-chip edit-chip-publisher" data-id="${publisherId}">
+          <span class=" chip  chip-publisher" data-id="${publisherId}">
             🏢 ${publisherName || 'ID:' + publisherId}
             <button type="button" onclick="clearPublisher('${chipId}','${hiddenId}','${inputId}')" title="Видалити">×</button>
           </span>
@@ -84,7 +84,7 @@ window.selectPublisher = (chipId, hiddenId, inputId, resultsId, pubId, pubName) 
   const chip = document.getElementById(chipId);
   if (chip) {
     chip.innerHTML = `
-      <span class="edit-chip edit-chip-publisher" data-id="${pubId}">
+      <span class=" chip  chip-publisher" data-id="${pubId}">
         🏢 ${pubName}
         <button type="button" onclick="clearPublisher('${chipId}','${hiddenId}','${inputId}')" title="Видалити">×</button>
       </span>
@@ -123,7 +123,7 @@ export function renderThemeChips(selectedIds, allThemes, chipsContainerId) {
   if (!container) return;
   const selected = allThemes.filter(t => selectedIds.has(t.id));
   container.innerHTML = selected.map(t => `
-    <span class="edit-chip edit-chip-theme" data-id="${t.id}">
+    <span class=" chip  chip-theme" data-id="${t.id}">
       ${t.name}
       <button type="button" onclick="removeThemeChip(${t.id}, '${chipsContainerId}')" title="Видалити">×</button>
     </span>
@@ -144,11 +144,11 @@ window.removeThemeChip = (themeId, chipsContainerId) => {
 
 // ── CSS-стилі для чіпів (додаються один раз) ─────────────────────────────
 
-if (!document.getElementById('edit-chips-style')) {
+if (!document.getElementById(' chips-style')) {
   const style = document.createElement('style');
-  style.id = 'edit-chips-style';
+  style.id = ' chips-style';
   style.textContent = `
-    .edit-chip {
+    .chip {
       display: inline-flex;
       align-items: center;
       gap: 0.3rem;
@@ -157,7 +157,7 @@ if (!document.getElementById('edit-chips-style')) {
       font-size: 0.8rem;
       font-weight: 500;
     }
-    .edit-chip button {
+    .chip button {
       background: none;
       border: none;
       cursor: pointer;
@@ -166,13 +166,13 @@ if (!document.getElementById('edit-chips-style')) {
       font-size: 1rem;
       opacity: 0.6;
     }
-    .edit-chip button:hover { opacity: 1; }
-    .edit-chip-publisher {
+    .chip button:hover { opacity: 1; }
+    .chip-publisher {
       background: #dbeafe;
       color: #1d4ed8;
       border: 1px solid #bfdbfe;
     }
-    .edit-chip-theme {
+    .chip-theme {
       background: #ede9fe;
       color: #5b21b6;
       border: 1px solid #ddd6fe;

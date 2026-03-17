@@ -32,13 +32,40 @@ function ensureOrderNums(collectionId) {
 
 // Збірники конкретного тому (по cv_vol_id)
 router.get('/by-volume/:cv_vol_id', (req, res) => {
-  const data = getAll(`
+  const collections = getAll(`
     SELECT c.*
     FROM collections c
     WHERE c.cv_vol_id = ?
     ORDER BY CAST(c.issue_number AS REAL) ASC, c.name ASC
   `, [parseInt(req.params.cv_vol_id)]);
-  res.json({ data });
+
+  // Для кожного збірника — зміст, згрупований по тому-джерелу
+  const result = collections.map(col => {
+    const rows = getAll(`
+      SELECT
+        COALESCE(v.name, mv.name, '—')  AS vol_name,
+        COALESCE(v.id,   mv.id,   NULL) AS vol_db_id,
+        i.issue_number
+      FROM collection_issues ci
+      JOIN issues i ON ci.issue_id = i.id
+      LEFT JOIN volumes v  ON i.cv_vol_id = v.cv_id
+      LEFT JOIN volumes mv ON i.ds_vol_id = mv.id
+      WHERE ci.collection_id = ? AND i.issue_number IS NOT NULL
+      ORDER BY COALESCE(v.name, mv.name) ASC, CAST(i.issue_number AS REAL) ASC
+    `, [col.id]);
+
+    // Групуємо по vol_db_id (або vol_name якщо id немає)
+    const groupMap = new Map();
+    for (const r of rows) {
+      const key = r.vol_db_id ?? `__name__${r.vol_name}`;
+      if (!groupMap.has(key)) groupMap.set(key, { vol_name: r.vol_name, numbers: [] });
+      groupMap.get(key).numbers.push(r.issue_number);
+    }
+
+    return { ...col, contents_groups: [...groupMap.values()] };
+  });
+
+  res.json({ data: result });
 });
 
 // Пошук збірників (для модалок)

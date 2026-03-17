@@ -140,6 +140,8 @@ export const LANG_MAP = {
     sv:      { label: 'Шведська',               flag: '🇸🇪' },
     uk:      { label: 'Українська',             flag: '🇺🇦' },
     zh:      { label: 'Китайська',              flag: '🇨🇳' },
+    'zh-tw': { label: 'Китайська (Тайвань)',    flag: '🇨🇳' },
+    tw:      { label: 'Тайська',                flag: '🇹🇼' },
     ko:      { label: 'Корейська',              flag: '🇰🇷' },
     ru:      { label: 'Російська',              flag: '🇷🇺' },
 };

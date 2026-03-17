@@ -63,7 +63,7 @@
 .pagination .btn:hover:not(:disabled) {
     border-color: var(--accent);
     color: var(--accent);
-    background: var(--accent_light);
+    background: var(--accent-light-solid);
 }
 .pagination .btn:disabled {
     opacity: 0.35;

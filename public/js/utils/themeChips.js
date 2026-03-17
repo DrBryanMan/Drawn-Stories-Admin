@@ -1,9 +1,9 @@
 // ── Хелпер: клас чіпа по типу ─────────────────────────────────────────────
 
 function chipClassByType(type) {
-  if (type === 'genre') return 'edit-chip-genre';
-  if (type === 'type')  return 'edit-chip-type';
-  return 'edit-chip-theme';
+  if (type === 'genre') return ' chip-genre';
+  if (type === 'type')  return ' chip-type';
+  return ' chip-theme';
 }
 
 // ── Рендер чіпів для перегляду (без кнопок видалення) ───────────────────────
@@ -23,7 +23,7 @@ export function buildThemeChipsViewHTML(allThemes) {
         ? t.ua_name.charAt(0).toUpperCase() + t.ua_name.slice(1)
         : t.name;
     return `
-    <span class="edit-chip ${chipClassByType(t.type)}" data-id="${t.id}">
+    <span class=" chip ${chipClassByType(t.type)}" data-id="${t.id}">
       ${label}
     </span>
   `};
@@ -60,7 +60,7 @@ export function buildThemeChipsHTML(allThemes, removeFnName) {
         ? t.ua_name.charAt(0).toUpperCase() + t.ua_name.slice(1)
         : t.name;
     return `
-      <span class="edit-chip ${chipClassByType(t.type)}" data-id="${t.id}">
+      <span class=" chip ${chipClassByType(t.type)}" data-id="${t.id}">
         ${label}
         <button type="button" onclick="${removeFnName}(${t.id})" title="Видалити">×</button>
       </span>

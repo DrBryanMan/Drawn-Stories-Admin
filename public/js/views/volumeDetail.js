@@ -340,7 +340,8 @@ export async function renderVolumeDetail(params) {
                         groupMap.get(key).cols.push(col);
                     }
 
-                    const groupsHtml = groups.map(group => {
+                    // Будуємо HTML панелі для кожної групи
+                    const panelsHtml = groups.map((group, idx) => {
                         const langLabel = group.vol_lang ? langDisplay(group.vol_lang) : '';
                         const volLink = group.vol_id
                             ? `onclick="navigate('volume-detail', { id: ${group.vol_id} })"`
@@ -377,32 +378,71 @@ export async function renderVolumeDetail(params) {
                                 </div>`;
                         }).join('');
 
+                        // Якщо група одна — рендеримо без заголовку (він буде у h2)
+                        // Якщо груп > 1 — кожна панель прихована, крім першої
                         return `
-                            <div style="margin-bottom:1.25rem;">
-                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
-                                    <span style="font-size:0.95rem; font-weight:600; cursor:${group.vol_id ? 'pointer' : 'default'};
-                                                color:var(--text-primary);" ${volLink}>
-                                        ${group.vol_name}
-                                    </span>
-                                    ${langLabel ? `
-                                        <span style="font-size: .75rem; background: var(--bg-tertiary); padding: .1em .4em; color: var(--text-secondary);">
-                                            ${langLabel}
+                            <div id="vcfi-panel-${idx}" style="${groups.length > 1 && idx > 0 ? 'display:none;' : ''}">
+                                ${groups.length === 1 ? '' : `
+                                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
+                                        <span style="font-size:0.95rem; font-weight:600; cursor:${group.vol_id ? 'pointer' : 'default'};
+                                                    color:var(--text-primary);" ${volLink}>
+                                            ${group.vol_name}
                                         </span>
-                                    ` : ''}
-                                </div>
-                                <div style="display:flex; flex-wrap:wrap; gap: .6em;">
+                                        ${langLabel ? `
+                                            <span style="font-size:.75rem; background:var(--bg-tertiary); padding:.1em .4em; color:var(--text-secondary); border-radius: 8px;">
+                                                ${langLabel}
+                                            </span>
+                                        ` : ''}
+                                    </div>
+                                `}
+                                <div style="display:flex; flex-wrap:wrap; gap:.6em;">
                                     ${colCards}
                                 </div>
                             </div>`;
                     }).join('');
 
+                    // Таб-бар (тільки якщо груп більше одної)
+                    const tabsHtml = groups.length > 1 ? `
+                        <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:1rem;">
+                            ${groups.map((group, idx) => {
+                                const langLabel = group.vol_lang ? langDisplay(group.vol_lang) : '';
+                                const label = group.vol_name + (langLabel ? ` · ${langLabel}` : '') + ` (${group.cols.length})`;
+                                return `
+                                    <button id="vcfi-tab-${idx}"
+                                        onclick="window.switchVcfiTab(${idx})"
+                                        style="padding:0.3rem 0.75rem; border-radius:10px; border:1px solid var(--border-color);
+                                            background:${idx === 0 ? 'var(--accent-light)' : 'var(--bg-secondary)'};
+                                            color:${idx === 0 ? 'var(--accent)' : 'var(--text-primary)'};
+                                            font-size:0.85rem; cursor:pointer; transition:all 0.15s;">
+                                        ${label}
+                                    </button>`;
+                            }).join('')}
+                        </div>` : '';
+
+                    // Реєструємо глобальний обробник перемикання табів
+                    window.switchVcfiTab = (activeIdx) => {
+                        groups.forEach((_, i) => {
+                            const panel = document.getElementById(`vcfi-panel-${i}`);
+                            const tab   = document.getElementById(`vcfi-tab-${i}`);
+                            if (!panel || !tab) return;
+                            const isActive = i === activeIdx;
+                            panel.style.display = isActive ? '' : 'none';
+                            tab.style.background = isActive ? 'var(--accent-light)' : 'var(--bg-secondary)';
+                            tab.style.color      = isActive ? 'var(--accent)' : 'var(--text-primary)';
+                        });
+                    };
+
+                    // Заголовок: якщо одна група — показуємо її назву у h2
+                    const title = groups.length === 1
+                        ? `${groups[0].vol_name}${groups[0].vol_lang ? ' · ' + langDisplay(groups[0].vol_lang) : ''} — збірники (${volCollectionsFromIssues.length})`
+                        : `Входить у збірники (${volCollectionsFromIssues.length})`;
+
                     return `
-                        <div style="background:var(--bg-primary); padding: 1em; border-radius:8px;
+                        <div style="background:var(--bg-primary); padding:1em; border-radius:8px;
                                     border:1px solid var(--border-color); margin-bottom:1.5rem;">
-                            <h2 style="font-size:1.2rem; margin-bottom:1rem;">
-                                Входить у збірники (${volCollectionsFromIssues.length})
-                            </h2>
-                            ${groupsHtml}
+                            <h2 style="font-size:1.2rem; margin-bottom:1rem;">${title}</h2>
+                            ${tabsHtml}
+                            ${panelsHtml}
                         </div>`;
                 })() : ''}
                 <!-- ── Збірники тому (якщо Collection-том) ───────────────── -->
@@ -685,12 +725,13 @@ function renderCollectionsBlock(allCollections, page) {
                 <table>
                     <thead>
                         <tr>
-                            <th>Обкладинка</th>
+                            <th>Постер</th>
                             <th id="col-sort-issue_number" style="cursor:pointer; user-select:none;">
                                 Номер${sortArrow('issue_number')}
                             </th>
                             <th>Назва</th>
-                            <th>Дата обкладинки</th>
+                            <th>Зміст</th>
+                            <th>Обкладинка</th>
                             <th id="col-sort-release_date" style="cursor:pointer; user-select:none;">
                                 Реліз${sortArrow('release_date')}
                             </th>
@@ -711,6 +752,9 @@ function renderCollectionsBlock(allCollections, page) {
                                 </td>
                                 <td><strong>#${col.issue_number || '?'}</strong></td>
                                 <td>${col.name || 'Без назви'}</td>
+                                <td style="font-size: 0.8rem; color: var(--text-secondary); white-space: nowrap;">
+                                    ${formatIssueRangesFromGroups(col.contents_groups)}
+                                </td>
                                 <td>${formatCoverDate(col.cover_date)}</td>
                                 <td>${formatReleaseDate(col.release_date)}</td>
                                 <td style="text-align:center;" title="${col.isbn || ''}">
@@ -783,6 +827,28 @@ function formatIssueRanges(numbers) {
     ranges.push(start === end ? `#${start}` : `#${start}–#${end}`);
 
     return ranges.join(', ');
+}
+
+function formatIssueRangesFromGroups(groups) {
+    if (!groups || !groups.length) return '—';
+    return groups.map(g => {
+        const nums = (g.numbers || [])
+            .map(n => parseFloat(n))
+            .filter(n => !isNaN(n))
+            .sort((a, b) => a - b);
+        if (!nums.length) return null;
+
+        const ranges = [];
+        let start = nums[0], end = nums[0];
+        for (let i = 1; i < nums.length; i++) {
+            if (nums[i] === end + 1) { end = nums[i]; }
+            else { ranges.push(start === end ? `#${start}` : `#${start}–${end}`); start = end = nums[i]; }
+        }
+        ranges.push(start === end ? `#${start}` : `#${start}–${end}`);
+
+        const rangeStr = ranges.join(', ');
+        return groups.length > 1 ? `${g.vol_name}: ${rangeStr}` : rangeStr;
+    }).filter(Boolean).join(' · ');
 }
 
 // ===== МОДАЛКА "ДОДАТИ ДО СЕРІЇ" =========================================

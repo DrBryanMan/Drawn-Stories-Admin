@@ -18,15 +18,15 @@
 }
 
 .badge-collection {
-    background: rgba(96, 165, 250, 0.15);
-    color: #60a5fa;
-    border: 1px solid rgba(96, 165, 250, 0.3);
+    background: var(--badge-collection-bg-solid);
+    color: var(--badge-collection-color);
+    border: 1px solid var(--badge-collection-border-solid);
 }
 
 .badge-issue {
-    background: var(--success-light);
-    color: var(--success);
-    border: 1px solid rgba(34, 197, 94, 0.3);
+    background: var(--badge-issue-bg-solid);
+    color: var(--badge-issue-color);
+    border: 1px solid var(--badge-issue-border-solid);
 }
 
 .badge-lang {
@@ -36,9 +36,9 @@
 }
 
 .badge-issue-count {
-    background: var(--accent-light);
+    background: var(--accent-light-solid);
     color: var(--accent);
-    border: 1px solid rgba(124, 110, 247, 0.3);
+    border: 1px solid var(--accent);
 }
 
 /* ── Рік (як на скріншоті — жовтий) ── */
@@ -82,10 +82,10 @@
 }
 
 /* ╔══════════════════════════════════════════════════════════╗
-   ║  РЕДАГУВАННЯ ЧІПИ (.edit-chip)                         ║
+   ║  РЕДАГУВАННЯ ЧІПИ (.chip)                         ║
    ╚══════════════════════════════════════════════════════════╝ */
 
-.edit-chip {
+.chip {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
@@ -96,7 +96,7 @@
     line-height: 1;
 }
 
-.edit-chip button {
+.chip button {
     background: none;
     border: none;
     cursor: pointer;
@@ -107,30 +107,30 @@
     color: inherit;
     transition: opacity 0.15s;
 }
-.edit-chip button:hover { opacity: 1; }
+.chip button:hover { opacity: 1; }
 
-.edit-chip-publisher {
-    background: var(--chip-publisher-bg);
+.chip-publisher {
+    background: var(--chip-publisher-bg-solid);
     color: var(--chip-publisher-color);
-    border: 1px solid var(--chip-publisher-border);
+    border: 1px solid var(--chip-publisher-border-solid);
 }
 
-.edit-chip-theme {
-    background: var(--chip-theme-bg);
+.chip-theme {
+    background: var(--chip-theme-bg-solid);
     color: var(--chip-theme-color);
-    border: 1px solid var(--chip-theme-border);
+    border: 1px solid var(--chip-theme-border-solid);
 }
 
-.edit-chip-genre {
-    background: var(--chip-genre-bg);
+.chip-genre {
+    background: var(--chip-genre-bg-solid);
     color: var(--chip-genre-color);
-    border: 1px solid var(--chip-genre-border);
+    border: 1px solid var(--chip-genre-border-solid);
 }
 
-.edit-chip-type {
-    background: var(--chip-type-bg);
+.chip-type {
+    background: var(--chip-type-bg-solid);
     color: var(--chip-type-color);
-    border: 1px solid var(--chip-type-border);
+    border: 1px solid var(--chip-type-border-solid);
 }
 
 /* ── Розділювач груп ── */

@@ -27,9 +27,9 @@ async function renderPage(series) {
     const volumes = series.volumes || [];
     const collections = series.collections || [];
 
-    // Розділяємо томи на два типи
-    const regularVolumes    = volumes.filter(v => !v.has_collection_theme);
-    const collectionVolumes = volumes.filter(v => v.has_collection_theme || (v.collection_count && +v.collection_count > 0));
+    // Розділяємо томи на два типи:
+    const collectionVolumes = volumes.filter(v => v.has_collection_theme || +v.collection_count > 0);
+    const regularVolumes    = volumes.filter(v => !v.has_collection_theme && +v.collection_count === 0);
 
     // Зберігаємо для використання у модалках
     window._seriesVolumes     = volumes;
@@ -135,7 +135,7 @@ async function renderPage(series) {
 
 function renderVolumeCards(volumes, seriesId) {
     return volumes.map(vol => `
-        <div class="card" style="cursor:pointer;"
+        <div class="card" style="cursor:pointer; position: relative;"
              onclick="if(event.ctrlKey||event.metaKey){event.preventDefault();window.open('${buildUrl('volume-detail', { id: vol.id })}','_blank')}else{navigate('volume-detail',{id:${vol.id}})}"
              onmousedown="if(event.button===1){event.preventDefault();window.open('${buildUrl('volume-detail', { id: vol.id })}','_blank')}">
             <div class="card-img">
@@ -148,7 +148,7 @@ function renderVolumeCards(volumes, seriesId) {
                 ${vol.has_collection_theme
                     ? (vol.collection_count ? `<div class="card-meta">📗 ${vol.collection_count}</div>` : '')
                     : (vol.issue_count      ? `<div class="card-meta">📖 ${vol.issue_count}</div>`      : '')}
-                <button class="btn btn-notext btn-danger btn-small"
+                <button class="btn btn-delete btn-notext btn-danger btn-small"
                     onclick="event.stopPropagation(); removeVolumeFromSeries(${seriesId}, ${vol.id})">
                     ✕
                 </button>
@@ -161,7 +161,7 @@ function renderVolumeCards(volumes, seriesId) {
 
 function renderCollectionCards(collections, seriesId) {
     return collections.map(col => `
-        <div class="card" style="cursor:pointer;"
+        <div class="card" style="cursor:pointer; position: relative;"
              onclick="if(event.ctrlKey||event.metaKey){event.preventDefault();window.open('${buildUrl('collection-detail', { id: col.id })}','_blank')}else{navigate('collection-detail',{id:${col.id}})}"
              onmousedown="if(event.button===1){event.preventDefault();window.open('${buildUrl('collection-detail', { id: col.id })}','_blank')}">            <div class="card-img">
                 ${col.cv_img
@@ -173,7 +173,7 @@ function renderCollectionCards(collections, seriesId) {
                 ${col.volume_name ? `<div class="card-meta">${col.volume_name}</div>` : ''}
                 ${col.issue_count ? `<div class="card-meta">📖 ${col.issue_count}</div>` : ''}
                 ${col.issue_number ? `<div class="card-meta">#${col.issue_number}</div>` : ''}
-                <button class="btn btn-notext btn-danger btn-small"
+                <button class="btn btn-delete btn-notext btn-danger btn-small"
                     onclick="event.stopPropagation(); removeCollectionFromSeries(${seriesId}, ${col.id})">
                     ✕
                 </button>

@@ -106,7 +106,7 @@ function renderItems(items) {
         const title = item.name || 'Без назви';
         const isCollection = item._type === 'collection';
         return `
-            <div class="card" data-item-id="${item.id}" data-item-type="${item._type}" style="cursor:pointer;">
+            <div class="card" data-item-id="${item.id}" data-item-type="${item._type}" style="cursor:pointer; position: relative;">
                 <div class="badge badge-${isCollection ? 'collection' : 'issue'}" style="position: absolute; top: .5em; right: .5em; font-size: .7rem; padding: .2rem .5rem;">${isCollection ? 'Збірник' : 'Випуск'}</div>
                 <div class="card-img">
                     ${imgUrl ? `<img src="${imgUrl}" alt="${escapeAttr(title)}">` : `<div style="font-size:3rem;">📖</div>`}

@@ -1,67 +1,110 @@
-/* ═══════════════════════════════════════════════════════════
-   variables.css — CSS custom properties (темна тема)
-   ═══════════════════════════════════════════════════════════ */
-
 :root {
-    /* ── Фони ── */
-    --bg-app:       #eef1f8;          /* ← злегка блакитно-сіруватий замість #fff */
-    --bg-primary:   #f3f5fb;          /* ← чуть blue-tint замість #f1f3f5 */
-    --bg-secondary: #f9fafd;
-    --bg-tertiary:  #e8ecf4;
-    --bg-hover:     #e8ecf4;
+    /* ── Фони (світла тема) ── */
+    --bg-app:       #f6f8ff;
+    --bg-primary:   #ffffff;
+    --bg-secondary: #f4f6fd;
+    --bg-tertiary:  #e9edf7;
+    --bg-hover:     #eef2fb;
 
-    --border-color: #dde2ef;
-    --border-hover: #c5cde0;
+    --border-color: #dde3f0;
+    --border-hover: #c7d0e5;
 
     --text-primary:   #1e2340;
     --text-secondary: #4a5278;
-    --text-muted:     #8892b0;
+    --text-muted:     #8b93b3;
 
-    /* ── Акцент (фіолетовий) ── */
+    /* ── Акцент ── */
     --accent:         #6c5ce7;
     --accent-hover:   #5849c2;
-    --accent_light:   #c6bfff;
+
     --accent-light:   rgba(108, 92, 231, 0.12);
+    --accent-light-solid:   #c6bfff;
+
     --accent-hsl:     250, 75%, 63%;
 
     /* ── Статуси ── */
+
+    /* danger */
     --danger:         #e53e3e;
+    --danger-50:      rgba(229, 62, 62, .5);
     --danger-light:   rgba(229, 62, 62, 0.1);
+    --danger-light-solid:   #f8d7d7;
+
+    /* success */
     --success:        #38a169;
     --success-light:  rgba(56, 161, 105, 0.1);
+    --success-light-solid:  #d7f0e3;
+
+    /* warning */
     --warning:        #d97706;
     --warning-light:  rgba(217, 119, 6, 0.12);
+    --warning-light-solid:  #f6e3c7;
 
-    /* ── Спеціальні бейджі ── */
+    /* ── Бейджі ── */
+
+    /* year */
     --badge-year-bg:      rgba(217, 119, 6, 0.1);
+    --badge-year-bg-solid:#f6e3c7;
     --badge-year-color:   #b45309;
     --badge-year-border:  rgba(217, 119, 6, 0.25);
+    --badge-year-border-solid: #e7c29c;
 
+    /* views */
     --badge-views-bg:     rgba(56, 161, 105, 0.1);
+    --badge-views-bg-solid:#d7f0e3;
     --badge-views-color:  #276749;
     --badge-views-border: rgba(56, 161, 105, 0.2);
+    --badge-views-border-solid:#bfe5cf;
 
     --badge-id-color:     #6c5ce7;
 
-    /* ── Чіпи тегів (адаптовані для світлої теми) ── */
+    /* ── Бейдж: Випуск (структура / номер) ── */
+    --badge-issue-bg:        rgba(14, 165, 233, 0.12);
+    --badge-issue-bg-solid:  #d8f0fd;
+    --badge-issue-color:     #0369a1;
+    --badge-issue-border:    rgba(14, 165, 233, 0.3);
+    --badge-issue-border-solid: #a5dbf7;
+
+
+    /* ── Бейдж: Збірник (групування / колекція) ── */
+    --badge-collection-bg:        rgba(168, 85, 247, 0.12);
+    --badge-collection-bg-solid:  #f0e3ff;
+    --badge-collection-color:     #7e22ce;
+    --badge-collection-border:    rgba(168, 85, 247, 0.28);
+    --badge-collection-border-solid: #e2c8fb;
+
+    /* ── Чіпи ── */
+
+    /* publisher */
     --chip-publisher-bg:     rgba(59, 130, 246, 0.08);
+    --chip-publisher-bg-solid:#dbeafe;
     --chip-publisher-color:  #1d4ed8;
     --chip-publisher-border: rgba(59, 130, 246, 0.22);
+    --chip-publisher-border-solid:#bfdbfe;
 
+    /* theme */
     --chip-theme-bg:     rgba(109, 40, 217, 0.08);
+    --chip-theme-bg-solid:#ede9fe;
     --chip-theme-color:  #5b21b6;
     --chip-theme-border: rgba(109, 40, 217, 0.2);
+    --chip-theme-border-solid:#d6ccfa;
 
+    /* genre */
     --chip-genre-bg:     rgba(180, 83, 9, 0.08);
+    --chip-genre-bg-solid:#f6e3c7;
     --chip-genre-color:  #92400e;
     --chip-genre-border: rgba(180, 83, 9, 0.2);
+    --chip-genre-border-solid:#e7c29c;
 
+    /* type */
     --chip-type-bg:      rgba(5, 150, 105, 0.08);
+    --chip-type-bg-solid:#d1fae5;
     --chip-type-color:   #065f46;
     --chip-type-border:  rgba(5, 150, 105, 0.2);
+    --chip-type-border-solid:#a7f3d0;
 
-    /* ── Тіні (легкі для світлої теми) ── */
-    --shadow:    0 1px 4px rgba(30, 35, 64, 0.08);
-    --shadow-lg: 0 6px 24px rgba(30, 35, 64, 0.13);
-    --shadow-xl: 0 16px 48px rgba(30, 35, 64, 0.18);
+    /* ── Тіні ── */
+    --shadow:    0 1px 4px rgba(30, 35, 64, 0.06);
+    --shadow-lg: 0 6px 24px rgba(30, 35, 64, 0.1);
+    --shadow-xl: 0 16px 48px rgba(30, 35, 64, 0.14);
 }

@@ -150,7 +150,12 @@
     border-color: #22c55e;
 }
 
-
+/* ===== */
+.card .btn-delete {
+	position: absolute;
+	top: .5em;
+	right: .5em;
+}
 
 .btn-notext.btn-small {
     padding: 0;
@@ -159,12 +164,6 @@
 	aspect-ratio: 1 / 1;
 }
 
-.btn-notext.btn-danger {
-    background: hsl(var(--danger-hsl), .7);
-    /* color: white; */
-}
-
-.btn-notext.btn-danger:hover {
-    background: hsl(var(--danger-hsl), .9);
-    color: var(--danger);
+.btn-notext.btn-danger:not(:hover) {
+    background: var(--danger-light-solid);
 }
