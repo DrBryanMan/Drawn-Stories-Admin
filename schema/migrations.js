@@ -414,45 +414,9 @@ const MIGRATIONS = [
       db.run(`CREATE INDEX IF NOT EXISTS idx_issue_reprints_reprint  ON issue_reprints(reprint_id)`);
     },
   },
-  
-  // ── M025: magazine_chapters — зв'язок журнал-том → розділ манги ────────
+  // ── M025: додає типи для зв'язків ──
   {
-    id: 'M025_magazine_chapters',
-    up(db) {
-      db.run(`CREATE TABLE IF NOT EXISTS magazine_chapters (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        magazine_id INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
-        issue_id    INTEGER NOT NULL REFERENCES issues(id)  ON DELETE CASCADE,
-        sort_order  INTEGER NOT NULL DEFAULT 0,
-        UNIQUE(magazine_id, issue_id)
-      )`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_mc_magazine ON magazine_chapters(magazine_id)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_mc_issue    ON magazine_chapters(issue_id)`);
-    },
-  },
-  // ── M026: magazine_chapters — прив'язка до випуску журналу замість тому ──
-  {
-    id: 'M026_magazine_chapters_v2',
-    up(db) {
-      // Пересоздаємо таблицю: magazine_id → mag_issue_id + page_type
-      db.run(`CREATE TABLE IF NOT EXISTS magazine_chapters_new (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
-        mag_issue_id INTEGER NOT NULL REFERENCES issues(id)  ON DELETE CASCADE,
-        issue_id     INTEGER NOT NULL REFERENCES issues(id)  ON DELETE CASCADE,
-        sort_order   INTEGER NOT NULL DEFAULT 0,
-        page_type    TEXT CHECK(page_type IN ('color','cover','combined')),
-        UNIQUE(mag_issue_id, issue_id)
-      )`);
-      // Дані старої таблиці не переносимо (magazine_id → mag_issue_id несумісний)
-      db.run(`DROP TABLE magazine_chapters`);
-      db.run(`ALTER TABLE magazine_chapters_new RENAME TO magazine_chapters`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_mc_mag_issue ON magazine_chapters(mag_issue_id)`);
-      db.run(`CREATE INDEX IF NOT EXISTS idx_mc_issue     ON magazine_chapters(issue_id)`);
-    },
-  },
-  // ── M027: додає типи для зв'язків ──
-  {
-    id: 'M027_volume_translations_type',
+    id: 'M025_volume_translations_type',
     up(db) {
       db.run(`ALTER TABLE volume_translations ADD COLUMN rel_type TEXT NOT NULL DEFAULT 'translation' CHECK(rel_type IN ('translation','source','original'))`);
 

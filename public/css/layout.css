@@ -265,7 +265,7 @@
     margin-bottom: 1rem;
 }
 
-.block .header {
+.block .block-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -273,10 +273,16 @@
     margin-bottom: 0.75rem;
     
     h2 {
-        font-size: 1.5rem;
+        font-size: 1.2rem;
         font-weight: 700;
         margin: 0;
     }
+}
+
+.space-between {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 /* ── Пустий стан ── */

@@ -1,7 +1,7 @@
 import { API_BASE } from '../utils/config.js';
 import { fetchItem } from '../api/api.js';
-import { cv_logo_svg, cv_img_path_small, cv_img_path_original, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
-import { navigate, navigateToParent } from '../utils/router.js';
+import { cv_img_path_small, cv_img_path_original, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
+import { navigate } from '../utils/router.js';
 import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
 import { openAddIssueModal } from '../components/addIssueModal.js';
 import { openModal } from '../components/modal.js';
@@ -11,6 +11,7 @@ import {
     renderVolumeSummary,
     attachVolumeChipsHandlers,
 } from '../components/volumeChips.js';
+import * as ICONS from '../utils/icons.js'
 
 // ID вже доданих випусків для фільтрації в пошуку
 let currentCollectionIssueIds = new Set();
@@ -215,7 +216,7 @@ function renderPage(collection, seriesList = []) {
                             style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
                         : '<div style="width: 300px; height: 300px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">&#128213;</div>'}
                         <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1em;">
-                            <a href="https://comicvine.gamespot.com/${collection.cv_slug}/4000-${collection.cv_id}" target="_blank">${cv_logo_svg}</a>
+                            <a href="https://comicvine.gamespot.com/${collection.cv_slug}/4000-${collection.cv_id}" target="_blank">${ICONS.cv_logo_svg}</a>
                             ${collection.locg_slug ? `
                                 <a href="https://leagueofcomicgeeks.com/comics/series/${collection.locg_id}/${collection.locg_slug}" target="_blank">
                                     <img src="${locg_img}" alt="League of Comic Geeks" style="height:30px; vertical-align:middle;">

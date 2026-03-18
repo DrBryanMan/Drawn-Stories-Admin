@@ -352,7 +352,7 @@ router.get('/:id/translations', (req, res) => {
 
 // GET батьківський том-оригінал для цього перекладу
 router.get('/:id/translation-parent', (req, res) => {
-  const row = getOne(`
+  const rows = getAll(`
     SELECT v.*, p.name as publisher_name, vt.rel_type,
       (SELECT COUNT(*) FROM collections c WHERE c.cv_vol_id = v.cv_id) as collections_count
     FROM volume_translations vt
@@ -360,7 +360,7 @@ router.get('/:id/translation-parent', (req, res) => {
     LEFT JOIN publishers p ON p.id = v.publisher
     WHERE vt.child_id = ?
   `, [req.params.id]);
-  res.json({ data: row || null });
+  res.json({ data: rows });
 });
 
 // POST додати переклад: цей том (id) є оригіналом, child_id — переклад
@@ -386,7 +386,7 @@ router.post('/:id/translations', (req, res) => {
     if (reverse) return res.status(400).json({ error: 'Цей том вже є батьком зазначеного' });
 
     runQuery('INSERT INTO volume_translations (parent_id, child_id, rel_type) VALUES (?, ?, ?)', [parentId, child_id, rel_type]);
-    
+
     // Автоматично додаємо тему Translated (51) до дочірнього тому
     ensureVolumeTheme(parseInt(child_id), TRANSLATED_THEME_ID);
 

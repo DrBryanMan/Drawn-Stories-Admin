@@ -1,9 +1,10 @@
 import { API_BASE } from '../utils/config.js';
-import { cv_logo_svg, cv_img_path_original, cv_img_path_small, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage, langDisplay } from '../utils/helpers.js';
+import { cv_img_path_original, cv_img_path_small, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage, langDisplay } from '../utils/helpers.js';
 import { openSearchPickerModal, closeSearchPickerModal } from '../components/searchPickerModal.js';
 import { fetchItem, updateItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
 import { navigate } from '../utils/router.js';
+import * as ICONS from '../utils/icons.js'
 
 let currentVolumeId = null;
 let currentIssueId = null;
@@ -184,7 +185,7 @@ export async function renderIssueDetail(params) {
                                 style="width: 300px; border-radius: 8px; box-shadow: var(--shadow-lg);">`
                             : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📖</div>'}
                             <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1em;">
-                                <a href="https://comicvine.gamespot.com/${issue.cv_slug}/4000-${issue.cv_id}" target="_blank">${cv_logo_svg}</a>
+                                <a href="https://comicvine.gamespot.com/${issue.cv_slug}/4000-${issue.cv_id}" target="_blank">${ICONS.cv_logo_svg}</a>
                             </div>
                     </div>
                     <div style="flex: 1;">

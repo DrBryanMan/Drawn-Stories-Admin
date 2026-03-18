@@ -108,7 +108,7 @@ function buildSectionHTML(data) {
     ` : '';
 
     const groupsHTML = hasOther ? `
-        <div class="vrel-groups">
+        <div class="vrel-groups" style="border-top: 1px solid var(--border-color);">
             ${['sequel','prequel','spinoff','related'].map(type => {
                 const vols = other[type] || [];
                 if (!vols.length) return '';

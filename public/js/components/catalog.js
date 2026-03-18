@@ -15,7 +15,8 @@ let currentPublisherIds = [];
 let currentThemeIds = [];
 const LIMIT = 100;
 
-let _config = null;       // поточна конфігурація сторінки
+let _config = null;
+let _clickAbortCtrl = null;
 
 // ── Публічний API ─────────────────────────────────────────────────────────
 
@@ -214,10 +215,9 @@ function buildGrid(items) {
 // ── Обробники кліків ──────────────────────────────────────────────────────
 
 function attachClickHandlers(content) {
-  if (content._clickAbort) content._clickAbort.abort();
-  const ctrl = new AbortController();
-  content._clickAbort = ctrl;
-  const { signal } = ctrl;
+  if (_clickAbortCtrl) _clickAbortCtrl.abort();
+  _clickAbortCtrl = new AbortController();
+  const { signal } = _clickAbortCtrl;
 
   content.addEventListener('click', (e) => {
     const card = e.target.closest('[data-item-id]');

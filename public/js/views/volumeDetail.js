@@ -1,11 +1,12 @@
 import { API_BASE } from '../utils/config.js';
-import { locg_img, cv_img_path_small, cv_logo_svg, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage, LANG_MAP, langDisplay } from '../utils/helpers.js';
+import { locg_img, cv_img_path_small, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage, LANG_MAP, langDisplay } from '../utils/helpers.js';
 import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList, buildThemeChipsViewHTML } from '../utils/themeChips.js';
-import { publisherSearchHTML, initPublisherSearch, renderThemeChips } from '../utils/publisherSearch.js';
+import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
 import { fetchItem, fetchItems } from '../api/api.js';
 import { mountVolumeRelations } from '../components/volumeRelations.js';
 import { openModal } from '../components/modal.js';
 import { navigate, buildUrl } from '../utils/router.js';
+import * as ICONS from '../utils/icons.js'
 
 // ===== ПАГІНАЦІЯ ВИПУСКІВ ================================================
 
@@ -96,7 +97,10 @@ export async function renderVolumeDetail(params) {
         const volCollections = volumeCollectionsData.data || [];
         const volCollectionsFromIssues = collectionsFromIssuesData.data || [];
         const translations = translationsData.data || [];
-        const translationParent = translationParentData.data || null;
+        const translationParents = translationParentData.data || [];
+        const translationOriginal = translationParents.find(p => p.rel_type === 'original') || null;
+        const translationSource   = translationParents.find(p => p.rel_type === 'source')   || null;
+        const translationParent   = translationOriginal || translationSource || null;
         const magazineChildren = magazineChildrenData.data || [];
         const magazineParents = magazineParentData.data || [];
         const magazineChapters = magazineChaptersData.data || [];
@@ -179,11 +183,11 @@ export async function renderVolumeDetail(params) {
                                 </button>
                             ` : ''}
                             ${!isMagazineVolume ? `
-                                ${!translationParent && translations.length === 0 && magazineParents.length === 0 ? `
-                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id}, 'original')">🌐 Додати до оригіналу</button>
+                                ${!translationOriginal ? `
+                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id}, 'original')">📖 Додати до оригіналу</button>
                                 ` : ''}
-                                ${!translationParent && translations.length === 0 && magazineParents.length === 0 ? `
-                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id}, 'source')">🌐 Додати до першоджерела</button>
+                                ${!translationSource ? `
+                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id}, 'source')">📚 Додати до першоджерела</button>
                                 ` : ''}
                                 ${magazineParents.length === 0 && !translationParent ? `
                                     <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
@@ -218,59 +222,91 @@ export async function renderVolumeDetail(params) {
                         </div>
 
                         <!-- ── Оригінал (цей том — переклад) ────────────────────── -->
-                        ${translationParent && !isMangaSourceVolume ? `
+                        <!-- ── Оригінал (японська манга) ────────────────────── -->
+                        ${translationOriginal && !isMangaSourceVolume ? `
                             <div style="display: inline-block; width: 300px; background: var(--bg-primary); padding: .5rem; border-radius: 8px; margin-top: 1em;">
                                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
                                     <h2 style="font-size:1.25rem; margin:0;">📖 Оригінал</h2>
                                     <button class="btn btn-danger btn-small"
-                                        onclick="removeTranslation(${translationParent.id}, ${volume.id})">
+                                        onclick="removeTranslation(${translationOriginal.id}, ${volume.id})">
                                         Від'єднати
                                     </button>
                                 </div>
                                 <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
-                                    onclick="navigate('volume-detail', { id: ${translationParent.id} })">
-                                    ${translationParent.cv_img
-                                        ? `<img src="${cv_img_path_small}${translationParent.cv_img.startsWith('/') ? '' : '/'}${translationParent.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
-                                        : translationParent.hikka_img
-                                            ? `<img src="${translationParent.hikka_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
+                                    onclick="navigate('volume-detail', { id: ${translationOriginal.id} })">
+                                    ${translationOriginal.cv_img
+                                        ? `<img src="${cv_img_path_small}${translationOriginal.cv_img.startsWith('/') ? '' : '/'}${translationOriginal.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
+                                        : translationOriginal.hikka_img
+                                            ? `<img src="${translationOriginal.hikka_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
                                             : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📚</div>'}
-                                        <div>
-                                            <div style="font-weight:600;">${translationParent.lang ? `[${translationParent.lang}] ` : ''}${translationParent.name}</div>
-                                            ${translationParent.name_uk ? `<div style="font-size:0.85rem; color:var(--text-secondary);">🇺🇦 ${translationParent.name_uk}</div>` : ''}
-                                            ${!translationParent.cv_id && translationParent.hikka_slug ? `<div style="font-size:0.85rem; color:var(--text-secondary);">hikka: ${translationParent.hikka_slug}</div>` : ''}
-                                        ${translationParent.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationParent.publisher_name}</div>` : ''}
-                                        ${translationParent.collections_count ? `<div style="font-size:0.85rem; color:var(--text-secondary);">📚 ${translationParent.collections_count} збірн.</div>` : ''}
-                                        </div>
+                                    <div>
+                                        <div style="font-weight:600;">${translationOriginal.lang ? `[${translationOriginal.lang}] ` : ''}${translationOriginal.name}</div>
+                                        ${translationOriginal.name_uk ? `<div style="font-size:0.85rem; color:var(--text-secondary);">🇺🇦 ${translationOriginal.name_uk}</div>` : ''}
+                                        ${!translationOriginal.cv_id && translationOriginal.hikka_slug ? `<div style="font-size:0.85rem; color:var(--text-secondary);">hikka: ${translationOriginal.hikka_slug}</div>` : ''}
+                                        ${translationOriginal.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationOriginal.publisher_name}</div>` : ''}
+                                        ${translationOriginal.collections_count ? `<div style="font-size:0.85rem; color:var(--text-secondary);">📚 ${translationOriginal.collections_count} збірн.</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        ` : ''}
+
+                        <!-- ── Першоджерело (американський том випусків) ────── -->
+                        ${translationSource && !isMangaSourceVolume ? `
+                            <div style="display: inline-block; width: 300px; background: var(--bg-primary); padding: .5rem; border-radius: 8px; margin-top: 1em;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:0.75rem;">
+                                    <h2 style="font-size:1.25rem; margin:0;">📚 Джерело</h2>
+                                    <button class="btn btn-danger btn-small"
+                                        onclick="removeTranslation(${translationSource.id}, ${volume.id})">
+                                        Від'єднати
+                                    </button>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
+                                    onclick="navigate('volume-detail', { id: ${translationSource.id} })">
+                                    ${translationSource.cv_img
+                                        ? `<img src="${cv_img_path_small}${translationSource.cv_img.startsWith('/') ? '' : '/'}${translationSource.cv_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
+                                        : translationSource.hikka_img
+                                            ? `<img src="${translationSource.hikka_img}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;">`
+                                            : '<div style="width:48px;height:48px;background:var(--bg-secondary);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:1.5rem;">📚</div>'}
+                                    <div>
+                                        <div style="font-weight:600;">${translationSource.lang ? `[${translationSource.lang}] ` : ''}${translationSource.name}</div>
+                                        ${translationSource.name_uk ? `<div style="font-size:0.85rem; color:var(--text-secondary);">🇺🇦 ${translationSource.name_uk}</div>` : ''}
+                                        ${!translationSource.cv_id && translationSource.hikka_slug ? `<div style="font-size:0.85rem; color:var(--text-secondary);">hikka: ${translationSource.hikka_slug}</div>` : ''}
+                                        ${translationSource.publisher_name ? `<div style="font-size:0.85rem; color:var(--text-secondary);">${translationSource.publisher_name}</div>` : ''}
+                                        ${translationSource.collections_count ? `<div style="font-size:0.85rem; color:var(--text-secondary);">📚 ${translationSource.collections_count} збірн.</div>` : ''}
+                                    </div>
                                 </div>
                             </div>
                         ` : ''}
                     </div>
                 </div>
 
-                <!-- ── Переклади: список дочірніх (цей том — оригінал) ───── -->
-                
-                ${!isMagazineVolume && (translations.length > 0 || !translationParent) ? `
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
-                            <h2 style="font-size:1.25rem; margin:0;">🌐 Переклади (${translations.length})</h2>
-                            <button class="btn btn-primary btn-small"
-                                onclick="openVolumePickerModal('translation-add', ${volume.id}, 'translation')">
-                                + Додати переклад
-                            </button>
+                <!-- ── Батьківський журнал (цей том входить у журнал) ─────── -->
+                ${magazineParents.length > 0 ? `
+                    <div class="block">
+                        <div class="block-header space-between">
+                            <h2>Журнали (${magazineParents.length})</h2>
+                            <button class="btn btn-secondary btn-notext btn-small" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">${ICONS.plus}</button>
                         </div>
-                        ${translations.length > 0 ? `
-                            <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-                            ${translations.map(t => `
-                                    <div style="display:flex; align-items:center; gap: .3rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: .3rem .6rem; cursor:pointer;"
-                                        onclick="navigate('volume-detail', { id: ${t.id} })">
-                                        <span style="font-size:0.9rem;">${t.lang ? `<i style="color: skyblue;">${langDisplay(t.lang)}</i> ` : ''}${t.name}</span>
-                                        ${t.collections_count ? `<span class="badge" style="font-size: .75rem; padding: .1rem .4rem; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-secondary);">${t.collections_count}</span>` : ''}
-                                        <button class="btn btn-notext btn-nobg btn-danger btn-small"
-                                            onclick="event.stopPropagation(); removeTranslation(${volume.id}, ${t.id})">✕</button>
+                        <div style="display:flex; gap:0.5rem;">
+                            ${magazineParents.map(mp => `
+                                <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.5rem 0.75rem;">
+                                    <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer; flex:1;"
+                                        onclick="navigate('volume-detail', { id: ${mp.id} })">
+                                        ${mp.cv_img
+                                            ? `<img src="${cv_img_path_small}${mp.cv_img.startsWith('/') ? '' : '/'}${mp.cv_img}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0;">`
+                                            : '<div style="width:40px;height:40px;background:var(--bg-tertiary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">📰</div>'}
+                                        <div>
+                                            <div style="font-weight:600;">${mp.name}</div>
+                                            ${mp.publisher_name ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${mp.publisher_name}</div>` : ''}
+                                        </div>
                                     </div>
-                                `).join('')}
-                            </div>
-                        ` : `<p style="color:var(--text-secondary); margin:0; font-size:0.9rem;">Немає прив'язаних перекладів.</p>`}
+                                    <button class="btn btn-danger btn-small" style="margin-left:0.75rem;"
+                                        onclick="event.stopPropagation(); removeMagazineChild(${mp.id}, ${volume.id})">
+                                        ${ICONS.link}
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 ` : ''}
 
@@ -306,30 +342,29 @@ export async function renderVolumeDetail(params) {
                     </div>
                 ` : ''}
 
-                <!-- ── Батьківський журнал (цей том входить у журнал) ─────── -->
-                ${magazineParents.length > 0 ? `
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                        <h2 style="font-size:1.25rem; margin:0 0 1rem;">📰 Журнали (${magazineParents.length})</h2>
-                        <div style="display:flex; flex-direction:column; gap:0.5rem;">
-                            ${magazineParents.map(mp => `
-                                <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.5rem 0.75rem;">
-                                    <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer; flex:1;"
-                                        onclick="navigate('volume-detail', { id: ${mp.id} })">
-                                        ${mp.cv_img
-                                            ? `<img src="${cv_img_path_small}${mp.cv_img.startsWith('/') ? '' : '/'}${mp.cv_img}" style="width:40px;height:40px;object-fit:cover;border-radius:4px;flex-shrink:0;">`
-                                            : '<div style="width:40px;height:40px;background:var(--bg-tertiary);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">📰</div>'}
-                                        <div>
-                                            <div style="font-weight:600;">${mp.name}</div>
-                                            ${mp.publisher_name ? `<div style="font-size:0.8rem; color:var(--text-secondary);">${mp.publisher_name}</div>` : ''}
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-danger btn-small" style="margin-left:0.75rem;"
-                                        onclick="event.stopPropagation(); removeMagazineChild(${mp.id}, ${volume.id})">
-                                        Від'єднати
-                                    </button>
-                                </div>
-                            `).join('')}
+                <!-- ── Переклади: список дочірніх (цей том — оригінал) ───── -->
+                ${!isMagazineVolume && (translations.length > 0 || !translationParent) ? `
+                    <div class="block">
+                        <div class="block-header space-between">
+                            <h2>Переклади (${translations.length})</h2>
+                            <button class="btn btn-primary btn-small"
+                                onclick="openVolumePickerModal('translation-add', ${volume.id}, 'translation')">
+                                + Додати переклад
+                            </button>
                         </div>
+                        ${translations.length > 0 ? `
+                            <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                            ${translations.map(t => `
+                                    <div style="display:flex; align-items:center; gap: .3rem; background: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; padding: .3rem .6rem; cursor:pointer;"
+                                        onclick="navigate('volume-detail', { id: ${t.id} })">
+                                        <span style="font-size:0.9rem;">${t.lang ? `<i style="color: skyblue;">${langDisplay(t.lang)}</i> ` : ''}${t.name}</span>
+                                        ${t.collections_count ? `<span class="badge" style="font-size: .75rem; padding: .1rem .4rem; background: var(--bg-secondary); border: 1px solid var(--border-color); color: var(--text-secondary);">${t.collections_count}</span>` : ''}
+                                        <button class="btn btn-notext btn-nobg btn-danger btn-small"
+                                            onclick="event.stopPropagation(); removeTranslation(${volume.id}, ${t.id})">✕</button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : `<p style="color:var(--text-secondary); margin:0; font-size:0.9rem;">Немає прив'язаних перекладів.</p>`}
                     </div>
                 ` : ''}
 
@@ -400,14 +435,10 @@ export async function renderVolumeDetail(params) {
                                 ${groups.length === 1 ? '' : `
                                     <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.75rem;">
                                         <span style="font-size:0.95rem; font-weight:600; cursor:${group.vol_id ? 'pointer' : 'default'};
-                                                    color:var(--text-primary);" ${volLink}>
+                                                    color:var(--accent);" ${volLink}>
                                             ${group.vol_name}
                                         </span>
-                                        ${langLabel ? `
-                                            <span style="font-size:.75rem; background:var(--bg-tertiary); padding:.1em .4em; color:var(--text-secondary); border-radius: 8px;">
-                                                ${langLabel}
-                                            </span>
-                                        ` : ''}
+                                        ${langLabel ? `<span style="font-size: .75rem;"> · ${langLabel}</span>` : ''}
                                     </div>
                                 `}
                                 <div style="display:flex; flex-wrap:wrap; gap:.6em;">
@@ -447,15 +478,24 @@ export async function renderVolumeDetail(params) {
                         });
                     };
 
-                    // Заголовок: якщо одна група — показуємо її назву у h2
-                    const title = groups.length === 1
-                        ? `${groups[0].vol_name}${groups[0].vol_lang ? ' · ' + langDisplay(groups[0].vol_lang) : ''} — збірники (${volCollectionsFromIssues.length})`
-                        : `Входить у збірники (${volCollectionsFromIssues.length})`;
+                    // Підзаголовок: якщо одна група — показуємо назву серії (клікабельно) під заголовком
+                    const singleGroupSubtitle = groups.length === 1 ? (() => {
+                        const g = groups[0];
+                        const langBadge = g.vol_lang
+                            ? ` <span style="font-size: .75rem;"> · ${langDisplay(g.vol_lang)}</span>`
+                            : '';
+                        const nameHtml = g.vol_id
+                            ? `<a href="#" onclick="event.preventDefault(); navigate('volume-detail', { id: ${g.vol_id} })"
+                                  style="color:var(--accent); text-decoration:none; font-weight:600;">${g.vol_name}</a>`
+                            : `<span style="font-weight:600;">${g.vol_name}</span>`;
+                        return `<div style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:0.75rem;">${nameHtml}${langBadge}</div>`;
+                    })() : '';
 
                     return `
                         <div style="background:var(--bg-primary); padding:1em; border-radius:8px;
                                     border:1px solid var(--border-color); margin-bottom:1.5rem;">
-                            <h2 style="font-size:1.2rem; margin-bottom:1rem;">${title}</h2>
+                            <h2 style="font-size:1.2rem; margin-bottom:0.4rem;">Входить у збірники (${volCollectionsFromIssues.length})</h2>
+                            ${singleGroupSubtitle}
                             ${tabsHtml}
                             ${panelsHtml}
                         </div>`;
@@ -671,7 +711,7 @@ function renderCollectionsBlock(allCollections, page) {
     if (!allCollections.length) {
         block.innerHTML = `
             <div class="block">
-                <h2 class="header">Збірники (0)</h2>
+                <h2 class="block-header">Збірники (0)</h2>
                 <p style="color: var(--text-secondary);">Збірників немає.</p>
             </div>`;
         return;
@@ -726,14 +766,12 @@ function renderCollectionsBlock(allCollections, page) {
 
     block.innerHTML = `
         <div class="block">
-            <h2 class="header">
-                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
-                    <span>Збірники (${total})</span>
-                    <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
-                        ${paginationHtml}
-                    </div>
+            <div class="block-header">
+                <h2>Збірники (${total})</h2>
+                <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
+                    ${paginationHtml}
                 </div>
-            </h2>
+            </div>
             <div class="table">
                 <table>
                     <thead>
@@ -770,8 +808,18 @@ function renderCollectionsBlock(allCollections, page) {
                                 </td>
                                 <td>${formatCoverDate(col.cover_date)}</td>
                                 <td>${formatReleaseDate(col.release_date)}</td>
-                                <td style="text-align:center;" title="${col.isbn || ''}">
-                                    ${col.isbn ? '🔖' : '<span title="ISBN не вказано" style="color: #6c757d; opacity: 0.5; filter: grayscale(100%);">🔖</span>'}
+                                <td onclick="event.stopPropagation()">
+                                    <input class="col-isbn-input"
+                                        data-col-id="${col.id}"
+                                        value="${(col.isbn || '').replace(/"/g, '&quot;')}"
+                                        placeholder="ISBN"
+                                        style="width:140px; background:transparent; border:1px solid transparent;
+                                            border-radius:4px; padding:2px 5px; font-size:0.82rem;
+                                            color:var(--text-primary); cursor:text;"
+                                        onclick="event.stopPropagation()"
+                                        onmouseenter="this.style.background='var(--bg-secondary)'; this.style.borderColor='var(--border-color)'"
+                                        onmouseleave="if(document.activeElement!==this){this.style.background=''; this.style.borderColor='transparent'}"
+                                    >
                                 </td>
                                 <td onclick="event.stopPropagation()">
                                     <button class="btn btn-secondary btn-small"
@@ -814,6 +862,53 @@ function renderCollectionsBlock(allCollections, page) {
         _collectionsPage = 0;
         renderCollectionsBlock(allCollections, 0);
     });
+    // ── Inline-редагування ISBN ───────────────────────────────────────────────
+    const collectionsTableBody = block.querySelector('tbody');
+    if (collectionsTableBody) {
+        collectionsTableBody.addEventListener('change', async (e) => {
+            const input = e.target;
+            if (!input.classList.contains('col-isbn-input')) return;
+            const colId = parseInt(input.dataset.colId);
+            const value = input.value.trim() || null;
+            try {
+                const res = await fetch(`${API_BASE}/collections/${colId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ isbn: value }),
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    alert(err.error || 'Помилка збереження ISBN');
+                    input.value = input.defaultValue;
+                } else {
+                    input.defaultValue = input.value;
+                }
+            } catch (err) {
+                console.error('Помилка збереження ISBN:', err);
+            }
+        });
+
+        collectionsTableBody.addEventListener('focusin', (e) => {
+            const inp = e.target.closest('.col-isbn-input');
+            if (inp) { inp.style.background = 'var(--bg-secondary)'; inp.style.borderColor = 'var(--border-color)'; }
+        });
+
+        collectionsTableBody.addEventListener('focusout', (e) => {
+            const inp = e.target.closest('.col-isbn-input');
+            if (inp) { inp.style.background = ''; inp.style.borderColor = 'transparent'; }
+        });
+
+        collectionsTableBody.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const inp = e.target.closest('.col-isbn-input');
+                if (inp) { inp.value = inp.defaultValue; inp.blur(); }
+            }
+            if (e.key === 'Enter') {
+                const inp = e.target.closest('.col-isbn-input');
+                if (inp) inp.blur();
+            }
+        });
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
