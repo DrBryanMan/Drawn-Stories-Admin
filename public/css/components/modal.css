@@ -448,7 +448,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 0.75rem;
-    margin-bottom: 1.25rem;
+    margin-bottom: .5em;
     align-items: flex-end;
 }
 
@@ -467,7 +467,7 @@
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem 0.8rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: .5em;
     background: var(--bg-secondary);
     border-radius: 8px;
     border: 1px solid var(--border-color);
@@ -479,6 +479,14 @@
     height: 16px;
     accent-color: var(--accent);
     cursor: pointer;
+}
+
+#aim-select-all-hint {
+	background: var(--warning-light);
+	padding: .2em .4em;
+	border-radius: 8px;
+	color: var(--danger);
+	font-size: .8rem;
 }
 
 .aim-results-container {

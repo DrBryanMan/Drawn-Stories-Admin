@@ -75,26 +75,30 @@ function buildSectionHTML(data) {
             <div class="vrel-chain-label">📖 Продовження серії</div>
             <div class="vrel-chain">
                 ${chain.map((vol, i) => {
-                    const displayNum = vol.order_num !== null
-                        ? vol.order_num
-                        : (chain[i - 1]?.order_num ?? i) + 1;
-
+                    const pos = i + 1; 
                     return `
                         <div class="vrel-chain-item${vol.current ? ' current' : ''}"
                             onclick="window._vrelNavigate(${vol.id})">
-                            <div class="vrel-cover">${imgTag(vol.cv_img, 80, 120)}</div>
+                            <div style="position:relative;">
+                                <div class="vrel-cover">${imgTag(vol.cv_img, 110, 160)}</div>
+                                <span class="vrel-chain-pos-badge"
+                                    title="Позиція у серії. Клікни щоб змінити"
+                                    onclick="event.stopPropagation(); window._vrelEditOrder(${vol.rel_id ?? 'null'}, ${pos})">
+                                    ${pos}
+                                </span>
+                                ${(vol.rel_id || vol.in_rel_id) ? `
+                                    <span class="vrel-del-chain-btn"
+                                        title="Видалити зв'язок"
+                                        onclick="event.stopPropagation(); window._vrelDelete(${vol.rel_id ?? vol.in_rel_id})">
+                                        ✕
+                                    </span>
+                                ` : ''}
+                            </div>
                             <div class="vrel-chain-name"
                                 title="${escH(vol.name)}${vol.start_year ? ` (${vol.start_year})` : ''}">
-                                Vol ${displayNum}
-                                ${vol.start_year ? `<br><span style="font-size:0.55rem;">${vol.start_year}</span>` : ''}
+                                ${escH(vol.name)}
                             </div>
-                            ${vol.rel_id ? `
-                                <button class="vrel-edit-order-btn"
-                                        title="Змінити порядок"
-                                        onclick="event.stopPropagation(); window._vrelEditOrder(${vol.rel_id}, ${vol.order_num ?? ''})">
-                                    ✏️
-                                </button>
-                            ` : `<span style="font-size:0.55rem; color:var(--text-secondary); text-align:center;">кінець</span>`}
+                            ${vol.start_year ? `<span style="font-size:0.55rem;">${vol.start_year}</span>` : ''}
                         </div>
                         ${i < chain.length - 1 ? '<div class="vrel-chain-arrow">›</div>' : ''}
                     `;
@@ -166,22 +170,20 @@ window._vrelDelete = async (relId) => {
     if (_onReload) _onReload();
 };
 
-window._vrelEditOrder = (relId, currentOrder) => {
-    const val = prompt(
-        `Порядковий номер цього тому у серії (поточний: ${currentOrder ?? 'не задано'})\n\nПам\'ятай: order_num = позиція ЦЬОГО тому (від якого йде стрілка вперед).`,
-        currentOrder ?? ''
-    );
-    if (val === null) return;           // скасовано
+window._vrelEditOrder = (relId, currentPos) => {
+    if (!relId) return; // кінцевий елемент без rel_id
+    const val = prompt(`Нова позиція у серії (поточна: ${currentPos}):`, currentPos ?? '');
+    if (val === null) return;
     const num = parseInt(val);
-    if (isNaN(num) || num < 0) { alert('Введіть ціле число ≥ 0'); return; }
+    if (isNaN(num) || num < 1) { alert('Введіть ціле число ≥ 1'); return; }
     window._vrelSaveOrder(relId, num);
 };
 
-window._vrelSaveOrder = async (relId, orderNum) => {
-    const res = await fetch(`${API_BASE}/volumes/${_volumeId}/relations/${relId}`, {
+window._vrelSaveOrder = async (relId, newOrder) => {
+    const res = await fetch(`${API_BASE}/volumes/${_volumeId}/relations/${relId}/reorder`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ order_num: orderNum }),
+        body: JSON.stringify({ new_order: newOrder }),
     });
     if (!res.ok) { const e = await res.json(); alert(e.error || 'Помилка'); return; }
     if (_onReload) _onReload();
@@ -243,8 +245,6 @@ window._vrelOpenModal = () => {
     document.getElementById('vrel-cvid-input').value   = '';
     document.getElementById('vrel-search-results').innerHTML = '';
     document.getElementById('vrel-selected-info').innerHTML  = '';
-    document.getElementById('vrel-order-row').style.display  = 'block';
-    document.getElementById('vrel-order-num').value          = '';
 
     document.querySelectorAll('.vrel-pill').forEach(p => {
         p.classList.toggle('active', p.dataset.type === 'continuation');
@@ -262,8 +262,6 @@ window._vrelSelectType = (el) => {
     _selectedType = el.dataset.type;
     document.querySelectorAll('.vrel-pill').forEach(p => p.classList.remove('active'));
     el.classList.add('active');
-    document.getElementById('vrel-order-row').style.display =
-        _selectedType === 'continuation' ? 'block' : 'none';
 };
 
 window._vrelPickVolume = (id) => {
@@ -279,11 +277,9 @@ window._vrelPickVolume = (id) => {
 window._vrelSave = async () => {
     if (!_selectedVolId) { alert('Оберіть том'); return; }
 
-    const orderNum = parseInt(document.getElementById('vrel-order-num').value) || 0;
     const body = {
         to_vol_id: _selectedVolId,
         rel_type:  _selectedType,
-        order_num: orderNum,
     };
 
     const res = await fetch(`${API_BASE}/volumes/${_volumeId}/relations`, {
@@ -372,11 +368,6 @@ function _ensureModal() {
 
             <div id="vrel-search-results" class="vrel-search-results" style="display:none;"></div>
             <div id="vrel-selected-info" style="margin-bottom:0.5rem;"></div>
-
-            <div id="vrel-order-row" class="vrel-modal-fg">
-                <label>Порядковий номер у серії (для «Продовження»)</label>
-                <input id="vrel-order-num" type="number" placeholder="напр. 2" min="1">
-            </div>
 
             <div class="vrel-modal-actions">
                 <button class="btn btn-secondary" onclick="window._vrelCloseModal()">Скасувати</button>

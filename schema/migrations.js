@@ -415,9 +415,9 @@ const MIGRATIONS = [
     },
   },
   
-  // ── M013: magazine_chapters — зв'язок журнал-том → розділ манги ────────
+  // ── M025: magazine_chapters — зв'язок журнал-том → розділ манги ────────
   {
-    id: 'M013_magazine_chapters',
+    id: 'M025_magazine_chapters',
     up(db) {
       db.run(`CREATE TABLE IF NOT EXISTS magazine_chapters (
         id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -430,9 +430,9 @@ const MIGRATIONS = [
       db.run(`CREATE INDEX IF NOT EXISTS idx_mc_issue    ON magazine_chapters(issue_id)`);
     },
   },
-  // ── M014: magazine_chapters — прив'язка до випуску журналу замість тому ──
+  // ── M026: magazine_chapters — прив'язка до випуску журналу замість тому ──
   {
-    id: 'M014_magazine_chapters_v2',
+    id: 'M026_magazine_chapters_v2',
     up(db) {
       // Пересоздаємо таблицю: magazine_id → mag_issue_id + page_type
       db.run(`CREATE TABLE IF NOT EXISTS magazine_chapters_new (
@@ -448,6 +448,45 @@ const MIGRATIONS = [
       db.run(`ALTER TABLE magazine_chapters_new RENAME TO magazine_chapters`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_mc_mag_issue ON magazine_chapters(mag_issue_id)`);
       db.run(`CREATE INDEX IF NOT EXISTS idx_mc_issue     ON magazine_chapters(issue_id)`);
+    },
+  },
+  // ── M027: додає типи для зв'язків ──
+  {
+    id: 'M027_volume_translations_type',
+    up(db) {
+      db.run(`ALTER TABLE volume_translations ADD COLUMN rel_type TEXT NOT NULL DEFAULT 'translation' CHECK(rel_type IN ('translation','source','original'))`);
+
+      // Визначаємо тип для існуючих записів
+      // 1. parent має hikka_slug або тему Manga (36) → original
+      db.run(`
+        UPDATE volume_translations
+        SET rel_type = 'original'
+        WHERE parent_id IN (
+          SELECT v.id FROM volumes v
+          WHERE v.hikka_slug IS NOT NULL
+            OR v.mal_id IS NOT NULL
+            OR EXISTS (
+              SELECT 1 FROM volume_themes vt WHERE vt.volume_id = v.id AND vt.theme_id = 36
+            )
+        )
+      `);
+
+      // 2. parent і child однієї мови (або обидва не 'ja') → source
+      // тільки ті що ще не отримали 'original'
+      db.run(`
+        UPDATE volume_translations
+        SET rel_type = 'source'
+        WHERE rel_type = 'translation'
+          AND parent_id IN (
+            SELECT vp.id FROM volumes vp
+            JOIN volume_translations vt2 ON vt2.parent_id = vp.id
+            JOIN volumes vc ON vc.id = vt2.child_id
+            WHERE (vp.lang IS NULL OR vp.lang != 'ja')
+              AND (vp.lang = vc.lang OR vc.lang IS NULL OR vp.lang IS NULL)
+          )
+      `);
+
+      // 3. решта лишається 'translation' (різні мови, parent — оригінал)
     },
   },
 ];

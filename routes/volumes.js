@@ -339,7 +339,7 @@ function ensureVolumeTheme(volumeDbId, themeId) {
 // GET список перекладів (дочірні томи) даного тому-оригіналу
 router.get('/:id/translations', (req, res) => {
   const data = getAll(`
-    SELECT v.*, p.name as publisher_name,
+    SELECT v.*, p.name as publisher_name, vt.rel_type,
       (SELECT COUNT(*) FROM collections c WHERE c.cv_vol_id = v.cv_id) as collections_count
     FROM volume_translations vt
     JOIN volumes v ON v.id = vt.child_id
@@ -353,7 +353,7 @@ router.get('/:id/translations', (req, res) => {
 // GET батьківський том-оригінал для цього перекладу
 router.get('/:id/translation-parent', (req, res) => {
   const row = getOne(`
-    SELECT v.*, p.name as publisher_name,
+    SELECT v.*, p.name as publisher_name, vt.rel_type,
       (SELECT COUNT(*) FROM collections c WHERE c.cv_vol_id = v.cv_id) as collections_count
     FROM volume_translations vt
     JOIN volumes v ON v.id = vt.parent_id
@@ -366,7 +366,9 @@ router.get('/:id/translation-parent', (req, res) => {
 // POST додати переклад: цей том (id) є оригіналом, child_id — переклад
 router.post('/:id/translations', (req, res) => {
   const parentId = parseInt(req.params.id);
-  const { child_id } = req.body;
+  const { child_id, rel_type = 'translation' } = req.body;
+  const validTypes = ['translation', 'source', 'original'];
+  if (!validTypes.includes(rel_type)) return res.status(400).json({ error: 'Невалідний тип' });
   if (!child_id) return res.status(400).json({ error: 'child_id обов\'язковий' });
   if (parseInt(child_id) === parentId) return res.status(400).json({ error: 'Том не може бути перекладом самого себе' });
   try {
@@ -383,8 +385,8 @@ router.post('/:id/translations', (req, res) => {
     );
     if (reverse) return res.status(400).json({ error: 'Цей том вже є батьком зазначеного' });
 
-    runQuery('INSERT INTO volume_translations (parent_id, child_id) VALUES (?, ?)', [parentId, child_id]);
-
+    runQuery('INSERT INTO volume_translations (parent_id, child_id, rel_type) VALUES (?, ?, ?)', [parentId, child_id, rel_type]);
+    
     // Автоматично додаємо тему Translated (51) до дочірнього тому
     ensureVolumeTheme(parseInt(child_id), TRANSLATED_THEME_ID);
 
@@ -509,6 +511,21 @@ router.get('/:id/magazine-chapters', (req, res) => {
 //           з позначкою current:true для поточного тому
 //   other : { sequel:[...], prequel:[...], spinoff:[...], related:[...] }
 //           кожен елемент містить поля тому + rel_id для видалення
+
+function ensureChainOrderNums(chainRels) {
+  // chainRels — масив об'єктів { rel_id, from_vol_id, order_num }, вже відсортований
+  const nums = chainRels.map(r => r.order_num);
+  const allZero = nums.every(n => n === 0 || n === null);
+  const hasDuplicates = new Set(nums).size !== nums.length;
+
+  if (allZero || hasDuplicates) {
+    chainRels.forEach((r, idx) => {
+      rawRun('UPDATE volume_relations SET order_num = ? WHERE id = ?', [idx + 1, r.rel_id]);
+    });
+    saveDatabase();
+  }
+}
+
 router.get('/:id/relations', (req, res) => {
   const volId = parseInt(req.params.id);
 
@@ -545,13 +562,19 @@ router.get('/:id/relations', (req, res) => {
   const chain = uniqueChain.map(v => {
     const rel = getOne(
       `SELECT id AS rel_id, order_num
-       FROM volume_relations
-       WHERE from_vol_id = ? AND rel_type = 'continuation'`,
+      FROM volume_relations
+      WHERE from_vol_id = ? AND rel_type = 'continuation'`,
+      [v.id]
+    );
+    const inRel = getOne(
+      `SELECT id AS rel_id FROM volume_relations
+      WHERE to_vol_id = ? AND rel_type = 'continuation'`,
       [v.id]
     );
     return {
       ...v,
-      rel_id:    rel?.rel_id    ?? null,
+      rel_id:    rel?.rel_id    ?? null,   // вихідний (для reorder)
+      in_rel_id: inRel?.rel_id  ?? null,   // вхідний (для видалення останнього)
       order_num: rel?.order_num ?? null,
       current:   v.id === volId,
     };
@@ -563,6 +586,19 @@ router.get('/:id/relations', (req, res) => {
     if (a.order_num !== null) return -1;
     if (b.order_num !== null) return 1;
     return (a.start_year || 9999) - (b.start_year || 9999);
+  });
+
+  // нормалізуємо якщо треба
+  const chainRels = chain.filter(v => v.rel_id !== null).map(v => ({
+    rel_id: v.rel_id,
+    from_vol_id: v.id,
+    order_num: v.order_num,
+  }));
+  ensureChainOrderNums(chainRels);
+  // після цього оновлюємо order_num в chain масиві для відповіді
+  chainRels.forEach(r => {
+    const v = chain.find(c => c.rel_id === r.rel_id);
+    if (v) v.order_num = r.order_num;
   });
 
   // ── 2. Інші зв'язки (sequel / prequel / spinoff / related) ───────────────
@@ -597,7 +633,7 @@ router.get('/:id/relations', (req, res) => {
 // POST /volumes/:id/relations — створити зв'язок
 router.post('/:id/relations', (req, res) => {
   const fromId = parseInt(req.params.id);
-  const { to_vol_id, rel_type, order_num = 0 } = req.body;
+  const { to_vol_id, rel_type } = req.body;
 
   if (!to_vol_id) return res.status(400).json({ error: 'to_vol_id обов\'язковий' });
   if (!rel_type)  return res.status(400).json({ error: 'rel_type обов\'язковий' });
@@ -623,9 +659,38 @@ router.post('/:id/relations', (req, res) => {
       if (reverse) return res.status(400).json({ error: 'Зворотній зв\'язок вже існує' });
     }
 
+    // Для continuation — автоматично призначаємо наступну позицію в ланцюжку
+    let insertOrder = 0;
+    if (rel_type === 'continuation') {
+      const chainVols = getAll(`
+        WITH RECURSIVE chain(id, visited) AS (
+          SELECT ?, ',' || ? || ','
+          UNION ALL
+          SELECT
+            CASE WHEN vr.from_vol_id = c.id THEN vr.to_vol_id ELSE vr.from_vol_id END,
+            c.visited || CASE WHEN vr.from_vol_id = c.id THEN vr.to_vol_id ELSE vr.from_vol_id END || ','
+          FROM volume_relations vr
+          JOIN chain c ON (vr.from_vol_id = c.id OR vr.to_vol_id = c.id)
+          WHERE vr.rel_type = 'continuation'
+            AND c.visited NOT LIKE '%,' || CASE WHEN vr.from_vol_id = c.id THEN vr.to_vol_id ELSE vr.from_vol_id END || ',%'
+        )
+        SELECT DISTINCT id FROM chain
+      `, [fromId, fromId]);
+      const chainIds = chainVols.map(v => v.id);
+      if (chainIds.length > 0) {
+        const maxRow = getOne(
+          `SELECT MAX(order_num) as m FROM volume_relations WHERE from_vol_id IN (${chainIds.map(() => '?').join(',')}) AND rel_type = 'continuation'`,
+          chainIds
+        );
+        insertOrder = (maxRow?.m ?? 0) + 1;
+      } else {
+        insertOrder = 1;
+      }
+    }
+
     runQuery(
       'INSERT INTO volume_relations (from_vol_id, to_vol_id, rel_type, order_num) VALUES (?, ?, ?, ?)',
-      [fromId, to_vol_id, rel_type, order_num]
+      [fromId, to_vol_id, rel_type, insertOrder]
     );
 
     // Автоматично створюємо дзеркальний зв'язок (для всіх крім continuation)
@@ -687,6 +752,66 @@ router.put('/:id/relations/:relId', (req, res) => {
     }
 
     res.json({ message: 'Зв\'язок оновлено' });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// PUT /volumes/:id/relations/:relId/reorder — перемістити елемент ланцюжка на позицію
+router.put('/:id/relations/:relId/reorder', (req, res) => {
+  const relId  = parseInt(req.params.relId);
+  const new_order = parseInt(req.body.new_order);
+
+  if (isNaN(new_order) || new_order < 1) return res.status(400).json({ error: 'new_order обов\'язковий (≥ 1)' });
+
+  try {
+    const rel = getOne('SELECT * FROM volume_relations WHERE id = ?', [relId]);
+    if (!rel) return res.status(404).json({ error: 'Зв\'язок не знайдено' });
+
+    // Знаходимо всі vol_id у ланцюжку
+    const chainVols = getAll(`
+      WITH RECURSIVE chain(id, visited) AS (
+        SELECT ?, ',' || ? || ','
+        UNION ALL
+        SELECT
+          CASE WHEN vr.from_vol_id = c.id THEN vr.to_vol_id ELSE vr.from_vol_id END,
+          c.visited || CASE WHEN vr.from_vol_id = c.id THEN vr.to_vol_id ELSE vr.from_vol_id END || ','
+        FROM volume_relations vr
+        JOIN chain c ON (vr.from_vol_id = c.id OR vr.to_vol_id = c.id)
+        WHERE vr.rel_type = 'continuation'
+          AND c.visited NOT LIKE '%,' || CASE WHEN vr.from_vol_id = c.id THEN vr.to_vol_id ELSE vr.from_vol_id END || ',%'
+      )
+      SELECT DISTINCT id FROM chain
+    `, [rel.from_vol_id, rel.from_vol_id]);
+
+    const chainIds = chainVols.map(v => v.id);
+    if (!chainIds.length) return res.status(400).json({ error: 'Ланцюжок не знайдено' });
+
+    const placeholders = chainIds.map(() => '?').join(',');
+    const total = getOne(
+      `SELECT COUNT(*) as cnt FROM volume_relations WHERE from_vol_id IN (${placeholders}) AND rel_type = 'continuation'`,
+      chainIds
+    )?.cnt || 1;
+
+    const old_order = rel.order_num;
+    const new_o = Math.max(1, Math.min(new_order, total));
+
+    if (old_order === new_o) return res.json({ message: 'Без змін' });
+
+    if (old_order < new_o) {
+      rawRun(
+        `UPDATE volume_relations SET order_num = order_num - 1 WHERE from_vol_id IN (${placeholders}) AND rel_type = 'continuation' AND order_num > ? AND order_num <= ?`,
+        [...chainIds, old_order, new_o]
+      );
+    } else {
+      rawRun(
+        `UPDATE volume_relations SET order_num = order_num + 1 WHERE from_vol_id IN (${placeholders}) AND rel_type = 'continuation' AND order_num >= ? AND order_num < ?`,
+        [...chainIds, new_o, old_order]
+      );
+    }
+    rawRun('UPDATE volume_relations SET order_num = ? WHERE id = ?', [new_o, relId]);
+    saveDatabase();
+    res.json({ message: 'Порядок оновлено' });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }

@@ -180,7 +180,10 @@ export async function renderVolumeDetail(params) {
                             ` : ''}
                             ${!isMagazineVolume ? `
                                 ${!translationParent && translations.length === 0 && magazineParents.length === 0 ? `
-                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id})">🌐 Додати до першоджерела</button>
+                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id}, 'original')">🌐 Додати до оригіналу</button>
+                                ` : ''}
+                                ${!translationParent && translations.length === 0 && magazineParents.length === 0 ? `
+                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id}, 'source')">🌐 Додати до першоджерела</button>
                                 ` : ''}
                                 ${magazineParents.length === 0 && !translationParent ? `
                                     <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
@@ -251,7 +254,7 @@ export async function renderVolumeDetail(params) {
                         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
                             <h2 style="font-size:1.25rem; margin:0;">🌐 Переклади (${translations.length})</h2>
                             <button class="btn btn-primary btn-small"
-                                onclick="openVolumePickerModal('translation-add', ${volume.id})">
+                                onclick="openVolumePickerModal('translation-add', ${volume.id}, 'translation')">
                                 + Додати переклад
                             </button>
                         </div>
@@ -667,9 +670,8 @@ function renderCollectionsBlock(allCollections, page) {
 
     if (!allCollections.length) {
         block.innerHTML = `
-            <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px;
-                        border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">Збірники (0)</h2>
+            <div class="block">
+                <h2 class="header">Збірники (0)</h2>
                 <p style="color: var(--text-secondary);">Збірників немає.</p>
             </div>`;
         return;
@@ -723,9 +725,8 @@ function renderCollectionsBlock(allCollections, page) {
     };
 
     block.innerHTML = `
-        <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px;
-                    border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-            <h2 style="font-size: 1.5rem; margin-bottom: 1rem;">
+        <div class="block">
+            <h2 class="header">
                 <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.5rem;">
                     <span>Збірники (${total})</span>
                     <div style="display:flex; align-items:center; gap:0.75rem; flex-wrap:wrap;">
@@ -1585,11 +1586,13 @@ let _volumePickerMode   = null;
 let _volumePickerRefId  = null;
 let _volumePickerTimeout = null;
 let _volumePickerSelectedIds = new Set();
+let _volumePickerRelType = 'translation';
 
-window.openVolumePickerModal = (mode, refId) => {
+window.openVolumePickerModal = (mode, refId, relType = 'translation') => {
     _injectVolumePickerStyles();
     _volumePickerMode  = mode;
     _volumePickerRefId = refId;
+    _volumePickerRelType = relType;
 
     const titles = {
         'translation-add':        'Додати перекладений том',
@@ -1756,11 +1759,11 @@ window._confirmVolumePickerSelection = async (selectedId, mode, refId) => {
     switch (mode) {
         case 'translation-add':
             url  = `${API_BASE}/volumes/${refId}/translations`;
-            body = { child_id: selectedId };
+            body = { child_id: selectedId, rel_type: _volumePickerRelType ?? 'translation' };
             break;
         case 'translation-set-parent':
             url  = `${API_BASE}/volumes/${selectedId}/translations`;
-            body = { child_id: refId };
+            body = { child_id: refId, rel_type: _volumePickerRelType ?? 'translation' };
             break;
         case 'magazine-add':
             url  = `${API_BASE}/volumes/${refId}/magazine-children`;

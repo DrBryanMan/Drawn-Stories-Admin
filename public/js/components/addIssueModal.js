@@ -70,23 +70,20 @@ function ensureModal() {
           <label class="aim-label">x-slug</label>
           <input type="text" id="aim-hikka-slug" placeholder="напр. berserk" style="width:100%;">
         </div>
-        <div style="display:flex; flex-direction:column; gap:0.25rem;">
-          <label class="aim-label" style="color:var(--text-secondary);">Точна назва</label>
-          <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer; height:36px;">
-            <input type="checkbox" id="aim-exact" style="width:auto; margin:0; accent-color:var(--accent);">
-            <span style="font-size:0.85rem;">Точно</span>
-          </label>
-        </div>
       </div>
 
       <!-- Рядок "Вибрати всі" -->
       <div id="aim-select-all-row">
+        <label style="display:flex; align-items:center; gap:0.4rem; cursor:pointer;">
+          <input type="checkbox" id="aim-exact" style="width:auto; margin:0; accent-color:var(--accent);">
+          <span style="font-size:0.85rem;">Точно</span>
+        </label>
         <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer; font-size:0.88rem; user-select:none;">
           <input type="checkbox" id="aim-select-all-checkbox" style="width:16px; height:16px; margin:0; accent-color:var(--accent);">
           <span>Вибрати всі</span>
           <span id="aim-select-all-count" style="color:var(--text-secondary);"></span>
         </label>
-        <span id="aim-select-all-hint" style="font-size:0.78rem; color:var(--text-tertiary);"></span>
+        <span id="aim-select-all-hint"></span>
       </div>
 
       <div class="aim-results-container">
@@ -345,10 +342,11 @@ function updateSelectAllRow(data) {
     return;
   }
 
-  const alreadyCount = data.length - available.length;
-  row.style.display = 'flex';
+  const alreadyCount  = data.length - available.length;
+  row.style.display   = 'flex';
   countEl.textContent = `(${available.length})`;
-  hint.textContent = alreadyCount > 0 ? `${alreadyCount} вже додано` : '';
+  hint.textContent    = alreadyCount > 0 ? `${alreadyCount} вже додано` : '';
+  hint.style.display  = alreadyCount > 0 ? '' : 'none';
 
   // Синхронізуємо стан чекбоксу
   const allSelected  = available.every(i => _selectedIssueIds.has(i.id));

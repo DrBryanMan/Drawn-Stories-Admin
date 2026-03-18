@@ -279,47 +279,49 @@ function renderPage(collection, seriesList = []) {
 
             <div id="collection-volume-nav" style="display: flex; margin-top: 1.5rem; justify-content: center;"></div>
 
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
-                <h2 style="font-size: 1.5rem; margin: 0;">Випуски (${collection.issues.length})</h2>
-                <div style="display:flex; gap:0.75rem; align-items:center;">
-                    <select id="collection-sort-select" style="padding:0.4rem 0.75rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-secondary); color:var(--text-primary); font-size:0.9rem;">
-                        <option value="order"  ${currentSortOrder === 'order'  ? 'selected' : ''}>За порядком</option>
-                        <option value="series" ${currentSortOrder === 'series' ? 'selected' : ''}>За серією і номером</option>
-                        <option value="date"   ${currentSortOrder === 'date'   ? 'selected' : ''}>За датою</option>
-                        <option value="name"   ${currentSortOrder === 'name'   ? 'selected' : ''}>За назвою</option>
-                    </select>
-                    <button class="btn btn-primary" onclick="openCollectionAddIssueModal(${collection.id})">+ Додати випуск</button>
+            <div class="block">
+                <div class="header">
+                    <h2>Випуски (${collection.issues.length})</h2>
+                    <div style="display:flex; gap:0.75rem; align-items:center;">
+                        <select id="collection-sort-select" style="padding:0.4rem 0.75rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-secondary); color:var(--text-primary); font-size:0.9rem;">
+                            <option value="order"  ${currentSortOrder === 'order'  ? 'selected' : ''}>За порядком</option>
+                            <option value="series" ${currentSortOrder === 'series' ? 'selected' : ''}>За серією і номером</option>
+                            <option value="date"   ${currentSortOrder === 'date'   ? 'selected' : ''}>За датою</option>
+                            <option value="name"   ${currentSortOrder === 'name'   ? 'selected' : ''}>За назвою</option>
+                        </select>
+                        <button class="btn btn-primary" onclick="openCollectionAddIssueModal(${collection.id})">+ Додати випуск</button>
+                    </div>
                 </div>
-            </div>
 
-            ${collection.issues.length ? `
-                <div class="table">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th id="col-th-order" style="${currentSortOrder === 'order' ? '' : 'display:none;'}">#</th>
-                                ${isMangaCollection ? `
-                                    <th>Розділ</th>
-                                    <th>Назва</th>
-                                ` : `
-                                    <th>Обкладинка</th>
-                                    <th>Назва</th>
-                                    <th>Номер</th>
-                                `}
-                                <th>Дата</th>
-                                <th>Дії</th>
-                            </tr>
-                        </thead>
-                        <tbody id="collection-issues-tbody">
-                            ${renderIssueRows(sortIssues(currentIssues, currentSortOrder), collection.id)}
-                        </tbody>
-                    </table>
-                </div>
-            ` : `
-                <p style="text-align: center; color: var(--text-secondary); padding: 2rem;">
-                    Немає випусків. Додайте перший!
-                </p>
-            `}
+                ${collection.issues.length ? `
+                    <div class="table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th id="col-th-order" style="${currentSortOrder === 'order' ? '' : 'display:none;'}">#</th>
+                                    ${isMangaCollection ? `
+                                        <th>Розділ</th>
+                                        <th>Назва</th>
+                                    ` : `
+                                        <th>Обкладинка</th>
+                                        <th>Назва</th>
+                                        <th>Номер</th>
+                                    `}
+                                    <th>Дата</th>
+                                    <th>Дії</th>
+                                </tr>
+                            </thead>
+                            <tbody id="collection-issues-tbody">
+                                ${renderIssueRows(sortIssues(currentIssues, currentSortOrder), collection.id)}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : `
+                    <p style="text-align: center; color: var(--text-secondary); padding: 2rem;">
+                        Немає випусків. Додайте перший!
+                    </p>
+                `}
+            </div>
         </div>
 
         <!-- Модалка редагування збірника -->
