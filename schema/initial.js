@@ -184,11 +184,12 @@ function applyInitialSchema(db) {
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS magazine_chapters (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    magazine_id INTEGER NOT NULL REFERENCES volumes(id) ON DELETE CASCADE,
-    issue_id    INTEGER NOT NULL REFERENCES issues(id)  ON DELETE CASCADE,
-    sort_order  INTEGER NOT NULL DEFAULT 0,
-    UNIQUE(magazine_id, issue_id)
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    mag_issue_id INTEGER NOT NULL REFERENCES issues(id)  ON DELETE CASCADE,
+    issue_id     INTEGER NOT NULL REFERENCES issues(id)  ON DELETE CASCADE,
+    sort_order   INTEGER NOT NULL DEFAULT 0,
+    page_type    TEXT CHECK(page_type IN ('color','cover','combined')),
+    UNIQUE(mag_issue_id, issue_id)
   )`);
 
   // ── Індекси ──────────────────────────────────────────────────────────────
@@ -260,9 +261,9 @@ function applyInitialSchema(db) {
   // volume_magazines
   db.run(`CREATE INDEX IF NOT EXISTS idx_vmag_magazine ON volume_magazines(magazine_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_vmag_child    ON volume_magazines(child_id)`);
-  
-  db.run(`CREATE INDEX IF NOT EXISTS idx_mc_magazine ON magazine_chapters(magazine_id)`);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_mc_issue    ON magazine_chapters(issue_id)`);
+
+  db.run(`CREATE INDEX IF NOT EXISTS idx_mc_mag_issue ON magazine_chapters(mag_issue_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_mc_issue     ON magazine_chapters(issue_id)`);
 }
 
 module.exports = { applyInitialSchema };

@@ -480,59 +480,26 @@ router.delete('/:id/magazine-children/:childId', (req, res) => {
 
 // ── Розділи журналу (manga chapters) ─────────────────────────────────────
 
-// GET список розділів манги у цьому журналі
+// GET усі розділи манги у всіх випусках цього журналу (зведений зміст)
 router.get('/:id/magazine-chapters', (req, res) => {
   const data = getAll(`
     SELECT
-      i.id, i.issue_number, i.name, i.cv_img, i.release_date,
-      mc.sort_order,
+      i.id, i.issue_number, i.name AS issue_name, i.cv_img, i.release_date,
+      mc.sort_order, mc.page_type,
+      mi.id          AS mag_issue_id,
+      mi.issue_number AS mag_issue_number,
       v.id   AS vol_id,
       v.name AS vol_name,
       v.hikka_slug
     FROM magazine_chapters mc
-    JOIN issues  i ON i.id  = mc.issue_id
-    JOIN volumes v ON v.id  = i.ds_vol_id
-    WHERE mc.magazine_id = ?
-    ORDER BY mc.sort_order ASC, v.name ASC, CAST(i.issue_number AS REAL) ASC
+    JOIN issues  mi ON mi.id  = mc.mag_issue_id
+    JOIN issues  i  ON i.id   = mc.issue_id
+    JOIN volumes v  ON v.id   = i.ds_vol_id
+    WHERE mi.cv_vol_id = (SELECT cv_id FROM volumes WHERE id = ?)
+    ORDER BY CAST(mi.issue_number AS REAL) ASC, mc.sort_order ASC,
+             v.name ASC, CAST(i.issue_number AS REAL) ASC
   `, [req.params.id]);
   res.json({ data });
-});
-
-// POST додати розділ до журналу
-router.post('/:id/magazine-chapters', (req, res) => {
-  const magazineId = parseInt(req.params.id);
-  const { issue_id, sort_order } = req.body;
-  if (!issue_id) return res.status(400).json({ error: 'issue_id обов\'язковий' });
-
-  try {
-    const issue = getOne('SELECT id, ds_vol_id FROM issues WHERE id = ?', [issue_id]);
-    if (!issue) return res.status(404).json({ error: 'Розділ не знайдено' });
-    if (!issue.ds_vol_id) return res.status(400).json({ error: 'Розділ не є розділом манги (немає ds_vol_id)' });
-
-    const existing = getOne(
-      'SELECT id FROM magazine_chapters WHERE magazine_id = ? AND issue_id = ?',
-      [magazineId, issue_id]
-    );
-    if (existing) return res.status(400).json({ error: 'Цей розділ вже доданий до журналу' });
-
-    runQuery(
-      'INSERT INTO magazine_chapters (magazine_id, issue_id, sort_order) VALUES (?, ?, ?)',
-      [magazineId, issue_id, sort_order ?? 0]
-    );
-    saveDatabase();
-    res.json({ message: 'Розділ додано до журналу' });
-  } catch (error) { res.status(400).json({ error: error.message }); }
-});
-
-// DELETE прибрати розділ з журналу
-router.delete('/:id/magazine-chapters/:issueId', (req, res) => {
-  try {
-    runQuery(
-      'DELETE FROM magazine_chapters WHERE magazine_id = ? AND issue_id = ?',
-      [req.params.id, req.params.issueId]
-    );
-    res.json({ message: 'Розділ видалено з журналу' });
-  } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
 // ── Хронологія / зв'язки між томами ──────────────────────────────────────

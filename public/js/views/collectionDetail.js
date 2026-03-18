@@ -67,9 +67,10 @@ function _cnavRender() {
     container.innerHTML = `
         <div class="inav" style="width: fit-content;">
             <div class="inav__header">
-                <span class="inav__label">Збірники тому</span>
-                <span class="inav__vol">${_cnav_items._volName || ''}</span>
-                <span class="inav__label">(${total})</span>
+                <div style="display: flex; gap: .5em;">
+                    <span class="inav__label">Збірники тому</span>
+                    <span class="inav__label">(${total})</span>
+                </div>
                 ${pagerHTML}
             </div>
             <div class="inav__grid" style="${gridStyle}">

@@ -404,19 +404,88 @@ router.post('/:id/make-collection', (req, res) => {
 router.get('/:id/magazine-memberships', (req, res) => {
   const data = getAll(`
     SELECT
-      mc.id AS link_id,
+      mc.id         AS link_id,
       mc.sort_order,
-      v.id   AS magazine_id,
-      v.name AS magazine_name,
+      mc.page_type,
+      mi.id          AS mag_issue_id,
+      mi.issue_number AS mag_issue_number,
+      mi.name        AS mag_issue_name,
+      mi.cv_img      AS mag_issue_cv_img,
+      v.id           AS magazine_id,
+      v.name         AS magazine_name,
       v.hikka_img,
-      v.cv_img,
-      v.start_year
+      v.cv_img
     FROM magazine_chapters mc
-    JOIN volumes v ON v.id = mc.magazine_id
+    JOIN issues  mi ON mi.id  = mc.mag_issue_id
+    JOIN volumes v  ON v.cv_id = mi.cv_vol_id
     WHERE mc.issue_id = ?
-    ORDER BY v.name ASC
+    ORDER BY v.name ASC, CAST(mi.issue_number AS REAL) ASC
   `, [req.params.id]);
   res.json({ data });
+});
+
+// ── Розділи манги у випуску журналу ──────────────────────────────────────
+
+// GET список розділів манги у цьому випуску журналу
+router.get('/:id/magazine-chapters', (req, res) => {
+  const data = getAll(`
+    SELECT
+      mc.id, mc.sort_order, mc.page_type,
+      i.id           AS issue_id,
+      i.issue_number,
+      i.name         AS issue_name,
+      i.cv_img,
+      i.release_date,
+      v.id           AS vol_id,
+      v.name         AS vol_name,
+      v.hikka_slug
+    FROM magazine_chapters mc
+    JOIN issues  i ON i.id  = mc.issue_id
+    JOIN volumes v ON v.id  = i.ds_vol_id
+    WHERE mc.mag_issue_id = ?
+    ORDER BY mc.sort_order ASC, v.name ASC, CAST(i.issue_number AS REAL) ASC
+  `, [req.params.id]);
+  res.json({ data });
+});
+
+// POST додати розділ манги до цього випуску журналу
+router.post('/:id/magazine-chapters', (req, res) => {
+  const magIssueId = parseInt(req.params.id);
+  const { issue_id, sort_order, page_type } = req.body;
+  if (!issue_id) return res.status(400).json({ error: 'issue_id обов\'язковий' });
+
+  try {
+    const issue = getOne('SELECT id, ds_vol_id FROM issues WHERE id = ?', [issue_id]);
+    if (!issue) return res.status(404).json({ error: 'Розділ не знайдено' });
+    if (!issue.ds_vol_id) return res.status(400).json({ error: 'Розділ не є розділом манги (немає ds_vol_id)' });
+
+    const existing = getOne(
+      'SELECT id FROM magazine_chapters WHERE mag_issue_id = ? AND issue_id = ?',
+      [magIssueId, issue_id]
+    );
+    if (existing) return res.status(400).json({ error: 'Цей розділ вже доданий до цього випуску журналу' });
+
+    const validTypes = ['color', 'cover', 'combined'];
+    const safeType = validTypes.includes(page_type) ? page_type : null;
+
+    runQuery(
+      'INSERT INTO magazine_chapters (mag_issue_id, issue_id, sort_order, page_type) VALUES (?, ?, ?, ?)',
+      [magIssueId, issue_id, sort_order ?? 0, safeType]
+    );
+    saveDatabase();
+    res.json({ message: 'Розділ додано до випуску журналу' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+// DELETE прибрати розділ з випуску журналу
+router.delete('/:id/magazine-chapters/:chapterIssueId', (req, res) => {
+  try {
+    runQuery(
+      'DELETE FROM magazine_chapters WHERE mag_issue_id = ? AND issue_id = ?',
+      [req.params.id, req.params.chapterIssueId]
+    );
+    res.json({ message: 'Розділ видалено з випуску журналу' });
+  } catch (error) { res.status(400).json({ error: error.message }); }
 });
 
 module.exports = router;

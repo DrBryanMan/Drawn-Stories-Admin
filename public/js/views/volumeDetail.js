@@ -271,32 +271,6 @@ export async function renderVolumeDetail(params) {
                     </div>
                 ` : ''}
 
-                <!-- ── Журнал: список підтомів (цей том — журнал) ─────────── -->
-                ${isMagazineVolume || magazineChildren.length > 0 ? `
-                    <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
-                            <h2 style="font-size:1.25rem; margin:0;">📰 Томи журналу (${magazineChildren.length})</h2>
-                            <button class="btn btn-primary btn-small"
-                                onclick="openVolumePickerModal('magazine-add', ${volume.id})">
-                                + Додати том
-                            </button>
-                        </div>
-                    ${magazineChildren.length > 0 ? `
-                            <div style="display:flex; flex-wrap:wrap; gap:0.5rem;">
-                            ${magazineChildren.map(t => `
-                                    <div style="display:flex; align-items:center; gap:0.5rem; background:var(--bg-secondary); border:1px solid var(--border-color); border-radius:6px; padding:0.4rem 0.75rem; cursor:pointer;"
-                                         onclick="navigate('volume-detail', { id: ${t.id} })">
-                                    ${t.cv_img ? `<img src="${cv_img_path_small}${t.cv_img.startsWith('/') ? '' : '/'}${t.cv_img}" style="width:28px;height:28px;object-fit:cover;border-radius:3px;flex-shrink:0;">` : ''}
-                                        <span style="font-size:0.9rem;">${t.lang ? `<strong>[${t.lang}]</strong> ` : ''}${t.name}${t.start_year ? ` <span style="color:var(--text-secondary)">(${t.start_year})</span>` : ''}</span>
-                                        <button class="btn btn-danger btn-small" style="padding:0.15rem 0.4rem; font-size:0.75rem; margin-left:0.25rem;"
-                                            onclick="event.stopPropagation(); removeMagazineChild(${volume.id}, ${t.id})">✕</button>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        ` : `<p style="color:var(--text-secondary); margin:0; font-size:0.9rem;">Немає підтомів. Натисніть "+ Додати том" щоб прив'язати том до цього журналу.</p>`}
-                    </div>
-                ` : ''}
-
                 <!-- ── Зміст журналу: розділи манги ──────────────────────── -->
                 ${(isMagazineVolume || magazineChildren.length > 0) && magazineChapters.length > 0 ? `
                     <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
