@@ -18,6 +18,7 @@ import { renderPersonnelList }  from './views/personnelList.js';
 import { renderPersonnelDetail } from './views/personnelDetail.js';
 import { renderEventsList } from './views/eventsList.js';
 import { renderEventDetail } from './views/eventDetail.js';
+import { renderCalendarView } from './views/calendarView.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     await initApp();
@@ -45,6 +46,7 @@ async function initApp() {
     registerRoute('personnel-detail',     renderPersonnelDetail);
     registerRoute('events',               renderEventsList);
     registerRoute('event-detail',         renderEventDetail);
+    registerRoute('calendar',             renderCalendarView);
 
     await updateStats();
     initRouter();

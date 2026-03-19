@@ -6,6 +6,18 @@ import { cv_img_path_small, showEmpty, showError, showLoading } from '../utils/h
 import { cv_img_path_original } from '../utils/helpers.js';
 import { mountHeaderActions } from './headerActions.js';
 
+function _isNewThisWeek(dateStr) {
+  if (!dateStr) return false;
+  const today = new Date();
+  const ws = new Date(today);
+  ws.setDate(today.getDate() - today.getDay());
+  ws.setHours(0,0,0,0);
+  const we = new Date(ws);
+  we.setDate(ws.getDate() + 7);
+  const d = new Date(dateStr);
+  return d >= ws && d < we;
+}
+
 // ── Стан модуля (один активний список за раз) ─────────────────────────────
 let currentOffset = 0;
 let currentSearch = '';
@@ -192,6 +204,9 @@ function buildGrid(items) {
             ? `<span class="badge ${m.badgeClass || ''}" style="position:absolute; top:0.5rem; ${m.badgePosition || 'right:0.5rem'}; z-index:1">${m.prefix || ''}${v}</span>`
             : '';
         }).join('')}
+        ${_isNewThisWeek(item.release_date) ? `
+          <div class="issue-this-week">NEW</div>
+        ` : ''}
         <div class="card-img">
           ${imgUrl
             ? `<img src="${imgUrl}" alt="${escapeAttr(title)}">`

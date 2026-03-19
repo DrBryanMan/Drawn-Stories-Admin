@@ -427,55 +427,67 @@ export async function renderIssueDetail(params) {
                     </div>`;
             })() : ''}
 
-            ${isMagazineIssue && magazineChapters.length > 0 ? `
-            <div style="background:var(--bg-primary); padding:1.5rem; border-radius:8px; border:1px solid var(--border-color); margin-top:1.5rem;">
-                <h2 style="font-size:1.1rem; margin:0 0 1rem;">📖 Зміст (${magazineChapters.length})</h2>
-                <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap:0.5rem;">
-                    ${magazineChapters.map(ch => `
-                        <div style="display:flex; align-items:center; gap:0.75rem; background:var(--bg-secondary);
-                                    border-radius:6px; padding:0.5rem 0.75rem; cursor:pointer;"
-                            onclick="navigate('issue-detail', { id: ${ch.issue_id} })">
-                            ${ch.cv_img
-                                ? `<img src="${ch.cv_img.startsWith('https') ? ch.cv_img : cv_img_path_small + (ch.cv_img.startsWith('/') ? '' : '/') + ch.cv_img}"
-                                    style="width:36px;height:50px;object-fit:cover;border-radius:3px;flex-shrink:0;">`
-                                : '<div style="width:36px;height:50px;background:var(--bg-tertiary);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">📖</div>'}
-                            <div style="flex:1; min-width:0;">
-                                <div style="font-weight:600; font-size:0.9rem; color:var(--text-secondary); margin-bottom:0.1rem;">${ch.vol_name}</div>
-                                <div style="font-size:0.95rem; font-weight:500;">
-                                    Розділ #${ch.issue_number || '?'}
+            ${isMagazineIssue ? `
+                <div style="background:var(--bg-primary); padding:1.5rem; border-radius:8px; border:1px solid var(--border-color); margin-top:1.5rem;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1rem;">
+                        <h2 style="font-size:1.1rem; margin:0;">📖 Зміст (${magazineChapters.length})</h2>
+                        <button class="btn btn-primary btn-small"
+                                onclick="openAddMangaChapterToMagModal(${issue.id}, new Set([${magazineChapters.map(ch => ch.issue_id).join(',')}]))">
+                            + Додати розділ
+                        </button>
+                    </div>
+                    ${magazineChapters.length > 0 ? `
+                    <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                        ${magazineChapters.map(ch => `
+                            <div style="display:flex; align-items:center; gap:0.75rem; background:var(--bg-secondary);
+                                        border-radius:6px; padding:0.5rem 0.75rem;">
+                                <div style="cursor:pointer; display:flex; align-items:center; gap:0.75rem; flex:1; min-width:0;"
+                                    onclick="navigate('issue-detail', { id: ${ch.issue_id} })">
+                                    ${ch.cv_img
+                                        ? `<img src="${ch.cv_img.startsWith('https') ? ch.cv_img : cv_img_path_small + (ch.cv_img.startsWith('/') ? '' : '/') + ch.cv_img}"
+                                            style="width:36px;height:50px;object-fit:cover;border-radius:3px;flex-shrink:0;">`
+                                        : '<div style="width:36px;height:50px;background:var(--bg-tertiary);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">📖</div>'}
+                                    <div style="flex:1; min-width:0;">
+                                        <div style="font-weight:600; font-size:0.85rem; color:var(--text-secondary);">${ch.vol_name}</div>
+                                        <div style="font-size:0.95rem; font-weight:500;">Розділ #${ch.issue_number || '?'}</div>
+                                        ${ch.issue_name && ch.issue_name !== `Розділ ${ch.issue_number}` ? `
+                                            <div style="font-size:0.8rem; color:var(--text-secondary);">${ch.issue_name}</div>
+                                        ` : ''}
+                                    </div>
+                                    ${ch.release_date ? `
+                                        <span style="font-size:0.78rem; color:var(--text-muted); white-space:nowrap; padding:0.15rem 0.5rem;
+                                                    background:var(--bg-tertiary); border-radius:4px; border:1px solid var(--border-color);">
+                                            📅 ${ch.release_date}
+                                        </span>
+                                    ` : ''}
+                                    ${ch.page_type ? (() => {
+                                        const PAGE_TYPES = {
+                                            color:    { label: 'Кольорова', bg: '#f4c65633', color: '#f4c656' },
+                                            cover:    { label: 'Титульна',  bg: '#ff604e33', color: '#ff604e' },
+                                            combined: { label: 'Разом',     bg: '#a78bfa33', color: '#a78bfa' },
+                                        };
+                                        const pt = PAGE_TYPES[ch.page_type];
+                                        if (!pt) return '';
+                                        return `<span style="color:${pt.color};background:${pt.bg};font-size:.8rem;line-height:1;padding:.35em .55em;border-radius:6px;font-weight:600;">${pt.label}</span>`;
+                                    })() : ''}
                                 </div>
+                                <button class="btn btn-danger btn-small" onclick="removeChapterFromMagazine(${ch.issue_id}, ${issue.id})">✕</button>
                             </div>
-                            ${ch.page_type ? (() => {
-                                const PAGE_TYPES = {
-                                    color:    { label: 'Кольорова', bg: '#f4c65633', color: '#f4c656' },
-                                    cover:    { label: 'Титульна',  bg: '#ff604e33', color: '#ff604e' },
-                                    combined: { label: 'Разом',     bg: '#a78bfa33', color: '#a78bfa' },
-                                };
-                                const pt = PAGE_TYPES[ch.page_type];
-                                if (!pt) return '';
-                                return `<span style="
-                                    color: ${pt.color};
-                                    background: ${pt.bg};
-                                    font-size: .85rem;
-                                    line-height: 1;
-                                    padding: .4em .6em;
-                                    border-radius: 8px;
-                                    font-weight: 600;
-                                ">${pt.label}</span>`;
-                            })() : ''}
-                        </div>
-                    `).join('')}
+                        `).join('')}
+                    </div>
+                    ` : `<p style="color:var(--text-secondary); font-size:0.9rem; margin:0;">Ще немає розділів. Додайте перший!</p>`}
                 </div>
-            </div>
-        ` : ''}
+            ` : ''}
 
             <!-- ═══ БЛОК КОНТЕНТУ (сюжет, появи) ═══════════════════════════ -->
-            <div id="issue-content-blocks" style="margin-top:2rem;">
-                ${renderContentBlocks(issue, issueStories, reprintSources, isReprintOrTranslated)}
-            </div>
+            ${!isMagazineIssue ? `
+                <div id="issue-content-blocks" style="margin-top:2rem;">
+                    ${renderContentBlocks(issue, issueStories, reprintSources, isReprintOrTranslated)}
+                </div>
+            ` : ''}
 
             <!-- ═══ МЕНЕДЖЕР ІСТОРІЙ ════════════════════════════════════════ -->
-            ${!isMangaChapter ? `
+            ${!isMangaChapter && !isMagazineIssue ? `
             <div style="background:var(--bg-primary); padding:1.5rem; border-radius:8px; border:1px solid var(--border-color); margin-top:1.5rem;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:${hasStories ? '1rem' : '0'};">
                     <h2 style="font-size:1.1rem; margin:0;">📖 Історії у випуску</h2>
@@ -499,7 +511,7 @@ export async function renderIssueDetail(params) {
             ` : ''}
 
             <!-- Блок "Репринти-сінгли" (показується для оригінальних випусків) -->
-            ${isOriginalIssue ? `
+            ${isOriginalIssue && !isMagazineIssue ? `
             <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 1.5rem;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: ${issueReprints.length ? '1rem' : '0'};">
                     <h2 style="font-size:1.1rem; margin:0;">🔁 Репринти (${issueReprints.length})</h2>
@@ -539,7 +551,7 @@ export async function renderIssueDetail(params) {
             ` : ''}
 
             <!-- Блок "Джерело" (показується для перекладених сінглів) -->
-            ${isReprintOrTranslated ? `
+            ${isReprintOrTranslated && !isMagazineIssue ? `
             <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-top: 1.5rem;">
                 <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom: ${reprintSources.length ? '1rem' : '0'};">
                     <h2 style="font-size:1.1rem; margin:0;">📄 Оригінал репринту ${reprintSources.length ? '' : ''}</h2>
@@ -1487,6 +1499,172 @@ window.removeChapterFromMagazine = async (issueId, magIssueId) => {
     });
     if (!res.ok) { const err = await res.json(); alert(err.error || 'Помилка'); return; }
     await renderIssueDetail({ id: issueId });
+};
+
+// ===== ДОДАВАННЯ РОЗДІЛУ МАНГИ ДО ВИПУСКУ ЖУРНАЛУ (з боку журналу) =====
+
+window.openAddMangaChapterToMagModal = (magIssueId, alreadyIds = new Set()) => {
+    document.getElementById('add-manga-chapter-mag-modal')?.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'add-manga-chapter-mag-modal';
+    overlay.style.cssText =
+        'position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:2000;' +
+        'display:flex; align-items:center; justify-content:center;';
+
+    overlay.innerHTML = `
+        <div style="background:var(--bg-primary); border-radius:10px; padding:1.5rem;
+                    width:620px; max-width:92vw; max-height:90vh;
+                    display:flex; flex-direction:column; gap:0.75rem;
+                    box-shadow:0 10px 40px rgba(0,0,0,0.45);">
+            <h3 style="margin:0;">📖 Додати розділ манґи</h3>
+
+            <div style="display:grid; grid-template-columns:1fr 120px 140px; gap:0.5rem;">
+                <div class="form-group" style="margin:0;">
+                    <label class="aim-label">Назва розділу</label>
+                    <input type="text" id="acmm-name" placeholder="Назва..." style="width:100%;" autocomplete="off">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="aim-label">ID в базі</label>
+                    <input type="number" id="acmm-db-id" placeholder="DB ID" style="width:100%;">
+                </div>
+                <div class="form-group" style="margin:0;">
+                    <label class="aim-label">ID тому розділу</label>
+                    <input type="number" id="acmm-vol-id" placeholder="Vol DB ID" style="width:100%;">
+                </div>
+            </div>
+
+            <div id="acmm-results"
+                 style="flex:1; overflow-y:auto; border:1px solid var(--border-color);
+                        border-radius:6px; min-height:60px; max-height:320px;
+                        background:var(--bg-secondary);">
+                <div style="padding:1rem; text-align:center; color:var(--text-secondary); font-size:0.875rem;">
+                    Введіть дані для пошуку
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end;">
+                <button class="btn btn-secondary" id="acmm-cancel">Скасувати</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const close = () => overlay.remove();
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    document.addEventListener('keydown', function onEsc(e) {
+        if (e.key === 'Escape') { close(); document.removeEventListener('keydown', onEsc); }
+    });
+    overlay.querySelector('#acmm-cancel').addEventListener('click', close);
+
+    let searchTimeout = null;
+
+    const runSearch = async () => {
+        const name   = overlay.querySelector('#acmm-name').value.trim();
+        const dbId   = overlay.querySelector('#acmm-db-id').value.trim();
+        const volId  = overlay.querySelector('#acmm-vol-id').value.trim();
+        const resultsEl = overlay.querySelector('#acmm-results');
+
+        if (!name && !dbId && !volId) {
+            resultsEl.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary); font-size:0.875rem;">Введіть дані для пошуку</div>';
+            return;
+        }
+
+        resultsEl.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary); font-size:0.875rem;">Пошук…</div>';
+
+        const params = new URLSearchParams({ limit: 50 });
+        if (dbId)  params.set('ds_id', dbId);
+        else if (volId) params.set('ds_vol_id', volId);
+        if (name)  params.set('name', name);
+
+        try {
+            const res  = await fetch(`${API_BASE}/issues?${params}`);
+            const data = await res.json();
+            const issues = (data.data || []).filter(i => i.ds_vol_id); // тільки розділи манги
+
+            if (!issues.length) {
+                resultsEl.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--text-secondary); font-size:0.875rem;">Нічого не знайдено</div>';
+                return;
+            }
+
+            resultsEl.innerHTML = issues.map(iss => {
+                const isAdded = alreadyIds.has(iss.id);
+                const imgSrc  = iss.cv_img
+                    ? `${cv_img_path_small}${iss.cv_img.startsWith('/') ? '' : '/'}${iss.cv_img}`
+                    : null;
+                return `
+                    <div data-issue-id="${iss.id}"
+                         style="display:flex; align-items:center; gap:0.75rem; padding:0.65rem 0.9rem;
+                                border-bottom:1px solid var(--border-color); cursor:${isAdded ? 'default' : 'pointer'};
+                                opacity:${isAdded ? 0.45 : 1}; pointer-events:${isAdded ? 'none' : 'auto'};"
+                         onmouseenter="if(!${isAdded}) this.style.background='var(--bg-primary)'"
+                         onmouseleave="this.style.background=''">
+                        ${imgSrc
+                            ? `<img src="${imgSrc}" style="width:32px;height:46px;object-fit:cover;border-radius:3px;flex-shrink:0;">`
+                            : '<div style="width:32px;height:46px;background:var(--bg-tertiary);border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">📖</div>'}
+                        <div style="flex:1; min-width:0; overflow:hidden;">
+                            <div style="font-weight:500; font-size:0.9rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                ${iss.volume_name || '—'} · Розділ #${iss.issue_number || '?'}
+                            </div>
+                            <div style="font-size:0.78rem; color:var(--text-secondary);">
+                                ${iss.name || ''} ${iss.release_date ? `· 📅 ${iss.release_date}` : ''}
+                            </div>
+                        </div>
+                        ${isAdded
+                            ? `<span style="font-size:0.75rem; color:var(--success); font-weight:600;">✓ Вже додано</span>`
+                            : `<button class="btn btn-primary btn-small" style="flex-shrink:0;">Додати</button>`}
+                    </div>
+                `;
+            }).join('');
+
+            resultsEl.querySelectorAll('[data-issue-id]').forEach(row => {
+                if (alreadyIds.has(parseInt(row.dataset.issueId))) return;
+                row.addEventListener('click', async () => {
+                    const issueId = parseInt(row.dataset.issueId);
+                    const btn = row.querySelector('button');
+                    if (btn) { btn.disabled = true; btn.textContent = '…'; }
+                    try {
+                        const res = await fetch(`${API_BASE}/issues/${magIssueId}/magazine-chapters`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ issue_id: issueId }),
+                        });
+                        if (!res.ok) {
+                            const err = await res.json();
+                            alert(err.error || 'Помилка');
+                            if (btn) { btn.disabled = false; btn.textContent = 'Додати'; }
+                            return;
+                        }
+                        alreadyIds.add(issueId);
+                        row.style.opacity = '0.45';
+                        row.style.pointerEvents = 'none';
+                        if (btn) { btn.textContent = '✓ Додано'; btn.className = 'btn btn-secondary btn-small'; }
+                        // Оновлюємо сторінку
+                        await renderIssueDetail({ id: magIssueId });
+                    } catch (err) {
+                        console.error(err);
+                        alert('Помилка додавання');
+                        if (btn) { btn.disabled = false; btn.textContent = 'Додати'; }
+                    }
+                });
+            });
+        } catch (err) {
+            resultsEl.innerHTML = '<div style="padding:1rem; text-align:center; color:var(--danger); font-size:0.875rem;">Помилка пошуку</div>';
+            console.error(err);
+        }
+    };
+
+    const scheduleSearch = () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(runSearch, 350);
+    };
+
+    overlay.querySelector('#acmm-name').addEventListener('input', scheduleSearch);
+    overlay.querySelector('#acmm-db-id').addEventListener('input', scheduleSearch);
+    overlay.querySelector('#acmm-vol-id').addEventListener('input', scheduleSearch);
+
+    setTimeout(() => overlay.querySelector('#acmm-name').focus(), 50);
 };
 
 window.navigateTo = (type, id) => navigate(type, { id: id });

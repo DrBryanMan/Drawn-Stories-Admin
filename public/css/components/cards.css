@@ -258,3 +258,19 @@
     color: var(--accent);
     border-color: var(--accent);
 }
+
+/* * * */
+
+.issue-this-week {
+	position:absolute;
+	top: 3em;
+	right: .5em;
+	font-size: .62rem;
+	font-weight: 700;
+	padding: .15rem .45rem;
+	border-radius: 8px;
+	background: var(--warning-light-solid);
+	color: var(--warning);
+	border: 1px solid var(--warning-light);
+	backdrop-filter: blur(8px);
+}

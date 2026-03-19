@@ -473,6 +473,19 @@ router.post('/:id/magazine-chapters', (req, res) => {
       [magIssueId, issue_id, sort_order ?? 0, safeType]
     );
     saveDatabase();
+
+    // Якщо розділ не має дати виходу — копіюємо з випуску журналу
+    try {
+      const magIssue = getOne('SELECT release_date FROM issues WHERE id = ?', [magIssueId]);
+      if (magIssue?.release_date) {
+        const chapterIssue = getOne('SELECT release_date FROM issues WHERE id = ?', [issue_id]);
+        if (!chapterIssue?.release_date) {
+          rawRun('UPDATE issues SET release_date = ? WHERE id = ?', [magIssue.release_date, issue_id]);
+          saveDatabase();
+        }
+      }
+    } catch (_) {}
+
     res.json({ message: 'Розділ додано до випуску журналу' });
   } catch (error) { res.status(400).json({ error: error.message }); }
 });

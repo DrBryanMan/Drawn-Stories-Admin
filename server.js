@@ -19,6 +19,7 @@ const eventsRouter       = require('./routes/events');
 const statsRouter        = require('./routes/stats');
 const wantedRouter       = require('./routes/wanted');
 const publishersRouter   = require('./routes/publishers');
+const calendarRouter     = require('./routes/calendar');
 
 const app  = express();
 const PORT = process.env.PORT || 7000;
@@ -41,6 +42,7 @@ app.use('/api/stats',          statsRouter);
 app.use('/api/wanted',         wantedRouter);
 app.use('/api/publishers',     publishersRouter);
 app.use('/api/parser',         parserRouter);
+app.use('/api/calendar',       calendarRouter);
 
 // Окремий HTML-роут для wanted-сторінки
 app.get('/wanted', (req, res) => {
