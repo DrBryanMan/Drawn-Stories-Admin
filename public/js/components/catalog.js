@@ -216,7 +216,9 @@ function buildGrid(items) {
 
 function attachClickHandlers(content) {
   if (_clickAbortCtrl) _clickAbortCtrl.abort();
+  if (content._clickAbort) content._clickAbort.abort();
   _clickAbortCtrl = new AbortController();
+  content._clickAbort = _clickAbortCtrl;
   const { signal } = _clickAbortCtrl;
 
   content.addEventListener('click', (e) => {

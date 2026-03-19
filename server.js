@@ -21,7 +21,7 @@ const wantedRouter       = require('./routes/wanted');
 const publishersRouter   = require('./routes/publishers');
 
 const app  = express();
-const PORT = 7000;
+const PORT = process.env.PORT || 7000;
 
 app.use(cors());
 app.use(express.json());

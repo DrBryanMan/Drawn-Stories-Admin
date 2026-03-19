@@ -107,7 +107,7 @@ export async function renderVolumeDetail(params) {
 
         document.getElementById('page-title').innerHTML = `
             <a href="#" onclick="event.preventDefault(); navigateToParent()">
-                ← Томи
+                <i class="bi bi-caret-left"></i> Томи
             </a> ${isMangaSourceVolume
                 ? `/ hikka: ${volume.hikka_slug} / MAL: ${volume.mal_id}`
                 : `/${volume.cv_slug}/4050-${volume.cv_id}`} 
@@ -133,13 +133,13 @@ export async function renderVolumeDetail(params) {
                         }
                         <div class="source-links" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1em;">
                                 ${!isMangaSourceVolume
-                                    ? `<a href="https://comicvine.gamespot.com/${volume.cv_slug}/4050-${volume.cv_id}" target="_blank">CV ↗</a>`
+                                    ? `<a href="https://comicvine.gamespot.com/${volume.cv_slug}/4050-${volume.cv_id}" target="_blank">CV <i class="bi bi-box-arrow-up-right"></i></a>`
                                     : ''}
                                 ${volume.hikka_slug
-                                    ? `<a href="https://hikka.io/manga/${volume.hikka_slug}" target="_blank" style="color:var(--accent); font-size:0.85rem; text-decoration:none;">HIKKA ↗</a>`
+                                    ? `<a href="https://hikka.io/manga/${volume.hikka_slug}" target="_blank" style="color:var(--accent); font-size:0.85rem; text-decoration:none;">HIKKA <i class="bi bi-box-arrow-up-right"></i></a>`
                                     : ''}
                                 ${volume.mal_id
-                                    ? `<a href="https://myanimelist.net/manga/${volume.mal_id}" target="_blank" style="color:var(--accent); font-size:0.85rem; text-decoration:none;">MAL ↗</a>`
+                                    ? `<a href="https://myanimelist.net/manga/${volume.mal_id}" target="_blank" style="color:var(--accent); font-size:0.85rem; text-decoration:none;">MAL <i class="bi bi-box-arrow-up-right"></i></a>`
                                     : ''}
                                 ${volume.locg_slug
                                     ? `<a href="https://leagueofcomicgeeks.com/comics/series/${volume.locg_id}/${volume.locg_slug}" target="_blank">
@@ -175,39 +175,39 @@ export async function renderVolumeDetail(params) {
                             ${volume.description ? `<div class="form-group">${volume.description}</div>` : ''}
                         </div>
                         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
-                            <button class="btn btn-secondary" onclick="editVolumeDetail(${volume.id})">Редагувати том</button>
-                            <button class="btn btn-primary" onclick="openAddToSeriesModal(${volume.id}, 'volume')">+ Додати до серії</button>
+                            <button class="btn btn-secondary" onclick="editVolumeDetail(${volume.id})"><i class="bi bi-pencil-square"></i> Редагувати том</button>
+                            <button class="btn btn-primary" onclick="openAddToSeriesModal(${volume.id}, 'volume')"><i class="bi bi-folder-plus"></i> Додати до серії</button>
                             ${isMangaVolume && isCollectionVolume && volume.hikka_slug ? `
                                 <button class="btn btn-primary" onclick="createMangaSourceVolume(${volume.id}, '${volume.hikka_slug}', '${(volume.name || '').replace(/'/g, "\\'")}', ${volume.mal_id || 'null'})">
-                                    📖 Створити том манґи
+                                    <i class="bi bi-file-plus-fill"></i> Створити том манґи
                                 </button>
                             ` : ''}
                             ${!isMagazineVolume ? `
                                 ${!translationOriginal ? `
-                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id}, 'original')">📖 Додати до оригіналу</button>
+                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id}, 'original')"><i class="bi bi-bookmark-star"></i> Додати до оригіналу</button>
                                 ` : ''}
                                 ${!translationSource ? `
-                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id}, 'source')">📚 Додати до першоджерела</button>
+                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('translation-set-parent', ${volume.id}, 'source')"><i class="bi bi-code"></i> Додати до першоджерела</button>
                                 ` : ''}
                                 ${magazineParents.length === 0 && !translationParent ? `
-                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})">📰 Додати до журналу</button>
+                                    <button class="btn btn-secondary" onclick="openVolumePickerModal('magazine-set-parent', ${volume.id})"><i class="bi bi-book"></i> Додати до журналу</button>
                                 ` : ''}
                                 ${!isMangaSourceVolume ? `
                                     ${isCollectionVolume ? `
                                         ${issuesResult.data.length > 0 ? `
                                             <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
-                                                📚 Конвертувати всі випуски (${issuesResult.data.length}) → збірники
+                                                <i class="bi bi-arrow-repeat"></i> Конвертувати всі випуски (${issuesResult.data.length}) → збірники
                                             </button>
                                         ` : ''}
                                         ${volCollections.length > 0 ? `
                                             <button class="btn btn-danger" onclick="convertAllCollectionsToIssues(${volume.id}, ${volCollections.length})">
-                                                🔄 Повернути всі збірники (${volCollections.length}) → випуски
+                                                <i class="bi bi-arrow-repeat"></i> Повернути всі збірники (${volCollections.length}) → випуски
                                             </button>
                                         ` : ''}
                                     ` : `
                                         ${issuesResult.data.length > 0 ? `
                                             <button class="btn btn-warning" onclick="convertAllIssuesToCollections(${volume.id}, ${issuesResult.data.length})">
-                                                📚 Конвертувати всі (${issuesResult.data.length}) у збірники
+                                                <i class="bi bi-arrow-repeat"></i> Конвертувати всі (${issuesResult.data.length}) у збірники
                                             </button>
                                         ` : ''}
                                     `}
@@ -229,7 +229,7 @@ export async function renderVolumeDetail(params) {
                                     <h2 style="font-size:1.25rem; margin:0;">📖 Оригінал</h2>
                                     <button class="btn btn-danger btn-small"
                                         onclick="removeTranslation(${translationOriginal.id}, ${volume.id})">
-                                        Від'єднати
+                                        <i class="bi bi-link-45deg"></i>
                                     </button>
                                 </div>
                                 <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
@@ -257,7 +257,7 @@ export async function renderVolumeDetail(params) {
                                     <h2 style="font-size:1.25rem; margin:0;">📚 Джерело</h2>
                                     <button class="btn btn-danger btn-small"
                                         onclick="removeTranslation(${translationSource.id}, ${volume.id})">
-                                        Від'єднати
+                                        <i class="bi bi-link-45deg"></i>
                                     </button>
                                 </div>
                                 <div style="display:flex; align-items:center; gap:0.75rem; cursor:pointer;"
@@ -659,7 +659,7 @@ function renderIssuesBlock(allIssues, page) {
                                 <td>${formatCoverDate(issue.cover_date)}</td>
                                 <td>${formatReleaseDate(issue.release_date)}</td>
                                 <td onclick="event.stopPropagation()">
-                                    <button class="btn btn-secondary btn-small" onclick="editIssueFromVolume(${issue.id})">Редагувати</button>
+                                    <button class="btn btn-secondary btn-small" onclick="editIssueFromVolume(${issue.id})"><i class="bi bi-pencil"></i></button>
                                 </td>
                             </tr>
                         `).join('')}
@@ -823,7 +823,7 @@ function renderCollectionsBlock(allCollections, page) {
                                 </td>
                                 <td onclick="event.stopPropagation()">
                                     <button class="btn btn-secondary btn-small"
-                                            onclick="editCollectionFromVolume(${col.id})">Редагувати</button>
+                                            onclick="editCollectionFromVolume(${col.id})"><i class="bi bi-pencil"></i></button>
                                 </td>
                             </tr>
                         `).join('')}

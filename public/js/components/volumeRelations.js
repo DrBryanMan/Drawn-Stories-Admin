@@ -115,24 +115,25 @@ function buildSectionHTML(data) {
                 const { label, icon, cls } = REL_TYPES[type];
                 return `
                     <div class="vrel-group">
-                        <div class="vrel-group-badge ${cls}">${icon} ${label}</div>
-                        <div class="vrel-cards">
+                        <div class="vrel-group-label">
+                            <span class="vrel-group-type-badge ${cls}">${icon} ${label}</span>
+                        </div>
+                        <div class="vrel-chain-scroll">
                             ${vols.map(v => `
-                                <div class="vrel-card" onclick="window._vrelNavigate(${v.id})">
-                                    ${imgTag(v.cv_img)}
-                                    <div style="overflow:hidden; padding:0 0.25rem;">
-                                        <div class="vrel-card-name">${escH(v.name)}</div>
-                                        <div class="vrel-card-meta">${v.start_year || '—'} · CV #${v.cv_id}</div>
+                                <div class="vrel-chain-item vrel-other-item" onclick="window._vrelNavigate(${v.id})"
+                                    title="${escH(v.name)}${v.start_year ? ' (' + v.start_year + ')' : ''}">
+                                    <div style="position:relative;">
+                                        ${imgTag(v.cv_img, 90, 126)}
+                                        <button class="vrel-del-chain-btn"
+                                            title="Видалити зв'язок"
+                                            onclick="event.stopPropagation(); window._vrelDelete(${v.rel_id})">✕</button>
                                     </div>
-                                    <button class="vrel-edit-btn"
+                                    <div class="vrel-chain-name">${escH(v.name)}</div>
+                                    ${v.start_year ? `<span style="font-size:0.55rem;color:var(--text-muted);">${v.start_year}</span>` : ''}
+                                    <button class="vrel-other-edit-btn ${cls}"
                                         title="Змінити тип зв'язку"
                                         onclick="event.stopPropagation(); window._vrelEditType(${v.rel_id}, '${type}')">
-                                        ✏️
-                                    </button>
-                                    <button class="vrel-del-btn"
-                                        title="Видалити зв'язок"
-                                        onclick="event.stopPropagation(); window._vrelDelete(${v.rel_id})">
-                                        ✕
+                                        <i class="bi bi-pencil"></i>
                                     </button>
                                 </div>
                             `).join('')}

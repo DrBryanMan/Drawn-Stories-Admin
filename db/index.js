@@ -6,7 +6,7 @@ const path     = require('path');
 const { applyInitialSchema } = require('../schema/initial');
 const { applyMigrations }    = require('../schema/migrations');
 
-const DB_PATH = path.resolve(__dirname, '../..', 'Drawn Stories Parser', 'comicsdb.db');
+const DB_PATH = process.env.DB_PATH || path.resolve(__dirname, '../..', 'Drawn Stories Parser', 'comicsdb.db');
 
 let db = null;
 

@@ -425,3 +425,79 @@
     color: var(--text-secondary);
     line-height: 1.3;
 }
+
+/*  */
+
+/* ── Групи інших зв'язків (sequel / prequel / spinoff / related) ── */
+
+.vrel-group {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--border-color);
+}
+.vrel-group:first-child { border-top: none; }
+
+.vrel-group-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+}
+
+.vrel-group-type-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.vrel-group-count {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    padding: 0 0.4rem;
+    line-height: 1.6;
+}
+
+/* Картка «інший зв'язок» — як chain-item але з іконкою типу замість номера */
+.vrel-other-item {
+    opacity: 0.92;
+}
+.vrel-other-item:hover {
+    opacity: 1;
+}
+
+/* Іконка типу (замість числового бейджа) */
+.vrel-other-type-badge {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 3px;
+    border-radius: 4px;
+    background: rgba(0,0,0,0.60);
+    font-size: 0.7rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    z-index: 1;
+    pointer-events: none;
+}
+
+/* Кнопка «✏️ тип» під карткою */
+.vrel-other-edit-btn {
+    font-size: 0.6rem;
+    padding: 1px 5px;
+    border-radius: 4px;
+    border: 1px solid currentColor;
+    background: transparent;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+    white-space: nowrap;
+}
+.vrel-other-edit-btn:hover {
+    opacity: 1;
+}

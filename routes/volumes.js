@@ -639,10 +639,10 @@ router.post('/:id/relations', (req, res) => {
   if (!rel_type)  return res.status(400).json({ error: 'rel_type обов\'язковий' });
   if (parseInt(to_vol_id) === fromId) return res.status(400).json({ error: 'Том не може посилатися на себе' });
 
-  const validTypes = ['continuation','sequel','prequel'];
+  const validTypes = ['continuation','sequel','prequel', 'spinoff', 'related'];
   if (!validTypes.includes(rel_type)) return res.status(400).json({ error: 'Невалідний тип зв\'язку' });
 
-  const mirrorType = { sequel:'prequel', prequel:'sequel' };
+  const mirrorType = { sequel:'prequel', prequel:'sequel', spinoff: 'spinoff', related: 'related' };
 
   try {
     const existing = getOne(
@@ -727,7 +727,7 @@ router.put('/:id/relations/:relId', (req, res) => {
     }
 
     if (rel_type !== undefined) {
-      const mirrorType = { sequel:'prequel', prequel:'sequel' };
+      const mirrorType = { sequel:'prequel', prequel:'sequel', spinoff: 'spinoff', related: 'related' };
 
       runQuery('UPDATE volume_relations SET rel_type = ? WHERE id = ?',
         [rel_type, req.params.relId]);
