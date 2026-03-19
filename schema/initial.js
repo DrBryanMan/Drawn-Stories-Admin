@@ -264,6 +264,10 @@ function applyInitialSchema(db) {
 
   db.run(`CREATE INDEX IF NOT EXISTS idx_mc_mag_issue ON magazine_chapters(mag_issue_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_mc_issue     ON magazine_chapters(issue_id)`);
+
+  // Календар
+  db.run(`CREATE INDEX IF NOT EXISTS idx_issues_release_date ON issues(release_date);`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_collections_release_date ON collections(release_date);`);
 }
 
 module.exports = { applyInitialSchema };

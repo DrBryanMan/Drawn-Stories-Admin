@@ -16,7 +16,7 @@ function getFormHTML(series = null) {
       </div>
       <div class="form-group">
         <label>URL зображення</label>
-        <input type="url" name="cv_img" value="${series?.cv_img || ''}">
+        <input type="text" name="cv_img" value="${series?.cv_img || ''}">
       </div>
     </form>
   `;

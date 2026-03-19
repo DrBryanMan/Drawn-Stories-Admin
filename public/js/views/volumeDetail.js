@@ -1173,7 +1173,7 @@ function getIssueFormHTML(issue = null) {
                 <div class="form-group"><label>Дата обкладинки</label><input type="date" name="cover_date" value="${issue?.cover_date || ''}"></div>
                 <div class="form-group"><label>Дата випуску</label><input type="date" name="release_date" value="${issue?.release_date || ''}"></div>
             </div>
-            <div class="form-group"><label>URL зображення</label><input type="url" name="cv_img" value="${issue?.cv_img || ''}"></div>
+            <div class="form-group"><label>URL зображення</label><input type="text" name="cv_img" value="${issue?.cv_img || ''}"></div>
         </form>
     `;
 }

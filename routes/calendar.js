@@ -9,7 +9,7 @@ const COLLECTION_THEME = 44;
 
 function getWeekBounds(dateStr) {
   const d = new Date(dateStr + 'T00:00:00Z');
-  const day = d.getUTCDay();
+  const day = (d.getUTCDay() + 6) % 7;
   const start = new Date(d);
   start.setUTCDate(d.getUTCDate() - day);
   const end = new Date(start);
@@ -178,21 +178,33 @@ router.get('/', (req, res) => {
 
     const total = Object.values(days).reduce((s, a) => s + a.length, 0);
 
+    const cutoff = (() => {
+      const d = new Date(start + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() - 14);
+      return d.toISOString().slice(0, 10);
+    })();
+
     const nextRow = getOne(`
       SELECT MIN(d) as d FROM (
-        SELECT release_date as d FROM issues      WHERE release_date > ? AND release_date != ''
+        SELECT release_date as d FROM issues
+        WHERE release_date > ? AND release_date != '' AND release_date >= ?
+        LIMIT 1000
         UNION ALL
-        SELECT release_date as d FROM collections WHERE release_date > ? AND release_date != ''
+        SELECT release_date as d FROM collections
+        WHERE release_date > ? AND release_date != '' AND release_date >= ?
+        LIMIT 500
       )
-    `, [end, end]);
+    `, [end, cutoff, end, cutoff]);
 
     const prevRow = getOne(`
       SELECT MAX(d) as d FROM (
-        SELECT release_date as d FROM issues      WHERE release_date < ? AND release_date != ''
+        SELECT release_date as d FROM issues
+        WHERE release_date < ? AND release_date >= ? AND release_date != ''
         UNION ALL
-        SELECT release_date as d FROM collections WHERE release_date < ? AND release_date != ''
+        SELECT release_date as d FROM collections
+        WHERE release_date < ? AND release_date >= ? AND release_date != ''
       )
-    `, [start, start]);
+    `, [start, cutoff, start, cutoff]);
 
     res.json({
       week_start: start, week_end: end, days, total,
@@ -201,6 +213,89 @@ router.get('/', (req, res) => {
     });
   } catch (err) {
     console.error('calendar error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/all', (req, res) => {
+  try {
+    const { type = 'all', collections = '1', manga_mode = 'chapters' } = req.query;
+    const withCollections = collections !== '0';
+
+    const today = new Date().toISOString().slice(0, 10);
+    const cutoff = (() => {
+      const d = new Date(today + 'T00:00:00Z');
+      d.setUTCDate(d.getUTCDate() - 14);
+      return d.toISOString().slice(0, 10);
+    })();
+
+    const items = [];
+
+    if (type === 'all' || type === 'comics') {
+      getAll(`
+        SELECT i.id, i.name, i.cv_img, i.issue_number, i.release_date,
+               v.name as volume_name, v.id as volume_db_id,
+               'comic_issue' as _type
+        FROM issues i
+        JOIN volumes v ON i.cv_vol_id = v.cv_id
+        WHERE i.release_date >= ? AND i.release_date != ''
+          AND i.ds_vol_id IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM volume_themes vt
+            WHERE vt.volume_id = v.id AND vt.theme_id IN (?, ?)
+          )
+        ORDER BY i.release_date
+      `, [cutoff, MANGA_THEME, MAGAZINE_THEME]).forEach(i => items.push(i));
+
+      if (withCollections) {
+        getAll(`
+          SELECT c.id, c.name, c.cv_img, c.issue_number, c.release_date,
+                 v.name as volume_name, v.id as volume_db_id,
+                 'comic_collection' as _type
+          FROM collections c
+          LEFT JOIN volumes v ON c.cv_vol_id = v.cv_id
+          WHERE c.release_date >= ? AND c.release_date != ''
+            AND (v.id IS NULL OR NOT EXISTS (
+              SELECT 1 FROM volume_themes vt WHERE vt.volume_id = v.id AND vt.theme_id = ?
+            ))
+          ORDER BY c.release_date
+        `, [cutoff, MANGA_THEME]).forEach(i => items.push(i));
+      }
+    }
+
+    if (type === 'all' || type === 'manga') {
+      if (manga_mode === 'chapters') {
+        getAll(`
+          SELECT i.id, i.name, i.cv_img, i.issue_number, i.release_date,
+                 v.name as volume_name, v.id as volume_db_id,
+                 v.hikka_slug, v.hikka_img,
+                 'manga_chapter' as _type
+          FROM issues i
+          JOIN volumes v ON i.ds_vol_id = v.id
+          WHERE i.release_date >= ? AND i.release_date != ''
+          ORDER BY i.release_date
+        `, [cutoff]).forEach(i => items.push(i));
+      } else {
+        // magazines — складніше, тут залишаємо серверну фільтрацію
+      }
+
+      if (withCollections) {
+        getAll(`
+          SELECT c.id, c.name, c.cv_img, c.issue_number, c.release_date,
+                 v.name as volume_name, v.id as volume_db_id,
+                 'manga_collection' as _type
+          FROM collections c
+          JOIN volumes v ON c.cv_vol_id = v.cv_id
+          JOIN volume_themes vt ON vt.volume_id = v.id AND vt.theme_id = ?
+          WHERE c.release_date >= ? AND c.release_date != ''
+          ORDER BY c.release_date
+        `, [MANGA_THEME, cutoff]).forEach(i => items.push(i));
+      }
+    }
+
+    res.json({ data: items, cutoff });
+  } catch (err) {
+    console.error('calendar/all error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

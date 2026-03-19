@@ -30,8 +30,15 @@ function weeksWord(n) {
 // ── Week utils ────────────────────────────────────────────────────────────
 
 function getWeekStart(ref) {
-  const d = ref instanceof Date ? new Date(ref) : new Date((ref || new Date()).toString().includes('T') ? ref : ref + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
+  let d;
+  if (!ref) {
+    d = new Date();
+  } else if (ref instanceof Date) {
+    d = new Date(ref);
+  } else {
+    d = new Date(String(ref).includes('T') ? ref : ref + 'T00:00:00Z');
+  }
+  d.setUTCDate(d.getUTCDate() - (d.getUTCDay() + 6) % 7);
   return d.toISOString().slice(0, 10);
 }
 
@@ -72,8 +79,45 @@ let _type = 'all';
 let _cols = true;
 let _mode = 'chapters';  // 'chapters' | 'magazines'
 let _busy = false;
+let _nextContentDate = null;
+let _prevContentDate = null;
+let _cachedItems = null;    // всі завантажені елементи
+let _cacheParams = null;    // параметри під які кешовано (type, cols, mode)
 
 // ── Entry ─────────────────────────────────────────────────────────────────
+
+function _filterByWeek(items, start, end) {
+  const days = buildDayMap(start, end);
+  const pri = { manga_magazine:0, manga_chapter:1, manga_collection:2, comic_issue:3, comic_collection:4 };
+
+  items.forEach(item => {
+    if (item.release_date >= start && item.release_date <= end) {
+      if (days[item.release_date]) {
+        days[item.release_date].push(item);
+      }
+    }
+  });
+
+  Object.keys(days).forEach(d => {
+    days[d].sort((a, b) => {
+      const p = (pri[a._type] ?? 9) - (pri[b._type] ?? 9);
+      if (p !== 0) return p;
+      return (a.volume_name || a.name || '').localeCompare(b.volume_name || b.name || '');
+    });
+  });
+
+  return days;
+}
+
+function _findNextContentDate(items, afterDate) {
+  const found = items.find(i => i.release_date > afterDate);
+  return found?.release_date || null;
+}
+
+function _findPrevContentDate(items, beforeDate) {
+  const filtered = items.filter(i => i.release_date < beforeDate);
+  return filtered.length ? filtered[filtered.length - 1].release_date : null;
+}
 
 export async function renderCalendarView(params = {}) {
   initDetailPage();
@@ -93,7 +137,7 @@ function _shell() {
     <div id="cal-root" style="display:flex;flex-direction:column;gap:0;">
 
       <div id="cal-ctrl" style="
-        position:sticky;top:0;z-index:20;
+        z-index:20;
         background:var(--bg-primary);
         border:1px solid var(--border-color);border-radius:10px;
         padding:0.75rem 1rem;margin-bottom:0.75rem;
@@ -163,49 +207,59 @@ function _shell() {
 }
 
 function _bindControls() {
-  document.querySelectorAll('.cal-tab').forEach(b => b.addEventListener('click', () => {
-    _type = b.dataset.t;
-    document.querySelectorAll('.cal-tab').forEach(x => {
-      const a = x.dataset.t === _type;
-      x.style.background = a ? 'var(--bg-primary)' : 'transparent';
-      x.style.color      = a ? 'var(--accent)'     : 'var(--text-secondary)';
-      x.style.boxShadow  = a ? 'var(--shadow)'     : 'none';
+    document.querySelectorAll('.cal-tab').forEach(b => b.addEventListener('click', () => {
+        _type = b.dataset.t;
+        document.querySelectorAll('.cal-tab').forEach(x => {
+        const a = x.dataset.t === _type;
+        x.style.background = a ? 'var(--bg-primary)' : 'transparent';
+        x.style.color      = a ? 'var(--accent)'     : 'var(--text-secondary)';
+        x.style.boxShadow  = a ? 'var(--shadow)'     : 'none';
+        });
+        const mt = document.getElementById('cal-mtoggle');
+        if (mt) mt.style.display = _type !== 'comics' ? 'flex' : 'none';
+        _cachedItems = null;
+        _load();
+    }));
+
+    document.getElementById('cal-cb')?.addEventListener('change', e => { 
+        _cols = e.target.checked;
+        _cachedItems = null;
+        _load();
     });
-    const mt = document.getElementById('cal-mtoggle');
-    if (mt) mt.style.display = _type !== 'comics' ? 'flex' : 'none';
-    _load();
-  }));
 
-  document.getElementById('cal-cb')?.addEventListener('change', e => { _cols = e.target.checked; _load(); });
+    document.getElementById('cal-mswitch')?.addEventListener('click', () => {
+        _mode = _mode === 'chapters' ? 'magazines' : 'chapters';
+        const thumb = document.getElementById('cal-mthumb');
+        if (thumb) thumb.style.left = _mode === 'chapters' ? '22px' : '4px';
+        const lMag = document.getElementById('cal-mlabel-mag');
+        const lCh  = document.getElementById('cal-mlabel-ch');
+        if (lMag) { lMag.style.color = _mode==='magazines'?'var(--accent)':'var(--text-secondary)'; lMag.style.fontWeight = _mode==='magazines'?700:400; }
+        if (lCh)  { lCh.style.color  = _mode==='chapters' ?'var(--accent)':'var(--text-secondary)'; lCh.style.fontWeight  = _mode==='chapters' ?700:400; }
+        _cachedItems = null;
+        _load();
+    });
 
-  document.getElementById('cal-mswitch')?.addEventListener('click', () => {
-    _mode = _mode === 'chapters' ? 'magazines' : 'chapters';
-    const thumb = document.getElementById('cal-mthumb');
-    if (thumb) thumb.style.left = _mode === 'chapters' ? '22px' : '4px';
-    const lMag = document.getElementById('cal-mlabel-mag');
-    const lCh  = document.getElementById('cal-mlabel-ch');
-    if (lMag) { lMag.style.color = _mode==='magazines'?'var(--accent)':'var(--text-secondary)'; lMag.style.fontWeight = _mode==='magazines'?700:400; }
-    if (lCh)  { lCh.style.color  = _mode==='chapters' ?'var(--accent)':'var(--text-secondary)'; lCh.style.fontWeight  = _mode==='chapters' ?700:400; }
-    _load();
-  });
+    document.getElementById('cal-prev')?.addEventListener('click', () => {
+        _ws = _prevContentDate ? getWeekStart(_prevContentDate) : addWeeks(_ws, -1);
+        _load();
+    });
+    document.getElementById('cal-next')?.addEventListener('click', () => {
+        _ws = _nextContentDate ? getWeekStart(_nextContentDate) : addWeeks(_ws, 1);
+        _load();
+    });
+    document.getElementById('cal-today')?.addEventListener('click', () => { _ws = getWeekStart();    _load(); });
 
-  document.getElementById('cal-prev')?.addEventListener('click',  () => { _ws = addWeeks(_ws, -1); _load(); });
-  document.getElementById('cal-next')?.addEventListener('click',  () => { _ws = addWeeks(_ws,  1); _load(); });
-  document.getElementById('cal-today')?.addEventListener('click', () => { _ws = getWeekStart();    _load(); });
-
-  document.getElementById('cal-picker')?.addEventListener('change', e => {
-    const val = e.target.value;
-    if (!val) return;
-    const [yr, wk] = val.split('-W').map(Number);
-    const jan4    = new Date(Date.UTC(yr, 0, 4));
-    const dj4     = (jan4.getUTCDay() + 6) % 7;
-    const monday  = new Date(jan4);
-    monday.setUTCDate(jan4.getUTCDate() - dj4 + (wk - 1) * 7);
-    const sunday  = new Date(monday);
-    sunday.setUTCDate(monday.getUTCDate() - 1);
-    _ws = sunday.toISOString().slice(0, 10);
-    _load();
-  });
+    document.getElementById('cal-picker')?.addEventListener('change', e => {
+        const val = e.target.value;
+        if (!val) return;
+        const [yr, wk] = val.split('-W').map(Number);
+        const jan4    = new Date(Date.UTC(yr, 0, 4));
+        const dj4     = (jan4.getUTCDay() + 6) % 7;
+        const monday  = new Date(jan4);
+        monday.setUTCDate(jan4.getUTCDate() - dj4 + (wk - 1) * 7);
+        _ws = monday.toISOString().slice(0, 10);
+        _load();
+    });
 }
 
 // ── Load & render ─────────────────────────────────────────────────────────
@@ -217,20 +271,38 @@ async function _load() {
   const body = document.getElementById('cal-body');
   if (body) body.innerHTML = '<div style="text-align:center;padding:3rem;color:var(--text-secondary);">⏳ Завантаження…</div>';
 
+  const paramsKey = `${_type}|${_cols}|${_mode}`;
+
   try {
-    const p = new URLSearchParams({
-      date: _ws, type: _type,
-      collections: _cols ? '1' : '0',
-      manga_mode: _mode,
-    });
-    const res = await fetch(`${API_BASE}/calendar?${p}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+    // Якщо кеш є і параметри не змінились — не робимо запит
+    if (!_cachedItems || _cacheParams !== paramsKey) {
+      const p = new URLSearchParams({
+        type: _type,
+        collections: _cols ? '1' : '0',
+        manga_mode: _mode,
+      });
+      const res = await fetch(`${API_BASE}/calendar/all?${p}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      _cachedItems = json.data || [];
+      _cacheParams = paramsKey;
+    }
+
+    const { start, end } = { start: _ws, end: weekEnd(_ws) };
+    const days = _filterByWeek(_cachedItems, start, end);
+    const total = Object.values(days).reduce((s, a) => s + a.length, 0);
+
+    const next_content_date = _findNextContentDate(_cachedItems, end);
+    const prev_content_date = _findPrevContentDate(_cachedItems, start);
+
+    _nextContentDate = next_content_date;
+    _prevContentDate = prev_content_date;
+
+    const data = { days, total, next_content_date, prev_content_date };
     _updateNav(data);
     _renderBody(data);
   } catch (err) {
     console.error('Calendar:', err);
-    const body = document.getElementById('cal-body');
     if (body) body.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--danger);">Помилка: ${err.message}</div>`;
   } finally {
     _busy = false;
@@ -328,11 +400,11 @@ function _renderBody(data) {
   }
 
   // Update sticky offsets after layout
-  requestAnimationFrame(() => {
-    const ctrl = document.getElementById('cal-ctrl');
-    const top  = (ctrl?.offsetHeight ?? 108) + 10;
-    document.querySelectorAll('.cal-dh').forEach(h => { h.style.top = `${top}px`; });
-  });
+//   requestAnimationFrame(() => {
+//     const ctrl = document.getElementById('cal-ctrl');
+//     const top  = (ctrl?.offsetHeight ?? 108) + 10;
+//     document.querySelectorAll('.cal-dh').forEach(h => { h.style.top = `${top}px`; });
+//   });
 }
 
 function _daySection(date, items, today) {
@@ -342,7 +414,7 @@ function _daySection(date, items, today) {
   return `
     <div style="margin-bottom:0.75rem;">
       <div class="cal-dh" style="
-        position:sticky;top:120px;z-index:10;
+        position:sticky;top:0px;z-index:10;
         display:flex;align-items:center;gap:0.6rem;
         padding:0.45rem 0.85rem;border-radius:7px;
         background:${isToday?'var(--accent-light)':empty?'var(--bg-tertiary)':'var(--bg-secondary)'};
@@ -393,6 +465,15 @@ function _click(item) {
   }
 }
 
+function _url(item) {
+  switch (item._type) {
+    case 'comic_issue': case 'manga_chapter': return `/?page=issue-detail&id=${item.id}`;
+    case 'comic_collection': case 'manga_collection': return `/?page=collection-detail&id=${item.id}`;
+    case 'manga_magazine': return `/?page=issue-detail&id=${item.id}`;
+    default: return '';
+  }
+}
+
 function _item(item) {
   return item._type === 'manga_magazine' ? _magazine(item) : _card(item);
 }
@@ -405,7 +486,9 @@ function _card(item) {
   const sub  = item.name && item.name !== vol ? item.name : null;
 
   return `
-    <div onclick="${_click(item)}" style="
+    <div onclick="if(event.ctrlKey||event.metaKey){event.preventDefault();window.open('${_url(item)}','_blank')}else{${_click(item)}}"
+        onmousedown="if(event.button===1){event.preventDefault();window.open('${_url(item)}','_blank')}"
+        style="
       width:130px;flex-shrink:0;cursor:pointer;
       background:var(--bg-primary);border:1px solid var(--border-color);border-radius:8px;
       overflow:hidden;position:relative;transition:box-shadow 0.15s,transform 0.15s;
@@ -441,7 +524,9 @@ function _magazine(item) {
       width:100%;
       background:var(--bg-primary);border:1px solid var(--border-color);border-radius:8px;overflow:hidden;
     ">
-      <div onclick="${_click(item)}" style="
+      <div onclick="if(event.ctrlKey||event.metaKey){event.preventDefault();window.open('${_url(item)}','_blank')}else{${_click(item)}}"
+            onmousedown="if(event.button===1){event.preventDefault();window.open('${_url(item)}','_blank')}"
+            style="
         display:flex;align-items:center;gap:0.75rem;padding:0.6rem 0.9rem;
         background:var(--bg-secondary);border-bottom:1px solid var(--border-color);
         cursor:pointer;transition:background 0.15s;
@@ -468,7 +553,9 @@ function _magazine(item) {
             : null;
           const chName = ch.name && ch.name !== `Розділ ${ch.issue_number}` ? ch.name : null;
           return `
-            <div onclick="navigate('issue-detail',{id:${ch.id}})" style="
+            <div onclick="if(event.ctrlKey||event.metaKey){event.preventDefault();window.open('/?page=issue-detail&id=${ch.id}','_blank')}else{navigate('issue-detail',{id:${ch.id}})}"
+                onmousedown="if(event.button===1){event.preventDefault();window.open('/?page=issue-detail&id=${ch.id}','_blank')}"
+                style="
               width:90px;flex-shrink:0;cursor:pointer;
               background:var(--bg-secondary);border:1px solid var(--border-color);border-radius:6px;
               overflow:hidden;transition:box-shadow 0.15s,transform 0.1s;
