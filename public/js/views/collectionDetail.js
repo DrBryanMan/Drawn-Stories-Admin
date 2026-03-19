@@ -182,14 +182,27 @@ function renderPage(collection, seriesList = []) {
     handlersAbortController = new AbortController();
     const { signal } = handlersAbortController;
 
-    const collectionLabel = collection.cv_id
-        ? `/${collection.cv_slug}/4000-${collection.cv_id}/`
-        : `${collection.name} (db:${collection.id})`;
-
     document.getElementById('page-title').innerHTML = `
-        <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
-            &larr; Збірники
-        </a> ${collectionLabel}
+        <a href="#" onclick="event.preventDefault(); navigateToParent()">
+            <i class="bi bi-caret-left"></i> Збірники
+        </a>
+        <span style="font-weight:600; color:var(--text-primary);">
+            ${collection.name || 'Без назви'}${collection.issue_number ? ` #${collection.issue_number}` : ''}
+        </span>
+        ${collection.cv_id
+            ? `<a href="https://comicvine.gamespot.com/${collection.cv_slug}/4000-${collection.cv_id}" target="_blank"
+                style="font-size:0.7rem;padding:0.15em 0.5em;border-radius:6px;background:var(--bg-tertiary);
+                        border:1px solid var(--border-color);color:var(--text-muted);text-decoration:none;white-space:nowrap;">
+                CV&thinsp;4000-${collection.cv_id}
+            </a>`
+            : `<span style="font-size:0.7rem;padding:0.15em 0.5em;border-radius:6px;background:var(--bg-tertiary);
+                            border:1px solid var(--border-color);color:var(--text-muted);">
+                db:${collection.id}
+            </span>`}
+        <span style="font-size:0.7rem;padding:0.15em 0.5em;border-radius:6px;background:var(--bg-tertiary);
+                    border:1px solid var(--border-color);color:var(--text-muted);white-space:nowrap;">
+            ➕&thinsp;${formatDate(collection.created_at)}
+        </span>
     `;
 
     // ── Volume summary з проміжками номерів ──────────────────────────────────
@@ -226,41 +239,58 @@ function renderPage(collection, seriesList = []) {
                 </div>
                 <div style="flex: 1;">
                     <h1 style="font-size: 2rem; margin-bottom: 1rem;">${collection.name} #${collection.issue_number}</h1>
-                    <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-                        ${seriesList.length > 0 ? `
-                            <div>
-                                <strong>Серія:</strong>
-                                ${seriesList.map(s => `
-                                    <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
-                                          onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
-                                `).join(' ')}
-                            </div>
-                        ` : ''}
-                        ${collection.volume_name ? `
-                            <div>
-                                <strong>Том:</strong>
-                                <a href="#" onclick="event.preventDefault(); window.navigateToVolume(${collection.volume_id})"
-                                   style="color: var(--accent); text-decoration: none;">
-                                    ${collection.volume_name}
-                                </a> <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${collection.cv_vol_id})</span>
-                            </div>
-                        ` : ''}
-                        ${collection.isbn ? `<div><strong>ISBN:</strong> ${collection.isbn}</div>` : ''}
-                        ${collection.cover_date ? `<div><strong>Дата обкладинки:</strong> ${formatCoverDate(collection.cover_date)}</div>` : ''}
-                        ${collection.release_date ? `<div><strong>Дата релізу:</strong> ${formatReleaseDate(collection.release_date)}</div>` : ''}
-                        ${collection.publisher || collection.publisher_name ? `
-                            <div>
-                                <strong>Видавець:</strong>
-                                ${collection.publisher_name
-                                    ? `${collection.publisher_name} <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${collection.publisher})</span>`
-                                    : `cv_id: ${collection.publisher}`}
-                            </div>
-                        ` : ''}
-                        <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
+                    <div style="margin-bottom:1.25rem;">
+                        <div style="display:flex; flex-wrap:wrap; gap:0.35rem; align-items:center; margin-bottom:0.5rem;">
+                            ${collection.volume_name
+                                ? `<a href="#" onclick="event.preventDefault(); window.navigateToVolume(${collection.volume_id})"
+                                    style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;
+                                            font-size:0.8rem;background:var(--chip-publisher-bg-solid);color:var(--chip-publisher-color);
+                                            border:1px solid var(--chip-publisher-border-solid);text-decoration:none;">
+                                    📚 ${collection.volume_name}
+                                </a>`
+                                : ''}
+                            ${collection.publisher_name
+                                ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;
+                                                font-size:0.8rem;background:var(--chip-publisher-bg-solid);color:var(--chip-publisher-color);
+                                                border:1px solid var(--chip-publisher-border-solid);">
+                                    🏢 ${collection.publisher_name}
+                                </span>`
+                                : ''}
+                            ${collection.cover_date
+                                ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;
+                                                font-size:0.8rem;background:var(--badge-year-bg-solid);color:var(--badge-year-color);
+                                                border:1px solid var(--badge-year-border-solid);" title="Дата обкладинки">
+                                    📅 ${formatCoverDate(collection.cover_date)}
+                                </span>`
+                                : ''}
+                            ${collection.release_date
+                                ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;
+                                                font-size:0.8rem;background:var(--bg-tertiary);color:var(--text-secondary);
+                                                border:1px solid var(--border-color);" title="Дата релізу">
+                                    🚀 ${formatReleaseDate(collection.release_date)}
+                                </span>`
+                                : ''}
+                            ${collection.isbn
+                                ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;
+                                                font-size:0.8rem;background:var(--bg-tertiary);color:var(--text-secondary);
+                                                border:1px solid var(--border-color);">
+                                    ISBN: ${collection.isbn}
+                                </span>`
+                                : ''}
+                            ${seriesList.map(s => `
+                                <span class="theme-badge" style="background:#dcfce7;color:#166534;border-color:#bbf7d0;cursor:pointer;"
+                                    onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
+                            `).join('')}
+                        </div>
+                        <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; align-items:center; min-height:0;">
                             ${buildThemeChipsViewHTML(collection.themes)}
                         </div>
-                        <div><strong>Дата додавання:</strong> ${formatDate(collection.created_at)}</div>
-                        ${collection.description ? `${collection.description}` : ''}
+                        ${collection.description
+                            ? `<div style="margin-top:0.75rem;font-size:0.875rem;color:var(--text-secondary);line-height:1.6;
+                                        background:var(--bg-secondary);border-radius:6px;padding:0.65rem 0.85rem;">
+                                ${collection.description}
+                            </div>`
+                            : ''}
                     </div>
                     ${volumesHtml}
                     <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">

@@ -99,20 +99,29 @@ export async function renderVolumeDetail(params) {
         const translations = translationsData.data || [];
         const translationParents = translationParentData.data || [];
         const translationOriginal = translationParents.find(p => p.rel_type === 'original') || null;
-        const translationSource   = translationParents.find(p => p.rel_type === 'source')   || null;
+        const translationSource   = translationParents.find(p => p.rel_type === 'source' || p.rel_type === 'translation') || null;
         const translationParent   = translationOriginal || translationSource || null;
         const magazineChildren = magazineChildrenData.data || [];
         const magazineParents = magazineParentData.data || [];
         const magazineChapters = magazineChaptersData.data || [];
 
         document.getElementById('page-title').innerHTML = `
-            <a href="#" onclick="event.preventDefault(); navigateToParent()">
+            <a href="#" onclick="event.preventDefault(); navigateToParent()" style='margin-right: auto;'>
                 <i class="bi bi-caret-left"></i> Томи
-            </a> ${isMangaSourceVolume
-                ? `/ hikka: ${volume.hikka_slug} / MAL: ${volume.mal_id}`
-                : `/${volume.cv_slug}/4050-${volume.cv_id}`} 
-            <span style="color: #bbb;">
-                + ${formatDate(volume.created_at)}
+            </a>
+            ${!isMangaSourceVolume && volume.cv_id
+                ? `<span
+                    class="page-title-badge">
+                    CV ${volume.cv_slug}/4050-${volume.cv_id}
+                </span>`
+                : ''}
+            ${isMangaSourceVolume && volume.hikka_slug
+                ? `<span class="page-title-badge">
+                    hikka:&thinsp;${volume.hikka_slug}
+                </span>`
+                : ''}
+            <span class="page-title-badge">
+                ➕&thinsp;${formatDate(volume.created_at)}
             </span>
         `;
 
@@ -149,30 +158,39 @@ export async function renderVolumeDetail(params) {
                     </div>
                     <div style="flex: 1;">
                         <h1 style="font-size: 2rem; margin-bottom: 1rem;">${volume.name || 'Без назви'}</h1>
-                        <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            ${volume.start_year ? `<div><strong>Рік початку:</strong> ${volume.start_year}</div>` : ''}
-                            ${volume.publisher || volume.publisher_name ? `
-                                    <div>
-                                        <strong>Видавець:</strong>
-                                    ${volume.publisher_name
-                                            ? `${volume.publisher_name} <span style="color: var(--text-secondary); font-size: 0.85rem;">(db_id: ${volume.publisher})</span>`
+                        <div style="margin-bottom:1.25rem;">
+                            <div style="display:flex; flex-wrap:wrap; gap:0.35rem; align-items:center; margin-bottom:0.5rem;">
+                                ${volume.start_year
+                                    ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;font-size:0.9rem;background:var(--badge-year-bg);color:var(--badge-year-color);border:1px solid var(--badge-year-border-solid);">
+                                        <i class="bi bi-calendar"></i> ${volume.start_year}
+                                    </span>`
+                                    : ''}
+                                ${volume.lang
+                                    ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;font-size:0.9rem;background:var(--bg-tertiary);color:var(--text-secondary);border:1px solid var(--border-color);">
+                                        <i class="bi bi-translate"></i> ${langDisplay(volume.lang)}
+                                    </span>`
+                                    : ''}
+                                ${volume.publisher_name
+                                    ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;font-size:.9rem;background:var(--chip-publisher-bg);color:var(--chip-publisher-color);border:1px solid var(--chip-publisher-border-solid);">
+                                        <i class="bi bi-buildings"></i> ${volume.publisher_name
+                                            ? `${volume.publisher_name} <span style="color: var(--text-secondary); font-size: 0.75rem;">(db_id: ${volume.publisher})</span>`
                                             : `db_id: ${volume.publisher}`}
-                                    </div>
-                                ` : ''}
-                            ${volume.lang ? `<div><strong>Мова:</strong> ${langDisplay(volume.lang)}</div>` : ''}
-                            ${volumeSeries.length > 0 ? `
-                                    <div>
-                                        <strong>Серія:</strong>
-                                    ${volumeSeries.map(s => `
-                                            <span class="theme-badge" style="background:#dcfce7; color:#166534; border-color:#bbf7d0; cursor:pointer;"
-                                                onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
-                                        `).join(' ')}
-                                    </div>
-                                ` : ''}
-                            <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; margin-bottom:0.5rem; min-height:0; align-items:center;">
+                                    </span>`
+                                    : ''}
+                                ${volumeSeries.map(s => `
+                                    <span class="theme-badge" style="background:#dcfce7;color:#166534;border-color:#bbf7d0;cursor:pointer;"
+                                        onclick="navigate('series-detail', { id: ${s.id} })">${s.name}</span>
+                                `).join('')}
+                            </div>
+                            <div id="col-theme-chips" style="display:flex; flex-wrap:wrap; gap:0.35rem; align-items:center; min-height:0;">
                                 ${buildThemeChipsViewHTML(volumeThemes)}
                             </div>
-                            ${volume.description ? `<div class="form-group">${volume.description}</div>` : ''}
+                            ${volume.description
+                                ? `<div style="margin-top:0.75rem;font-size:0.875rem;color:var(--text-secondary);line-height:1.6;
+                                            background:var(--bg-secondary);border-radius:6px;padding:0.65rem 0.85rem;">
+                                    ${volume.description}
+                                </div>`
+                                : ''}
                         </div>
                         <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
                             <button class="btn btn-secondary" onclick="editVolumeDetail(${volume.id})"><i class="bi bi-pencil-square"></i> Редагувати том</button>

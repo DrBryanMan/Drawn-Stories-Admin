@@ -167,14 +167,27 @@ export async function renderIssueDetail(params) {
         const isOriginalIssue       = !isTranslatedVolume && !isReprintVolume;          // оригінальний випуск (не репринт, не переклад)
         const isReprintOrTranslated = isTranslatedSingle || isReprintVolume;            // будь-яке перевидання — для блоків контенту
 
-        document.getElementById('page-title').innerHTML = `
-            <a href="#" onclick="event.preventDefault(); navigateToParent()" style="color: var(--text-secondary); text-decoration: none;">
-                ← Випуски
-            </a> ${isMangaChapter
-                ? `/ ${issue.volume_name || 'Манга'} / Розділ #${issue.issue_number || issue.id}`
-                : `/${issue.cv_slug}/4000-${issue.cv_id}/`}
-        `;
+        const issueTitle = isMangaChapter
+            ? `${issue.volume_name || 'Манга'} — Розділ #${issue.issue_number || issue.id}`
+            : `${issue.name || 'Без назви'} #${issue.issue_number || '?'}`;
 
+        document.getElementById('page-title').innerHTML = `
+            <a href="#" onclick="event.preventDefault(); navigateToParent()">
+                <i class="bi bi-caret-left"></i> Випуски
+            </a>
+            <span style="font-weight:600; color:var(--text-primary);">${issueTitle}</span>
+            ${!isMangaChapter && issue.cv_id
+                ? `<a href="https://comicvine.gamespot.com/${issue.cv_slug}/4000-${issue.cv_id}" target="_blank"
+                    style="font-size:0.7rem;padding:0.15em 0.5em;border-radius:6px;background:var(--bg-tertiary);
+                            border:1px solid var(--border-color);color:var(--text-muted);text-decoration:none;white-space:nowrap;">
+                    CV&thinsp;4000-${issue.cv_id}
+                </a>`
+                : ''}
+            <span style="font-size:0.7rem;padding:0.15em 0.5em;border-radius:6px;background:var(--bg-tertiary);
+                        border:1px solid var(--border-color);color:var(--text-muted);white-space:nowrap;">
+                ➕&thinsp;${formatDate(issue.created_at)}
+            </span>
+        `;
         const content = document.getElementById('content');
         content.innerHTML = `
             <div style="max-width: 1200px;">
@@ -190,53 +203,57 @@ export async function renderIssueDetail(params) {
                     </div>
                     <div style="flex: 1;">
                         <h1 style="font-size: 2rem; margin-bottom: 1rem;">${issue.name || 'Без назви'} #${issue.issue_number}</h1>
-                        <div style="display: grid; gap: 0.5rem; color: var(--text-secondary); margin-bottom: 1.5rem;">
-                            ${issue.volume_name && !isMangaChapter ?
-                                `<div>
-                                    <strong>Том:</strong>
-                                    <a href="#" onclick="navigateToVolumeFromIssue(${issue.cv_vol_id})"
-                                    style="color: var(--accent); text-decoration: none;">
-                                        ${issue.volume_name}
-                                    </a> <span style="color: var(--text-secondary); font-size: 0.85rem;">(cv_id: ${issue.cv_vol_id})</span>
-                                </div>
-                            ` : (!isMangaChapter ? `cv_id: ${issue.cv_vol_id}` : '')}
-                            ${isMangaChapter && issue.volume_name ?
-                                `<div>
-                                    <strong>Том манги:</strong>
-                                    <a href="#" onclick="event.preventDefault(); navigate('volume-detail', { id: ${issue.ds_vol_id} })"
-                                       style="color: var(--accent); text-decoration: none;">
-                                        ${issue.volume_name}
-                                    </a>
-                                    <span style="color:var(--text-secondary); font-size:0.85rem;">(db_id: ${issue.ds_vol_id})</span>
-                                </div>`
-                            : ''}
-                            <div><strong>Публікація:</strong> ${formatCoverDate(issue.cover_date)}</div>
-                            <div><strong>Реліз:</strong> ${formatReleaseDate(issue.release_date)}</div>
-                            <div><strong>Дата створення:</strong> ${formatDate(issue.created_at)}</div>
-                            ${readingOrders.length > 0 ? `
-                                <div>
-                                    <strong>Хронологія:</strong>
-                                    ${readingOrders.map(ro => `
-                                        <span class="theme-badge" style="cursor:pointer;"
-                                              onclick="navigateTo('reading-order-detail', ${ro.id})">
-                                            ${ro.name} <span style="opacity:0.7;">#${ro.order_num}</span>
-                                        </span>
-                                    `).join(' ')}
-                                </div>
-                            ` : ''}
-                            ${hasStories ? `
-                            <div>
-                                <strong>Історії:</strong>
-                                <div style="display:flex; flex-direction:column; gap:0.2rem; margin-top:0.25rem;">
+                        <div style="margin-bottom:1.25rem;">
+                            <div style="display:flex; flex-wrap:wrap; gap:0.35rem; align-items:center; margin-bottom:0.5rem;">
+                                ${!isMangaChapter && issue.volume_name
+                                    ? `<a href="#" onclick="event.preventDefault(); navigateToVolumeFromIssue(${issue.cv_vol_id})"
+                                        style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;
+                                                font-size:0.8rem;background:var(--chip-publisher-bg-solid);color:var(--chip-publisher-color);
+                                                border:1px solid var(--chip-publisher-border-solid);text-decoration:none;">
+                                        📚 ${issue.volume_name}
+                                    </a>`
+                                    : ''}
+                                ${isMangaChapter && issue.volume_name
+                                    ? `<a href="#" onclick="event.preventDefault(); navigate('volume-detail', { id: ${issue.ds_vol_id} })"
+                                        style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;
+                                                font-size:0.8rem;background:var(--chip-publisher-bg-solid);color:var(--chip-publisher-color);
+                                                border:1px solid var(--chip-publisher-border-solid);text-decoration:none;">
+                                        📚 ${issue.volume_name}
+                                    </a>`
+                                    : ''}
+                                ${issue.cover_date && issue.cover_date !== '0000-00-00'
+                                    ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;
+                                                    font-size:0.8rem;background:var(--badge-year-bg-solid);color:var(--badge-year-color);
+                                                    border:1px solid var(--badge-year-border-solid);" title="Дата обкладинки">
+                                        📅 ${formatCoverDate(issue.cover_date)}
+                                    </span>`
+                                    : ''}
+                                ${issue.release_date
+                                    ? `<span style="display:inline-flex;align-items:center;gap:0.25rem;padding:0.2rem 0.6rem;border-radius:6px;
+                                                    font-size:0.8rem;background:var(--bg-tertiary);color:var(--text-secondary);
+                                                    border:1px solid var(--border-color);" title="Дата релізу">
+                                        🚀 ${formatReleaseDate(issue.release_date)}
+                                    </span>`
+                                    : ''}
+                                ${readingOrders.map(ro => `
+                                    <span class="theme-badge" style="cursor:pointer;" title="Хронологія"
+                                        onclick="navigateTo('reading-order-detail', ${ro.id})">
+                                        📋 ${ro.name}&thinsp;<span style="opacity:0.6;">#${ro.order_num}</span>
+                                    </span>
+                                `).join('')}
+                            </div>
+                            ${hasStories
+                                ? `<div style="display:flex; flex-direction:column; gap:0.2rem;">
                                     ${issueStories.map((s, i) => `
-                                        <span style="font-size:0.9rem; color:var(--text-primary);">
+                                        <span style="font-size:0.82rem;color:var(--text-secondary);">
                                             ${i + 1}. ${s.name_ua || s.name_original || '— без назви —'}
-                                            ${s.name_ua && s.name_original ? `<span style="color:var(--text-muted); font-size:0.8rem;">(${s.name_original})</span>` : ''}
+                                            ${s.name_ua && s.name_original
+                                                ? `<span style="color:var(--text-muted);font-size:0.78rem;"> (${s.name_original})</span>`
+                                                : ''}
                                         </span>
                                     `).join('')}
-                                </div>
-                            </div>
-                            ` : ''}
+                                </div>`
+                                : ''}
                         </div>
 
                         <!-- Рядок 1: основні дії -->
