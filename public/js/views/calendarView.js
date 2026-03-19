@@ -72,6 +72,17 @@ function isoWeekNum(dateStr) {
   return { year: thu.getUTCFullYear(), week };
 }
 
+function buildDayMap(start, end) {
+  const map = {};
+  const cur  = new Date(start + 'T00:00:00Z');
+  const last = new Date(end   + 'T00:00:00Z');
+  while (cur <= last) {
+    map[cur.toISOString().slice(0, 10)] = [];
+    cur.setUTCDate(cur.getUTCDate() + 1);
+  }
+  return map;
+}
+
 // ── State ─────────────────────────────────────────────────────────────────
 
 let _ws   = null;   // week start YYYY-MM-DD
@@ -86,17 +97,23 @@ let _cacheParams = null;    // параметри під які кешовано
 
 // ── Entry ─────────────────────────────────────────────────────────────────
 
-function _filterByWeek(items, start, end) {
+function _filterByWeek(sortedItems, start, end) {
   const days = buildDayMap(start, end);
   const pri = { manga_magazine:0, manga_chapter:1, manga_collection:2, comic_issue:3, comic_collection:4 };
 
-  items.forEach(item => {
-    if (item.release_date >= start && item.release_date <= end) {
-      if (days[item.release_date]) {
-        days[item.release_date].push(item);
-      }
-    }
-  });
+  // Бінарний пошук початку діапазону
+  let lo = 0, hi = sortedItems.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if ((sortedItems[mid].release_date || '') < start) lo = mid + 1;
+    else hi = mid;
+  }
+  // Ітеруємо тільки елементи у вікні [start, end]
+  for (let i = lo; i < sortedItems.length; i++) {
+    const item = sortedItems[i];
+    if ((item.release_date || '') > end) break;
+    if (days[item.release_date]) days[item.release_date].push(item);
+  }
 
   Object.keys(days).forEach(d => {
     days[d].sort((a, b) => {
@@ -109,14 +126,26 @@ function _filterByWeek(items, start, end) {
   return days;
 }
 
-function _findNextContentDate(items, afterDate) {
-  const found = items.find(i => i.release_date > afterDate);
-  return found?.release_date || null;
+// Бінарний пошук першого елемента з release_date > afterDate
+function _findNextBinary(sortedItems, afterDate) {
+  let lo = 0, hi = sortedItems.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if ((sortedItems[mid].release_date || '') <= afterDate) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo < sortedItems.length ? sortedItems[lo].release_date : null;
 }
 
-function _findPrevContentDate(items, beforeDate) {
-  const filtered = items.filter(i => i.release_date < beforeDate);
-  return filtered.length ? filtered[filtered.length - 1].release_date : null;
+// Бінарний пошук останнього елемента з release_date < beforeDate
+function _findPrevBinary(sortedItems, beforeDate) {
+  let lo = 0, hi = sortedItems.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if ((sortedItems[mid].release_date || '') < beforeDate) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo > 0 ? sortedItems[lo - 1].release_date : null;
 }
 
 export async function renderCalendarView(params = {}) {
@@ -194,6 +223,7 @@ function _shell() {
           <button id="cal-next" class="btn btn-secondary" style="padding:0.3rem 0.75rem;font-size:1rem;min-width:52px;"></button>
 
           <button id="cal-today" class="btn btn-primary btn-small" style="display:none;">Сьогодні</button>
+          <button id="cal-clear-cache" class="btn btn-secondary btn-small" title="Очистити кеш і перезавантажити">🔄</button>
         </div>
       </div>
 
@@ -260,6 +290,12 @@ function _bindControls() {
         _ws = monday.toISOString().slice(0, 10);
         _load();
     });
+
+    document.getElementById('cal-clear-cache')?.addEventListener('click', () => {
+        _cachedItems = null;
+        _cacheParams = null;
+        _load();
+    });
 }
 
 // ── Load & render ─────────────────────────────────────────────────────────
@@ -274,7 +310,6 @@ async function _load() {
   const paramsKey = `${_type}|${_cols}|${_mode}`;
 
   try {
-    // Якщо кеш є і параметри не змінились — не робимо запит
     if (!_cachedItems || _cacheParams !== paramsKey) {
       const p = new URLSearchParams({
         type: _type,
@@ -284,16 +319,26 @@ async function _load() {
       const res = await fetch(`${API_BASE}/calendar/all?${p}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      _cachedItems = json.data || [];
+      // Сортуємо один раз при завантаженні — щоб _findNext/Prev працювали швидко
+      _cachedItems = (json.data || []).sort((a, b) =>
+        (a.release_date || '').localeCompare(b.release_date || '')
+      );
       _cacheParams = paramsKey;
+
+      // Тимчасовий дебаг — прибрати після перевірки
+    console.log('[Calendar] Loaded items:', _cachedItems.length,
+        'magazines:', _cachedItems.filter(i => i._type === 'manga_magazine').length,
+        'sample:', _cachedItems.find(i => i._type === 'manga_magazine'));
     }
 
-    const { start, end } = { start: _ws, end: weekEnd(_ws) };
-    const days = _filterByWeek(_cachedItems, start, end);
+    const start = _ws;
+    const end   = weekEnd(_ws);
+    const days  = _filterByWeek(_cachedItems, start, end);
     const total = Object.values(days).reduce((s, a) => s + a.length, 0);
 
-    const next_content_date = _findNextContentDate(_cachedItems, end);
-    const prev_content_date = _findPrevContentDate(_cachedItems, start);
+    // Бінарний пошук для next/prev — O(log n) замість O(n)
+    const next_content_date = _findNextBinary(_cachedItems, end);
+    const prev_content_date = _findPrevBinary(_cachedItems, start);
 
     _nextContentDate = next_content_date;
     _prevContentDate = prev_content_date;
@@ -310,47 +355,57 @@ async function _load() {
 }
 
 function _updateNav(data) {
-  const we = weekEnd(_ws);
+    const we = weekEnd(_ws);
 
-  const lbl = document.getElementById('cal-wlabel');
-  if (lbl) lbl.textContent = fWeek(_ws, we);
+    const lbl = document.getElementById('cal-wlabel');
+    if (lbl) lbl.textContent = fWeek(_ws, we);
 
-  const todayBtn = document.getElementById('cal-today');
-  if (todayBtn) todayBtn.style.display = _ws === getWeekStart() ? 'none' : 'block';
+    const todayBtn = document.getElementById('cal-today');
+    if (todayBtn) todayBtn.style.display = _ws === getWeekStart() ? 'none' : 'block';
 
-  const picker = document.getElementById('cal-picker');
-  if (picker) {
-    const monday = new Date(_ws + 'T00:00:00Z');
-    monday.setUTCDate(monday.getUTCDate() + 1);
-    const { year, week } = isoWeekNum(monday.toISOString().slice(0, 10));
-    picker.value = `${year}-W${String(week).padStart(2,'0')}`;
-  }
-
-  const prev = document.getElementById('cal-prev');
-  const next = document.getElementById('cal-next');
-
-  if (prev) {
-    if (data?.prev_content_date) {
-      const diff = weeksDiff(getWeekStart(data.prev_content_date), _ws);
-      prev.textContent = diff > 1 ? `←${diff}тиж` : '←';
-      prev.title       = diff > 1 ? `Попередній контент: ${data.prev_content_date}` : '';
-      prev.style.color = diff > 1 ? 'var(--text-muted)' : '';
-    } else {
-      prev.textContent = '←'; prev.title = ''; prev.style.color = '';
+    const picker = document.getElementById('cal-picker');
+    if (picker) {
+        const monday = new Date(_ws + 'T00:00:00Z');
+        monday.setUTCDate(monday.getUTCDate() + 1);
+        const { year, week } = isoWeekNum(monday.toISOString().slice(0, 10));
+        picker.value = `${year}-W${String(week).padStart(2,'0')}`;
     }
-  }
 
-  if (next) {
-    if (data?.next_content_date) {
-      const nws  = getWeekStart(data.next_content_date);
-      const diff = weeksDiff(_ws, nws);
-      next.textContent = diff > 1 ? `→+${diff}тиж` : '→';
-      next.title       = diff > 1 ? `Наступний контент: ${data.next_content_date} (через ${diff} ${weeksWord(diff)})` : '';
-      next.style.color = diff > 1 ? 'var(--warning)' : '';
-    } else {
-      next.textContent = '→'; next.title = ''; next.style.color = '';
+    const prev = document.getElementById('cal-prev');
+    const next = document.getElementById('cal-next');
+
+    if (prev) {
+        const twoWeeksAgo = addWeeks(getWeekStart(), -2);
+        const prevWS = _prevContentDate
+        ? getWeekStart(_prevContentDate)
+        : addWeeks(_ws, -1);
+        const tooFarBack = prevWS < twoWeeksAgo;
+
+        prev.disabled = tooFarBack;
+        prev.style.opacity = tooFarBack ? '0.35' : '';
+        prev.style.cursor  = tooFarBack ? 'not-allowed' : '';
+
+        if (!tooFarBack && data?.prev_content_date) {
+        const diff = weeksDiff(getWeekStart(data.prev_content_date), _ws);
+        prev.textContent = diff > 1 ? `←${diff}тиж` : '←';
+        prev.title       = diff > 1 ? `Попередній контент: ${data.prev_content_date}` : '';
+        prev.style.color = diff > 1 ? 'var(--text-muted)' : '';
+        } else {
+        prev.textContent = '←'; prev.title = ''; prev.style.color = '';
+        }
     }
-  }
+
+    if (next) {
+        if (data?.next_content_date) {
+        const nws  = getWeekStart(data.next_content_date);
+        const diff = weeksDiff(_ws, nws);
+        next.textContent = diff > 1 ? `→+${diff}тиж` : '→';
+        next.title       = diff > 1 ? `Наступний контент: ${data.next_content_date} (через ${diff} ${weeksWord(diff)})` : '';
+        next.style.color = diff > 1 ? 'var(--warning)' : '';
+        } else {
+        next.textContent = '→'; next.title = ''; next.style.color = '';
+        }
+    }
 }
 
 // ── Body ─────────────────────────────────────────────────────────────────
@@ -414,6 +469,8 @@ function _daySection(date, items, today) {
   return `
     <div style="margin-bottom:0.75rem;">
       <div class="cal-dh" style="
+        margin: auto;
+        width: fit-content;
         position:sticky;top:0px;z-index:10;
         display:flex;align-items:center;gap:0.6rem;
         padding:0.45rem 0.85rem;border-radius:7px;
@@ -548,9 +605,7 @@ function _magazine(item) {
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.65rem 0.75rem;">
         ${chs.map(ch => {
-          const chImg = ch.cv_img
-            ? `${cv_img_path_small}${ch.cv_img.startsWith('/')?'':'/'}${ch.cv_img}`
-            : null;
+          const chImg = _imgUrl(ch)
           const chName = ch.name && ch.name !== `Розділ ${ch.issue_number}` ? ch.name : null;
           return `
             <div onclick="if(event.ctrlKey||event.metaKey){event.preventDefault();window.open('/?page=issue-detail&id=${ch.id}','_blank')}else{navigate('issue-detail',{id:${ch.id}})}"

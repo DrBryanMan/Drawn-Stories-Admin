@@ -44,25 +44,3 @@ button, input, select, textarea {
     font-family: inherit;
     font-size: inherit;
 }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar {
-    width: 8px;
-    height: 6px;
-}
-::-webkit-scrollbar-track {
-    background: var(--bg-primary);
-}
-::-webkit-scrollbar-thumb {
-    background: var(--accent-light);
-    border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: var(--accent);
-}
-
-/* ── Виділення ── */
-::selection {
-    background: var(--accent-light);
-    color: var(--text-primary);
-}

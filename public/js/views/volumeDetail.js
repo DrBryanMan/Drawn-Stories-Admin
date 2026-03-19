@@ -117,7 +117,12 @@ export async function renderVolumeDetail(params) {
                 : ''}
             ${isMangaSourceVolume && volume.hikka_slug
                 ? `<span class="page-title-badge">
-                    hikka:&thinsp;${volume.hikka_slug}
+                    HIKKA: ${volume.hikka_slug}
+                </span>`
+                : ''}
+            ${isMangaSourceVolume && volume.mal_id
+                ? `<span class="page-title-badge">
+                    MAL: ${volume.mal_id}
                 </span>`
                 : ''}
             <span class="page-title-badge">
@@ -141,7 +146,7 @@ export async function renderVolumeDetail(params) {
                                 : '<div style="width: 300px; height: 450px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 4rem;">📚</div>'
                         }
                         <div class="source-links" style="display: flex; align-items: center; gap: 0.5rem; margin-top: 1em;">
-                                ${!isMangaSourceVolume
+                                ${volume.cv_slug
                                     ? `<a href="https://comicvine.gamespot.com/${volume.cv_slug}/4050-${volume.cv_id}" target="_blank">CV <i class="bi bi-box-arrow-up-right"></i></a>`
                                     : ''}
                                 ${volume.hikka_slug

@@ -276,7 +276,64 @@ router.get('/all', (req, res) => {
           ORDER BY i.release_date
         `, [cutoff]).forEach(i => items.push(i));
       } else {
-        // magazines — складніше, тут залишаємо серверну фільтрацію
+        // manga_mode === 'magazines'
+        const magRows = getAll(`
+          SELECT
+            mi.id            AS id,
+            mi.issue_number  AS issue_number,
+            mi.name          AS name,
+            mi.release_date,
+            mi.cv_img,
+            mv.name          AS magazine_name,
+            mv.id            AS magazine_vol_id,
+            i.id             AS ch_id,
+            i.issue_number   AS ch_number,
+            i.name           AS ch_name,
+            i.cv_img         AS ch_cv_img,
+            v.name           AS vol_name,
+            v.id             AS vol_id,
+            v.hikka_slug,
+            mc.sort_order,
+            mc.page_type
+          FROM issues mi
+          JOIN volumes mv ON mi.cv_vol_id = mv.cv_id
+          JOIN volume_themes vt ON vt.volume_id = mv.id AND vt.theme_id = ?
+          JOIN magazine_chapters mc ON mc.mag_issue_id = mi.id
+          JOIN issues i ON i.id = mc.issue_id
+          JOIN volumes v ON v.id = i.ds_vol_id
+          WHERE mi.release_date >= ? AND mi.release_date != ''
+          ORDER BY mi.release_date, mv.name,
+                   CAST(mi.issue_number AS REAL),
+                   mc.sort_order, v.name, CAST(i.issue_number AS REAL)
+        `, [MAGAZINE_THEME, cutoff]);
+
+        const magMap = new Map();
+        magRows.forEach(row => {
+          if (!magMap.has(row.id)) {
+            magMap.set(row.id, {
+              id: row.id,
+              issue_number: row.issue_number,
+              name: row.name,
+              release_date: row.release_date,
+              cv_img: row.cv_img,
+              magazine_name: row.magazine_name,
+              magazine_vol_id: row.magazine_vol_id,
+              chapters: [],
+              _type: 'manga_magazine',
+            });
+          }
+          magMap.get(row.id).chapters.push({
+            id: row.ch_id,
+            issue_number: row.ch_number,
+            name: row.ch_name,
+            cv_img: row.ch_cv_img,
+            vol_name: row.vol_name,
+            vol_id: row.vol_id,
+            hikka_slug: row.hikka_slug,
+            page_type: row.page_type,
+          });
+        });
+        magMap.forEach(mag => items.push(mag));
       }
 
       if (withCollections) {
