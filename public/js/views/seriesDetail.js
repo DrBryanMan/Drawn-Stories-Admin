@@ -78,6 +78,8 @@ async function renderPage(series) {
             <div style="background: var(--bg-primary); padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 1.5rem;">
                 <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem;">
                     <h2 style="font-size: 1.5rem; margin: 0;">Томи збірників (${collectionVolumes.length})</h2>
+                    <button class="btn btn-secondary btn-small" title="Перерахувати томи серії"
+                        onclick="recalculateVolumes(${series.id})">🔄 Томи</button>
                 </div>
                 ${collectionVolumes.length > 0
                     ? `<div class="grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem;">${renderVolumeCards(collectionVolumes, series.id)}</div>`
@@ -96,6 +98,8 @@ async function renderPage(series) {
                                 <option value="name"   ${_collectionsSortOrder === 'name'   ? 'selected' : ''}>За назвою</option>
                             </select>
                         ` : ''}
+                        <button class="btn btn-secondary btn-small" title="Перерахувати збірники серії"
+                            onclick="recalculateCollections(${series.id})">🔄 Збірники</button>
                         <button class="btn btn-primary" onclick="openAddCollectionToSeriesModal(${series.id})">+ Додати збірник</button>
                     </div>
                 </div>
@@ -145,9 +149,9 @@ function renderVolumeCards(volumes, seriesId) {
             </div>
             <div class="card-body">
                 <div class="card-title" title="${vol.name}">${vol.name}</div>
-                ${vol.has_collection_theme
-                    ? (vol.collection_count ? `<div class="card-meta">📗 ${vol.collection_count}</div>` : '')
-                    : (vol.issue_count      ? `<div class="card-meta">📖 ${vol.issue_count}</div>`      : '')}
+                ${(+vol.collection_count > 0)
+                    ? `<div class="card-meta">📗 ${vol.collection_count}</div>`
+                    : (vol.issue_count ? `<div class="card-meta">📖 ${vol.issue_count}</div>` : '')}
                 <button class="btn btn-delete btn-notext btn-danger btn-small"
                     onclick="event.stopPropagation(); removeVolumeFromSeries(${seriesId}, ${vol.id})">
                     ✕
@@ -315,6 +319,24 @@ window.removeCollectionFromSeries = async (seriesId, collectionId) => {
     await fetch(`${API_BASE}/series/${seriesId}/collections/${collectionId}`, { method: 'DELETE' });
     const series = await fetchItem('series', seriesId);
     renderPage(series);
+};
+
+window.recalculateCollections = async (seriesId) => {
+    const res = await fetch(`${API_BASE}/series/${seriesId}/recalculate-collections`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'Помилка'); return; }
+    alert(data.message);
+    const updatedSeries = await fetchItem('series', seriesId);
+    renderPage(updatedSeries);
+};
+
+window.recalculateVolumes = async (seriesId) => {
+    const res = await fetch(`${API_BASE}/series/${seriesId}/recalculate-volumes`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || 'Помилка'); return; }
+    alert(data.message);
+    const updatedSeries = await fetchItem('series', seriesId);
+    renderPage(updatedSeries);
 };
 
 // ===== НАВІГАЦІЯ =========================================================

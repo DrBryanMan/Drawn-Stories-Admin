@@ -102,17 +102,45 @@ router.post('/:id/volumes', (req, res) => {
     rawRun('INSERT INTO series_volumes (series_id, volume_id) VALUES (?, ?)', [seriesId, volume_id]);
 
     // Автоматично додаємо всі збірники цього тому
-    const volume = getOne('SELECT cv_id FROM volumes WHERE id = ?', [volume_id]);
+    const volume = getOne('SELECT cv_id, id FROM volumes WHERE id = ?', [volume_id]);
     let addedCollections = 0;
-    if (volume?.cv_id) {
-      const collections = getAll('SELECT id FROM collections WHERE cv_vol_id = ?', [volume.cv_id]);
-      for (const col of collections) {
-        const colExists = getOne('SELECT id FROM series_collections WHERE series_id = ? AND collection_id = ?', [seriesId, col.id]);
-        if (!colExists) {
-          rawRun('INSERT INTO series_collections (series_id, collection_id) VALUES (?, ?)', [seriesId, col.id]);
+
+    if (volume) {
+      const addedColIds = new Set();
+
+      const addColIfMissing = (colId) => {
+        if (addedColIds.has(colId)) return;
+        addedColIds.add(colId);
+        const exists = getOne('SELECT id FROM series_collections WHERE series_id = ? AND collection_id = ?', [seriesId, colId]);
+        if (!exists) {
+          rawRun('INSERT INTO series_collections (series_id, collection_id) VALUES (?, ?)', [seriesId, colId]);
           addedCollections++;
         }
+      };
+
+      if (volume.cv_id) {
+        // Прямий пошук: збірники, чий том — це поточний том
+        const directCols = getAll('SELECT id FROM collections WHERE cv_vol_id = ?', [volume.cv_id]);
+        directCols.forEach(c => addColIfMissing(c.id));
+
+        // Непрямий пошук: збірники, що містять випуски з цього тому
+        const indirectCols = getAll(`
+          SELECT DISTINCT c.id FROM collections c
+          JOIN collection_issues ci ON c.id = ci.collection_id
+          JOIN issues i ON ci.issue_id = i.id
+          WHERE i.cv_vol_id = ?
+        `, [volume.cv_id]);
+        indirectCols.forEach(c => addColIfMissing(c.id));
       }
+
+      // Пошук по db id (для манґа-томів та ін.)
+      const indirectByDbId = getAll(`
+        SELECT DISTINCT c.id FROM collections c
+        JOIN collection_issues ci ON c.id = ci.collection_id
+        JOIN issues i ON ci.issue_id = i.id
+        WHERE i.ds_vol_id = ?
+      `, [volume.id]);
+      indirectByDbId.forEach(c => addColIfMissing(c.id));
     }
 
     saveDatabase();
@@ -164,6 +192,82 @@ router.delete('/:id/collections/:collectionId', (req, res) => {
     runQuery('DELETE FROM series_collections WHERE series_id = ? AND collection_id = ?', [req.params.id, req.params.collectionId]);
     res.json({ message: 'Збірник видалено з серії' });
   } catch (error) { res.status(400).json({ error: error.message }); }
+});
+
+// ── Перерахунок: знайти всі збірники томів серії і додати відсутні ──────
+
+router.post('/:id/recalculate-collections', (req, res) => {
+  try {
+    const seriesId = parseInt(req.params.id);
+    const seriesVolumes = getAll('SELECT v.cv_id, v.id FROM volumes v JOIN series_volumes sv ON v.id = sv.volume_id WHERE sv.series_id = ?', [seriesId]);
+    let added = 0;
+
+    const addedColIds = new Set();
+    const addColIfMissing = (colId) => {
+      if (addedColIds.has(colId)) return;
+      addedColIds.add(colId);
+      const exists = getOne('SELECT id FROM series_collections WHERE series_id = ? AND collection_id = ?', [seriesId, colId]);
+      if (!exists) {
+        rawRun('INSERT INTO series_collections (series_id, collection_id) VALUES (?, ?)', [seriesId, colId]);
+        added++;
+      }
+    };
+
+    for (const vol of seriesVolumes) {
+      if (vol.cv_id) {
+        getAll('SELECT id FROM collections WHERE cv_vol_id = ?', [vol.cv_id]).forEach(c => addColIfMissing(c.id));
+        getAll(`
+          SELECT DISTINCT c.id FROM collections c
+          JOIN collection_issues ci ON c.id = ci.collection_id
+          JOIN issues i ON ci.issue_id = i.id
+          WHERE i.cv_vol_id = ?
+        `, [vol.cv_id]).forEach(c => addColIfMissing(c.id));
+      }
+      getAll(`
+        SELECT DISTINCT c.id FROM collections c
+        JOIN collection_issues ci ON c.id = ci.collection_id
+        JOIN issues i ON ci.issue_id = i.id
+        WHERE i.ds_vol_id = ?
+      `, [vol.id]).forEach(c => addColIfMissing(c.id));
+    }
+
+    saveDatabase();
+    res.json({ message: `Перераховано. Додано нових збірників: ${added}`, added });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── Перерахунок: знайти всі батьківські томи збірників серії і додати відсутні
+
+router.post('/:id/recalculate-volumes', (req, res) => {
+  try {
+    const seriesId = parseInt(req.params.id);
+    const seriesCols = getAll(`
+      SELECT c.cv_vol_id FROM collections c
+      JOIN series_collections sc ON c.id = sc.collection_id
+      WHERE sc.series_id = ?
+    `, [seriesId]);
+    let added = 0;
+
+    const addedVolIds = new Set();
+    const addVolIfMissing = (volId) => {
+      if (!volId || addedVolIds.has(volId)) return;
+      addedVolIds.add(volId);
+      const exists = getOne('SELECT id FROM series_volumes WHERE series_id = ? AND volume_id = ?', [seriesId, volId]);
+      if (!exists) {
+        rawRun('INSERT INTO series_volumes (series_id, volume_id) VALUES (?, ?)', [seriesId, volId]);
+        added++;
+      }
+    };
+
+    for (const col of seriesCols) {
+      if (!col.cv_vol_id) continue;
+      const vol = getOne('SELECT id FROM volumes WHERE cv_id = ?', [col.cv_vol_id]);
+      if (vol) addVolIfMissing(vol.id);
+    }
+
+    saveDatabase();
+    res.json({ message: `Перераховано. Додано нових томів: ${added}`, added });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 module.exports = router;
