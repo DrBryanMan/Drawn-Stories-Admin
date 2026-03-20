@@ -34,14 +34,6 @@ function getFormHTML(person = null) {
   `;
 }
 
-async function handleAdd() {
-  openModal('Додати персону', getFormHTML(), async (data) => {
-    await createItem('personnel', data);
-    await window.updateStats();
-    await reloadCatalog();
-  });
-}
-
 async function handleEdit(id) {
   const res = await fetch(`http://localhost:7000/api/personnel/${id}`);
   const person = await res.json();
@@ -75,7 +67,6 @@ export async function renderPersonnelList() {
       { key: 'bio',    label: 'Біо'   },
       { key: 'cv_id',  label: 'CV ID' }
     ],
-    onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
     onNavigate: (id, cv_id) => navigate('personnel-detail', { id, cv_id })

@@ -1,6 +1,6 @@
 import { initListPage, reloadCatalog } from '../components/catalog.js';
 import { navigate, buildUrl } from '../utils/router.js';
-import { createItem, updateItem, deleteItem } from '../api/api.js';
+import { updateItem, deleteItem } from '../api/api.js';
 import { openModal } from '../components/modal.js';
 
 function getFormHTML(series = null) {
@@ -20,14 +20,6 @@ function getFormHTML(series = null) {
       </div>
     </form>
   `;
-}
-
-async function handleAdd() {
-  openModal('Додати серію', getFormHTML(), async (data) => {
-    await createItem('series', data);
-    await window.updateStats();
-    await reloadCatalog();
-  });
 }
 
 async function handleEdit(id) {
@@ -62,7 +54,6 @@ export async function renderSeriesList() {
       { key: 'name',        label: 'Назва'   },
       { key: 'description', label: 'Опис'    }
     ],
-    onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
     onNavigate: (id) => navigate('series-detail', { id }),

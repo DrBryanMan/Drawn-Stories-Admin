@@ -52,14 +52,6 @@ function getFormHTML(issue = null) {
   `;
 }
 
-async function handleAdd() {
-  openModal('Додати випуск', getFormHTML(), async (data) => {
-    await createItem('issues', data);
-    await window.updateStats();
-    await reloadCatalog();
-  });
-}
-
 async function handleEdit(id) {
   const res = await fetch(`http://localhost:7000/api/issues/${id}`);
   const issue = await res.json();
@@ -104,7 +96,6 @@ export async function renderIssuesList() {
       { key: 'release_date', label: 'Дата випуску' },
       { key: 'created_at',   label: 'Додано', type: 'date'}
     ],
-    onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
     onNavigate: (id, cv_id, cv_slug) => navigate('issue-detail', { id, cv_id, cv_slug }),

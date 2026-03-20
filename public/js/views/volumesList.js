@@ -36,14 +36,6 @@ function getFormHTML(volume = null) {
   `;
 }
 
-async function handleAdd() {
-  openModal('Додати том', getFormHTML(), async (data) => {
-    await createItem('volumes', data);
-    await window.updateStats();
-    await reloadCatalog();
-  });
-}
-
 async function handleEdit(id) {
   const res = await fetch(`http://localhost:7000/api/volumes/${id}`);
   const volume = await res.json();
@@ -89,7 +81,6 @@ export async function renderVolumesList() {
       { key: 'cv_slug',        label: 'Slug'        },
       { key: 'created_at',     label: 'Додано', type: 'date' }
     ],
-    onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
     onNavigate: (id, cv_id, cv_slug) => navigate('volume-detail', { id, cv_id, cv_slug }),

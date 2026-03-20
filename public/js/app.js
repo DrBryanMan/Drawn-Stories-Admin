@@ -1,4 +1,5 @@
 import { fetchStats } from './api/api.js';
+import { openGlobalAddModal } from './components/globalAddModal.js';
 import { initRouter, registerRoute, navigate } from './utils/router.js';
 import { initModalHandlers } from './components/modal.js';
 import { renderVolumesList } from './views/volumesList.js';
@@ -27,6 +28,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 async function initApp() {
     initModalHandlers();
     initNavigation();
+    mountGlobalAddButton();
 
     // Реєстрація маршрутів
     registerRoute('volumes',              renderVolumesList);
@@ -60,6 +62,36 @@ function initNavigation() {
             // navigate() сам оновить активний таб через updateActiveNav()
             navigate(page);
         });
+    });
+}
+
+function mountGlobalAddButton() {
+    // Кнопка в сайдбарі
+    const nav = document.querySelector('.sidebar nav, .sidebar, nav, .nav');
+    if (nav) {
+        const btn = document.createElement('button');
+        btn.id        = 'global-add-btn';
+        btn.innerHTML = 'Додати';
+        btn.title     = 'Додати контент (N)';
+        btn.style.cssText = [
+            'display:block; width: calc(100% - 2rem); margin: 0.75rem 1rem 0;',
+            'padding: .5em; border: var(--accent); border-radius: 8px;',
+            'background: var(--bg-secondary); color: var(--accent); font-weight: 700; font-size:0.9rem;',
+            'cursor: pointer; transition: opacity .3s;',
+        ].join('');
+        btn.addEventListener('mouseenter', () => btn.style.opacity = '1');
+        btn.addEventListener('mouseleave', () => btn.style.opacity = '.8');
+        btn.addEventListener('click', () => openGlobalAddModal());
+        nav.append(btn);
+    }
+
+    // Клавіша N (поза полями вводу)
+    document.addEventListener('keydown', e => {
+        if (e.key === 'n' || e.key === 'N') {
+            const tag = document.activeElement?.tagName?.toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+            openGlobalAddModal();
+        }
     });
 }
 

@@ -4,6 +4,28 @@ export const cv_img_path_small = 'https://comicvine.gamespot.com/a/uploads/scale
 export const cv_img_path_original = 'https://comicvine.gamespot.com/a/uploads/original'
 export const locg_img = 'https://leagueofcomicgeeks.com/assets/images/user-menu-logo-icon.png'
 
+export const imgSrc = (item, size = 40, ratio = "2/3") => {
+    if (!item?.cv_img) return '&#128214;';
+    
+    const isFullUrl = item.cv_img.startsWith('http');
+    const prefix = !isFullUrl && !item.cv_img.startsWith('/') ? '/' : '';
+    
+    const src = isFullUrl
+        ? item.cv_img
+        : `${cv_img_path_small}${prefix}${item.cv_img}`;
+    
+    return `<img 
+        src="${src}" 
+        alt="${item.name}" 
+        style="
+            width:${size}px;
+            aspect-ratio:${ratio};
+            object-fit:cover;
+            border-radius: 8px;
+        "
+    >`;
+};
+
 export function initDetailPage() {
     unmountHeaderActions();
 

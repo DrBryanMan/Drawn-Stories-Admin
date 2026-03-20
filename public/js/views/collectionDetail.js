@@ -1,11 +1,26 @@
 import { API_BASE } from '../utils/config.js';
 import { fetchItem } from '../api/api.js';
-import { cv_img_path_small, cv_img_path_original, formatDate, formatCoverDate, formatReleaseDate, showError, showLoading, initDetailPage } from '../utils/helpers.js';
 import { navigate } from '../utils/router.js';
-import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
-import { openAddIssueModal } from '../components/addIssueModal.js';
 import { openModal } from '../components/modal.js';
-import { buildThemeChipsHTML, buildThemeCheckboxListHTML, filterThemeCheckboxList, buildThemeChipsViewHTML } from '../utils/themeChips.js';
+import { openAddIssueModal } from '../components/addIssueModal.js';
+import { publisherSearchHTML, initPublisherSearch } from '../utils/publisherSearch.js';
+import {
+    imgSrc,
+    cv_img_path_small,
+    cv_img_path_original,
+    formatDate,
+    formatCoverDate,
+    formatReleaseDate,
+    showError,
+    showLoading,
+    initDetailPage
+} from '../utils/helpers.js';
+import {
+    buildThemeChipsHTML,
+    buildThemeCheckboxListHTML,
+    filterThemeCheckboxList,
+    buildThemeChipsViewHTML
+} from '../utils/themeChips.js';
 import {
     buildVolumesMap,
     renderVolumeSummary,
@@ -311,7 +326,7 @@ function renderPage(collection, seriesList = []) {
             <div id="collection-volume-nav" style="display: flex; margin-top: 1.5rem; justify-content: center;"></div>
 
             <div class="block">
-                <div class="header">
+                <div class="block-header">
                     <h2>Випуски (${collection.issues.length})</h2>
                     <div style="display:flex; gap:0.75rem; align-items:center;">
                         <select id="collection-sort-select" style="padding:0.4rem 0.75rem; border:1px solid var(--border-color); border-radius:6px; background:var(--bg-secondary); color:var(--text-primary); font-size:0.9rem;">
@@ -516,11 +531,7 @@ function renderIssueRows(issues, collectionId) {
                 >
             </td>
             ` : `
-            <td>
-                ${issue.cv_img
-                    ? `<img src="${cv_img_path_small}${issue.cv_img.startsWith('/') ? '' : '/'}${issue.cv_img}" alt="${issue.name}">`
-                    : '&#128214;'}
-            </td>
+            <td>${imgSrc(issue)}</td>
             <td>${issue.name || '—'}</td>
             <td>${issue.issue_number || '—'}</td>
             `}

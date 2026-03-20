@@ -150,7 +150,7 @@ export function filterThemeCheckboxList(query, listId) {
   const list = document.getElementById(listId);
   if (!list) return;
   list.querySelectorAll('.theme-checkbox-item').forEach(item => {
-    const uaText = item.querySelector('span')?.textContent?.toLowerCase() || '';
+    const uaText = item.querySelector('.theme-cb-label')?.textContent?.toLowerCase() || '';
     const enText = item.querySelector('input')?.dataset?.name || '';
     item.style.display = (uaText.includes(q) || enText.includes(q)) ? '' : 'none';
   });

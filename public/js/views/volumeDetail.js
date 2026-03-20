@@ -109,10 +109,10 @@ export async function renderVolumeDetail(params) {
             <a href="#" onclick="event.preventDefault(); navigateToParent()" style='margin-right: auto;'>
                 <i class="bi bi-caret-left"></i> Томи
             </a>
-            ${!isMangaSourceVolume && volume.cv_id
+            ${volume.cv_id
                 ? `<span
                     class="page-title-badge">
-                    CV ${volume.cv_slug}/4050-${volume.cv_id}
+                    CV: ${volume.cv_slug}/4050-${volume.cv_id}
                 </span>`
                 : ''}
             ${isMangaSourceVolume && volume.hikka_slug

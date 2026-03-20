@@ -35,14 +35,6 @@ function getFormHTML(event = null) {
   `;
 }
 
-async function handleAdd() {
-  openModal('Додати подію', getFormHTML(), async (data) => {
-    await createItem('events', data);
-    await window.updateStats();
-    await reloadCatalog();
-  });
-}
-
 async function handleEdit(id) {
   const res = await fetch(`http://localhost:7000/api/events/${id}`);
   const event = await res.json();
@@ -80,7 +72,6 @@ export async function renderEventsList() {
       { key: 'issue_count',      label: 'Випусків'     },
       { key: 'collection_count', label: 'Збірників'    }
     ],
-    onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
     onNavigate: (id) => navigate('event-detail', { id }),

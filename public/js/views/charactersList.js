@@ -38,14 +38,6 @@ function getFormHTML(char = null) {
   `;
 }
 
-async function handleAdd() {
-  openModal('Додати персонажа', getFormHTML(), async (data) => {
-    await createItem('characters', data);
-    await window.updateStats();
-    await reloadCatalog();
-  });
-}
-
 async function handleEdit(id) {
   const res = await fetch(`http://localhost:7000/api/characters/${id}`);
   const char = await res.json();
@@ -80,7 +72,6 @@ export async function renderCharactersList() {
       { key: 'real_name',  label: 'Справжнє ім\'я' },
       { key: 'cv_id',      label: 'CV ID'         }
     ],
-    onAdd:      handleAdd,
     onEdit:     handleEdit,
     onDelete:   handleDelete,
     onNavigate: (id, cv_id) => navigate('character-detail', { id, cv_id })

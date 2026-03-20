@@ -22,14 +22,6 @@ function getFormHTML(order = null) {
   `;
 }
 
-async function handleAdd() {
-  openModal('Додати порядок читання', getFormHTML(), async (data) => {
-    await createItem('reading-orders', data);
-    await window.updateStats();
-    await reloadCatalog();
-  });
-}
-
 async function handleEdit(id) {
   const res = await fetch(`http://localhost:7000/api/reading-orders/${id}`);
   const order = await res.json();
@@ -64,7 +56,6 @@ export async function renderReadingOrderList() {
       { key: 'description',  label: 'Опис'    },
       { key: 'issue_count',  label: 'Випусків' }
     ],
-    onAdd:       handleAdd,
     onEdit:      handleEdit,
     onDelete:    handleDelete,
     onNavigate:  (id) => navigate('reading-order-detail', { id }),
